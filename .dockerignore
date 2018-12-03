@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!docker*
+!mod-erm-usage-harvester-core/target/*.jar
+!mod-erm-usage-harvester-core/target/config.json
+
