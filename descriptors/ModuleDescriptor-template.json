@@ -1,0 +1,49 @@
+{
+  "id": "${artifactId}-${version}",
+  "name": "erm-usage-harvester",
+  "provides": [
+    {
+      "id": "usage-harvester",
+      "version": "0.1",
+      "handlers": [
+        {
+          "methods": [ "GET" ],
+          "pathPattern": "/harvester/start"
+        }
+      ]
+    }
+  ],
+  "requires": [
+    {
+      "id": "users-bl",
+      "version": "3.0"
+    },
+    {
+      "id": "usage-data-providers",
+      "version": "0.1"
+    },
+    {
+      "id": "aggregator-settings",
+      "version": "0.1"
+    },
+    {
+      "id": "counter-reports",
+      "version": "0.1"
+    }
+  ],
+  "launchDescriptor": {
+    "dockerImage": "${artifactId}:${version}",
+    "dockerArgs": {
+      "HostConfig": {
+        "PortBindings": {
+          "8081/tcp": [
+            {
+              "HostPort": "%p"
+            }
+          ]
+        }
+      }
+    },
+    "dockerPull": false
+  }
+}

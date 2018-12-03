@@ -1,0 +1,7 @@
+{
+  "srvcId": "${artifactId}-${version}",
+  "nodeId": "localhost",
+  "descriptor": {
+    "exec": "java -jar ../${project.parent.artifactId}/${artifactId}/target/${artifactId}-fat.jar -Dhttp.port=%p"
+  }
+}

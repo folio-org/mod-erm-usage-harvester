@@ -1,0 +1,67 @@
+{
+  "usageDataProviders": [
+    {
+      "id": "4c66b956-23a8-4418-aef6-1c35dcdaccd6",
+      "label": "ACM Digital Library",
+      "vendorId": "uuid-123456789",
+      "platformId": "uuid-123456789",
+      "harvestingStatus": "active",
+      "aggregator": {
+        "id": "4c66b956-23a8-4418-aef6-1c35dcdaccc4",
+        "vendorCode": "ACMDL"
+      },
+      "reportRelease": 4,
+      "requestedReports": [
+        "JR1",
+        "TR1"
+      ],
+      "customerId": "12345def",
+      "requestorId": "1234abcd",
+      "apiKey": "678iuoi",
+      "requestorName": "Karla Kolumna",
+      "requestorMail": "kolumna@ub.uni-leipzig.de"
+    },
+    {
+      "id": "bf6c9ddc-ff82-40c4-be64-dd2414bdcd72",
+      "label": "Data provider without aggregator",
+      "vendorId": "uuid-123456789",
+      "platformId": "uuid-123456789",
+      "harvestingStatus": "active",
+      "serviceType": "Sushi",
+      "serviceUrl": "http://myvendor.com",
+      "reportRelease": 4,
+      "requestedReports": [
+        "JR1",
+        "TR1"
+      ],
+      "customerId": "12345def",
+      "requestorId": "1234abcd",
+      "apiKey": "678iuoi",
+      "requestorName": "Karla Kolumna",
+      "requestorMail": "kolumna@ub.uni-leipzig.de"
+    },
+    {
+      "id": "bbbf6186-7028-4c7a-b101-27769079d75a",
+      "label": "ACM Digital Library2",
+      "vendorId": "uuid-123456789",
+      "platformId": "uuid-123456789",
+      "harvestingStatus": "active",
+      "aggregator": {
+        "id": "54e8d70e-6ffe-4f1b-a3b0-534e95287680",
+        "vendorCode": "Nature"
+      },
+      "reportRelease": 4,
+      "requestedReports": [
+        "JR1",
+        "TR1"
+      ],
+      "customerId": "12345def",
+      "requestorId": "1234abcd",
+      "apiKey": "678iuoi",
+      "requestorName": "Karla Kolumna",
+      "requestorMail": "kolumna@ub.uni-leipzig.de",
+      "updatedDate": "2018-07-25T08:52:24.231+0000"
+    }
+  ],
+  "totalRecords": 3
+}

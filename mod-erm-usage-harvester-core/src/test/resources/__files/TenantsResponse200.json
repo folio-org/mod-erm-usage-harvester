@@ -1,0 +1,9 @@
+[ {
+  "id" : "diku",
+  "name" : "Datalogisk Institut",
+  "description" : "Danish Library Technology Institute"
+}, {
+  "id" : "supertenant",
+  "name" : "supertenant",
+  "description" : "Okapi built-in super tenant"
+} ]

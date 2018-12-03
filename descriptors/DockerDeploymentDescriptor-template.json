@@ -1,0 +1,8 @@
+{
+  "srvcId": "${artifactId}-${version}",
+  "nodeId": "localhost",
+  "descriptor": {
+    "dockerImage" : "${artifactId}:latest",
+    "dockerPull" : false
+  }
+}

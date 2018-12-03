@@ -1,0 +1,16 @@
+{
+    "counterReports": [
+		{
+			"id": "43d7e87c-fb32-4ce2-81f9-11fe75c29bbb",
+			"downloadTime": "2018-09-17T14:52:01.562+0000",
+			"creationTime": "2018-09-17T14:52:01.562+0000",
+			"release": "4",
+			"reportName": "JR1",
+			"yearMonth": "2018-02",
+			"customerId": "WIB6091",
+			"vendorId": "uuid-123456789",
+			"platformId": "uuid-123456789"
+	    }
+	],
+    "totalRecords": 1
+}

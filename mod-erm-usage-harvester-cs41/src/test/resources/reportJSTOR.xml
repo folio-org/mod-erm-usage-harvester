@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<report Created="2018-10-24T08:37:25.730+01:00" ID="1540366645730" Version="4" Name="Journal Report 1 (R4)" Title="JR1:4" xmlns:ns2="http://www.niso.org/schemas/counter">
+    <ns2:Vendor>
+        <ns2:Name>Semantico Ltd.</ns2:Name>
+        <ns2:ID>SEM001</ns2:ID>
+        <ns2:Contact>
+            <ns2:Contact>tbc</ns2:Contact>
+            <ns2:E-mail>info@semantico.com</ns2:E-mail>
+        </ns2:Contact>
+        <ns2:WebSiteUrl>http://www.semantico.com</ns2:WebSiteUrl>
+        <ns2:LogoUrl>http://www.semantico.com/wp-content/themes/semantico/images/logo-new.png</ns2:LogoUrl>
+    </ns2:Vendor>
+    <ns2:Customer>
+        <ns2:ID>uni-leipzig.de</ns2:ID>
+        <ns2:ReportItems>
+            <ns2:ItemIdentifier>
+                <ns2:Type>Online_ISSN</ns2:Type>
+                <ns2:Value>1533-8606</ns2:Value>
+            </ns2:ItemIdentifier>
+            <ns2:ItemIdentifier>
+                <ns2:Type>Print_ISSN</ns2:Type>
+                <ns2:Value>0148-2076</ns2:Value>
+            </ns2:ItemIdentifier>
+            <ns2:ItemPlatform>Ithaka</ns2:ItemPlatform>
+            <ns2:ItemPublisher>University of California Press</ns2:ItemPublisher>
+            <ns2:ItemName>19th-Century Music</ns2:ItemName>
+            <ns2:ItemDataType>Journal</ns2:ItemDataType>
+            <ns2:ItemPerformance>
+                <ns2:Period>
+                    <ns2:Begin>2018-03-01</ns2:Begin>
+                    <ns2:End>2018-03-31</ns2:End>
+                </ns2:Period>
+                <ns2:Category>Requests</ns2:Category>
+                <ns2:Instance>
+                    <ns2:MetricType>ft_html</ns2:MetricType>
+                    <ns2:Count>4</ns2:Count>
+                </ns2:Instance>
+                <ns2:Instance>
+                    <ns2:MetricType>ft_pdf</ns2:MetricType>
+                    <ns2:Count>4</ns2:Count>
+                </ns2:Instance>
+                <ns2:Instance>
+                    <ns2:MetricType>ft_total</ns2:MetricType>
+                    <ns2:Count>8</ns2:Count>
+                </ns2:Instance>
+            </ns2:ItemPerformance>
+        </ns2:ReportItems>
+        <ns2:ReportItems>
+            <ns2:ItemIdentifier>
+                <ns2:Type>Online_ISSN</ns2:Type>
+                <ns2:Value>2162-7983</ns2:Value>
+            </ns2:ItemIdentifier>
+            <ns2:ItemIdentifier>
+                <ns2:Type>Print_ISSN</ns2:Type>
+                <ns2:Value>0747-0088</ns2:Value>
+            </ns2:ItemIdentifier>
+            <ns2:ItemPlatform>Ithaka</ns2:ItemPlatform>
+            <ns2:ItemPublisher>American Bar Association</ns2:ItemPublisher>
+            <ns2:ItemName>ABA Journal</ns2:ItemName>
+            <ns2:ItemDataType>Journal</ns2:ItemDataType>
+            <ns2:ItemPerformance>
+                <ns2:Period>
+                    <ns2:Begin>2018-03-01</ns2:Begin>
+                    <ns2:End>2018-03-31</ns2:End>
+                </ns2:Period>
+                <ns2:Category>Requests</ns2:Category>
+                <ns2:Instance>
+                    <ns2:MetricType>ft_html</ns2:MetricType>
+                    <ns2:Count>1</ns2:Count>
+                </ns2:Instance>
+                <ns2:Instance>
+                    <ns2:MetricType>ft_pdf</ns2:MetricType>
+                    <ns2:Count>1</ns2:Count>
+                </ns2:Instance>
+                <ns2:Instance>
+                    <ns2:MetricType>ft_total</ns2:MetricType>
+                    <ns2:Count>2</ns2:Count>
+                 </ns2:Instance>
+            </ns2:ItemPerformance>
+        </ns2:ReportItems>
+    </ns2:Customer>
+</report>
