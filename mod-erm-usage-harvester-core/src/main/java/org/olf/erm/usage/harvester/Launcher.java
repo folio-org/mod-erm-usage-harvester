@@ -37,6 +37,19 @@ public class Launcher extends io.vertx.core.Launcher {
       e.printStackTrace();
     }
 
+    // get port from command line
+    getProcessArguments().stream()
+        .filter(arg -> arg.startsWith("-Dhttp.port="))
+        .findFirst()
+        .ifPresent(line -> {
+          try {
+            int parseInt = Integer.parseInt(line.split("=")[1]);
+            deploymentOptions.getConfig().put("http.port", parseInt);
+          } catch (Exception e) {
+            // ignore
+          }
+        });
+
     // check configuration and abort if something is missing
     String[] configParams = new String[] {"okapiUrl", "tenantsPath", "reportsPath", "providerPath",
         "aggregatorPath", "moduleIds", "loginPath", "requiredPerm"};

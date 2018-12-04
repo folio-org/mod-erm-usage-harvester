@@ -7,6 +7,7 @@ import com.google.common.base.Strings;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 
 public class HarvesterVerticle extends AbstractVerticle {
@@ -73,30 +74,30 @@ public class HarvesterVerticle extends AbstractVerticle {
         String msg = "Processing of tenant " + tenantId + " requested.";
         LOG.info(msg);
         processSingleTenant(tenantId);
-        h.response().setStatusCode(200).end(msg);
+        h.response().setStatusCode(200).end(new JsonObject().put("message", msg).toString());
       }
     });
     return router;
   }
 
   @Override
-  public void start() throws Exception {
+  public void start(Future<Void> startFuture) throws Exception {
     if (config().getBoolean("testing", false)) {
+      startFuture.complete();
       return;
     }
 
     int port = config().getInteger("http.port", 8081);
     vertx.createHttpServer().requestHandler(createRouter()::accept).listen(port, h -> {
       if (h.failed()) {
-        LOG.error("Unable to start HttpServer");
+        startFuture.fail("Unable to start HttpServer on port " + port);
+      } else {
+        // TODO: do this periodically
+        processAllTenants();
+        startFuture.complete();
       }
     });
 
-    // TODO: do this periodically
-    processAllTenants();
-
-    vertx.setPeriodic(5000, h -> {
-      System.out.println("Deployed Verticles: " + vertx.deploymentIDs());
-    });
+    // vertx.setPeriodic(5000, h2 -> LOG.info("Deployed Verticles: " + vertx.deploymentIDs()));
   }
 }
