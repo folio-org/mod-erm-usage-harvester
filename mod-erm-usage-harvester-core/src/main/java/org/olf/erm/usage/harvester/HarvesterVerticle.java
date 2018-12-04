@@ -89,15 +89,13 @@ public class HarvesterVerticle extends AbstractVerticle {
     int port = config().getInteger("http.port", 8081);
     vertx.createHttpServer().requestHandler(createRouter()::accept).listen(port, h -> {
       if (h.failed()) {
-        LOG.error("Unable to start HttpServer");
+        LOG.error("Unable to start HttpServer on port " + port);
       }
     });
 
     // TODO: do this periodically
     processAllTenants();
 
-    vertx.setPeriodic(5000, h -> {
-      System.out.println("Deployed Verticles: " + vertx.deploymentIDs());
-    });
+    // vertx.setPeriodic(5000, h2 -> LOG.info("Deployed Verticles: " + vertx.deploymentIDs()));
   }
 }
