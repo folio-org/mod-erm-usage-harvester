@@ -7,6 +7,7 @@ import com.google.common.base.Strings;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 
 public class HarvesterVerticle extends AbstractVerticle {
@@ -73,7 +74,7 @@ public class HarvesterVerticle extends AbstractVerticle {
         String msg = "Processing of tenant " + tenantId + " requested.";
         LOG.info(msg);
         processSingleTenant(tenantId);
-        h.response().setStatusCode(200).end(msg);
+        h.response().setStatusCode(200).end(new JsonObject().put("message", msg).toString());
       }
     });
     return router;
