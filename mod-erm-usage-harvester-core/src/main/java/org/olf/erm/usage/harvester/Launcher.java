@@ -23,21 +23,38 @@ public class Launcher extends io.vertx.core.Launcher {
     if (deploymentOptions.getConfig() == null) {
       deploymentOptions.setConfig(new JsonObject());
     }
-    try {
-      // get default config
-      String config = FileUtils.readFileToString(new File("config.json"), Charset.defaultCharset());
-      JsonObject combined = new JsonObject(config).mergeIn(deploymentOptions.getConfig());
-      deploymentOptions.setConfig(combined);
-    } catch (DecodeException e) {
-      System.err.println("Couldnt decode JSON configuration");
-    } catch (FileNotFoundException e) {
-      // ignore
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+
+    // try default config.json if empty
+    if (deploymentOptions.getConfig().isEmpty()) {
+      try {
+        String config =
+            FileUtils.readFileToString(new File("config.json"), Charset.defaultCharset());
+        deploymentOptions.setConfig(new JsonObject(config));
+      } catch (DecodeException e) {
+        System.err.println("Error decoding JSON configuration from default config.json");
+        System.err.println(e.getMessage());
+      } catch (FileNotFoundException e) {
+        // ignore
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
 
-    // get port from command line
+    // override with environment variable
+    String envConfig = System.getenv("CONFIG");
+    if (envConfig != null) {
+      try {
+        deploymentOptions
+            .setConfig(deploymentOptions.getConfig().mergeIn(new JsonObject(envConfig)));
+      } catch (DecodeException e) {
+        System.err.println("Error decoding JSON configuration from environment variable 'CONFIG'");
+        System.err.println(e.getMessage());
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+
+    // override port from command line
     getProcessArguments().stream()
         .filter(arg -> arg.startsWith("-Dhttp.port="))
         .findFirst()
