@@ -30,7 +30,7 @@ $ docker build -t mod-erm-usage-harvester .
 
 ### Run docker image
 ```
-$ docker build -p 8081:8081 mod-erm-usage-harvester .
+$ docker run -p 8081:8081 mod-erm-usage-harvester .
 ```
 
 ### Register ModuleDescriptor
@@ -87,6 +87,9 @@ or from file
 $ docker run -e "CONFIG=$(<config.json)" mod-erm-usage-harvester
 ```
 
+### Requirements
+
+Module needs user `diku_admin` to have `ermusage.all` permission for harvesting to work.
 
 ## Additional information
 
