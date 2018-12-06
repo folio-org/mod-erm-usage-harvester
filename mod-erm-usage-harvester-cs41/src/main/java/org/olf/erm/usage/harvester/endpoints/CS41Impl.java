@@ -70,7 +70,7 @@ public class CS41Impl implements ServiceEndpoint {
     port = service.getPort(next, SushiServiceInterface.class);
     BindingProvider bindingProvider = (BindingProvider) port;
     bindingProvider.getRequestContext()
-        .put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, "http://www.jstor.org/sushi");
+        .put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, provider.getServiceUrl());
   }
 
   @Override

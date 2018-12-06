@@ -1,14 +1,13 @@
 {
-  "okapiUrl": "http://localhost:9130",
+  "okapiUrl": "http://172.17.0.1:9130",
   "tenantsPath": "/_/proxy/tenants",
   "reportsPath": "/counter-reports",
   "providerPath": "/usage-data-providers",
   "aggregatorPath": "/aggregator-settings",
   "moduleIds": [
-    "${parent.artifactId}-server-${project.version}",
-    "${parent.artifactId}-harvester-${project.version}"
+    "mod-erm-usage-0.2.0-SNAPSHOT",
+    "mod-erm-usage-harvester-${project.version}"
   ],
-  "moduleId": "mod-erm-usage-server",
   "loginPath": "/bl-users/login",
   "requiredPerm": "ermusage.all"
 }
