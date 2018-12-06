@@ -22,7 +22,7 @@ public class HarvesterVerticle extends AbstractVerticle {
         tenantList.forEach(t -> {
           okapiClient.hasEnabledUsageModules(t).compose(en -> {
             if (en) {
-              return okapiClient.getAuthToken(t, "harvester", "harvester", "ermusage.all");
+              return okapiClient.getAuthToken(t, "diku_admin", "admin", "ermusage.all");
             } else {
               return Future.failedFuture("Module not enabled for Tenant " + t);
             }
@@ -47,7 +47,7 @@ public class HarvesterVerticle extends AbstractVerticle {
     OkapiClient okapiClient = new OkapiClient(vertx, config());
     okapiClient.hasEnabledUsageModules(tenantId).compose(en -> {
       if (en) {
-        return okapiClient.getAuthToken(tenantId, "harvester", "harvester", "ermusage.all");
+        return okapiClient.getAuthToken(tenantId, "diku_admin", "admin", "ermusage.all");
       } else {
         return Future.failedFuture("Module not enabled for Tenant " + tenantId);
       }
