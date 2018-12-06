@@ -5,7 +5,7 @@
   "providerPath": "/usage-data-providers",
   "aggregatorPath": "/aggregator-settings",
   "moduleIds": [
-    "mod-erm-usage-0.2.0-SNAPSHOT",
+    "mod-erm-usage-1.0.0",
     "mod-erm-usage-harvester-${project.version}"
   ],
   "loginPath": "/bl-users/login",
