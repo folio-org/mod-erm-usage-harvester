@@ -6,62 +6,44 @@ This software is distributed under the terms of the Apache License,
 Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 
 
-# Installation
+## Installation
 
 ```
-git clone ...
-cd mod-erm-usage-harvester
-mvn clean install
+$ git clone ...
+$ cd mod-erm-usage-harvester
+$ mvn clean install
 ```
 
-# Run plain jar
+## Run plain jar
 
 ```
-cd mod-erm-usage-harvester-core
-java -jar target/mod-erm-usage-harvester-core-fat.jar -conf target/config.json
+$ cd mod-erm-usage-harvester-core
+$ java -jar target/mod-erm-usage-harvester-core-fat.jar -conf target/config.json
 ```
 
-configuration via JSON file:
-```json
-{
-  "okapiUrl": "http://localhost:9130",
-  "tenantsPath": "/_/proxy/tenants",
-  "reportsPath": "/counter-reports",
-  "providerPath": "/usage-data-providers",
-  "aggregatorPath": "/aggregator-settings",
-  "moduleId": "mod-erm-usage-harvester-0.1.0"
-}
-```
-
-
-# Run via Docker
+## Run via Docker
 
 ### Build docker image
-
 ```
 $ docker build -t mod-erm-usage-harvester .
-$ docker run -t -i -p 8081:8081 -e DB_USERNAME=folio_admin -e DB_PASSWORD=folio_admin -e DB_HOST=172.17.0.1 -e DB_PORT=5432 -e DB_DATABASE=okapi_modules mod-erm-usage-harvester
 ```
 
-### Change config file
-
+### Run docker image
 ```
-$ cd mod-erm-usage-harvester-core/target
+$ docker build -p 8081:8081 mod-erm-usage-harvester .
 ```
-
-Change _okapiUrl_ in file _config.json_ to your docker hosts IP address, e.g. `"okapiUrl": "http://172.17.0.1:9130"`.
-
 
 ### Register ModuleDescriptor
 
 ```
+$ cd target
 $ curl -w '\n' -X POST -D - -H "Content-type: application/json" -d @ModuleDescriptor.json http://localhost:9130/_/proxy/modules
 ```
 
 ### Activate module for tenant (do this before registering DeploymentDescriptor)
 
 ```
-$ curl -w '\n' -X POST -D - -H "Content-type: application/json" -d '{ "id": "mod-erm-usage-harvester-0.1.0"}' http://localhost:9130/_/proxy/tenants/diku/modules
+$ curl -w '\n' -X POST -D - -H "Content-type: application/json" -d '{ "id": "mod-erm-usage-harvester-1.0.0"}' http://localhost:9130/_/proxy/tenants/diku/modules
 ```
 
 ### Register DeploymentDescriptor
@@ -71,6 +53,40 @@ Change _nodeId_ in _DockerDeploymentDescriptor.json_ to e.g. your hosts IP addre
 ```
 $ curl -w '\n' -X POST -D - -H "Content-type: application/json" -d @DockerDeploymentDescriptor.json http://localhost:9130/_/discovery/modules
 ```
+
+## Configuration
+Configuration is done via JSON file
+```json
+{
+  "okapiUrl": "http://localhost:9130",
+  "tenantsPath": "/_/proxy/tenants",
+  "reportsPath": "/counter-reports",
+  "providerPath": "/usage-data-providers",
+  "aggregatorPath": "/aggregator-settings",
+  "moduleIds": [
+    "mod-erm-usage-1.0.0",
+    "mod-erm-usage-harvester-1.0.0"
+  ],
+  "loginPath": "/bl-users/login",
+  "requiredPerm": "ermusage.all"
+}
+```
+A [default configuration](mod-erm-usage-harvester-core/config-template.json) is read from `config.json` in the execution directory. It can be overridden by using the `-conf` parameter or setting the `CONFIG` environment variable.
+
+The default listening port is `8081` and can be set by using `-Dhttp.port` parameter.
+
+### Pass configuration to docker container
+
+pass as JSON string
+```
+$ docker run -e 'CONFIG={"okapiUrl": "http://172.17.0.1:9130"}' mod-erm-usage-harvester
+```
+
+or from file
+```
+$ docker run -e "CONFIG=$(<config.json)" mod-erm-usage-harvester
+```
+
 
 ## Additional information
 
