@@ -16,6 +16,16 @@ public class NSSProvider implements ServiceEndpointProvider {
   }
 
   @Override
+  public String getServiceDescription() {
+    return "Implementation for Germanys National Statistics Server (https://sushi.redi-bw.de).";
+  }
+
+  @Override
+  public Boolean isAggregator() {
+    return true;
+  }
+
+  @Override
   public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
     return new NSS(provider, aggregator);
   }
