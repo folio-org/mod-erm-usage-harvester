@@ -1,12 +1,19 @@
 package org.olf.erm.usage.harvester;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.ServiceLoader;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.apache.log4j.Logger;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
 import com.google.common.base.Strings;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 
@@ -69,13 +76,31 @@ public class HarvesterVerticle extends AbstractVerticle {
       if (Strings.isNullOrEmpty(tenantId)) {
         String msg = "No " + XOkapiHeaders.TENANT + " header present.";
         LOG.error(msg);
-        h.response().setStatusCode(500).end(msg);
+        h.response().setStatusCode(403).end(msg);
       } else {
         String msg = "Processing of tenant " + tenantId + " requested.";
         LOG.info(msg);
         processSingleTenant(tenantId);
         h.response().setStatusCode(200).end(new JsonObject().put("message", msg).toString());
       }
+    });
+    router.route("/harvester/impl").handler(h -> {
+      ServiceLoader<ServiceEndpointProvider> loader =
+          ServiceLoader.load(ServiceEndpointProvider.class);
+
+      String param = h.queryParams().get("aggregator");
+      Boolean paramValue = Boolean.valueOf(param);
+
+      Stream<ServiceEndpointProvider> stream = StreamSupport.stream(loader.spliterator(), false);
+      List<JsonObject> collect = stream
+          .filter(provider -> param == null
+              || (param != null && provider.isAggregator().equals(paramValue)))
+          .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))
+          .map(ServiceEndpointProvider::toJson)
+          .collect(Collectors.toList());
+      h.response()
+          .setStatusCode(200)
+          .end(new JsonObject().put("implementations", new JsonArray(collect)).toString());
     });
     return router;
   }
