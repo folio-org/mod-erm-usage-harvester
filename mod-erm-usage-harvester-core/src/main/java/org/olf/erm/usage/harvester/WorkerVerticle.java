@@ -421,6 +421,8 @@ public class WorkerVerticle extends AbstractVerticle {
     LOG.info("Tenant: " + token.getTenantId() + ", deployed HarvesterVericle");
     if (!config().getBoolean("testing", false)) {
       run();
+    } else {
+      LOG.info("TEST ENV");
     }
   }
 }

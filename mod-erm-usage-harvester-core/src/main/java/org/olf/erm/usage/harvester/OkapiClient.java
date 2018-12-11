@@ -73,7 +73,6 @@ public class OkapiClient {
     Future<Boolean> future = Future.future();
     WebClient client = WebClient.create(vertx);
     client.getAbs(modulesUrl).send(ar -> {
-      client.close();
       if (ar.succeeded()) {
         if (ar.result().statusCode() == 200) {
           try {
