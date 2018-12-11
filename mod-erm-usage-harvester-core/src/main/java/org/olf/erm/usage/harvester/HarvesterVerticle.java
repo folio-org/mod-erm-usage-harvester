@@ -2,12 +2,10 @@ package org.olf.erm.usage.harvester;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import org.apache.log4j.Logger;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
 import com.google.common.base.Strings;
 import io.vertx.core.AbstractVerticle;
@@ -85,14 +83,11 @@ public class HarvesterVerticle extends AbstractVerticle {
       }
     });
     router.route("/harvester/impl").handler(h -> {
-      ServiceLoader<ServiceEndpointProvider> loader =
-          ServiceLoader.load(ServiceEndpointProvider.class);
-
       String param = h.queryParams().get("aggregator");
       Boolean paramValue = Boolean.valueOf(param);
 
-      Stream<ServiceEndpointProvider> stream = StreamSupport.stream(loader.spliterator(), false);
-      List<JsonObject> collect = stream
+      List<JsonObject> collect = ServiceEndpoint.getAvailableProviders()
+          .stream()
           .filter(provider -> param == null
               || (param != null && provider.isAggregator().equals(paramValue)))
           .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))

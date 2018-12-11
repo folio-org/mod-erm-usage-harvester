@@ -20,6 +20,11 @@
     </dependency>
     <dependency>
       <groupId>org.olf</groupId>
+      <artifactId>mod-erm-usage-harvester-spi</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.olf</groupId>
       <artifactId>mod-erm-usage-harvester-nss</artifactId>
       <version>${project.parent.version}</version>
     </dependency>

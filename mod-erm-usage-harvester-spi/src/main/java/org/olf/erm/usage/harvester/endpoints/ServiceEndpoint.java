@@ -1,7 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.ServiceLoader;
@@ -18,10 +17,6 @@ public interface ServiceEndpoint {
   boolean isValidReport(String report);
 
   Future<String> fetchSingleReport(String report, String beginDate, String endDate);
-
-  default List<String> getConfigurationParameters() {
-    return Collections.emptyList();
-  }
 
   public static List<ServiceEndpointProvider> getAvailableProviders() {
     ServiceLoader<ServiceEndpointProvider> loader =
