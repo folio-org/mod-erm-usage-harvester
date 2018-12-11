@@ -8,6 +8,8 @@ import org.folio.okapi.common.XOkapiHeaders;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
 import com.google.common.base.Strings;
+import com.google.common.net.HttpHeaders;
+import com.google.common.net.MediaType;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
@@ -79,7 +81,10 @@ public class HarvesterVerticle extends AbstractVerticle {
         String msg = "Processing of tenant " + tenantId + " requested.";
         LOG.info(msg);
         processSingleTenant(tenantId);
-        h.response().setStatusCode(200).end(new JsonObject().put("message", msg).toString());
+        h.response()
+            .setStatusCode(200)
+            .putHeader(HttpHeaders.CONTENT_TYPE, MediaType.JSON_UTF_8.toString())
+            .end(new JsonObject().put("message", msg).toString());
       }
     });
     router.route("/harvester/impl").handler(h -> {
@@ -94,6 +99,7 @@ public class HarvesterVerticle extends AbstractVerticle {
           .map(ServiceEndpointProvider::toJson)
           .collect(Collectors.toList());
       h.response()
+          .putHeader(HttpHeaders.CONTENT_TYPE, MediaType.JSON_UTF_8.toString())
           .setStatusCode(200)
           .end(new JsonObject().put("implementations", new JsonArray(collect)).toString());
     });
@@ -102,18 +108,18 @@ public class HarvesterVerticle extends AbstractVerticle {
 
   @Override
   public void start(Future<Void> startFuture) throws Exception {
-    if (config().getBoolean("testing", false)) {
-      startFuture.complete();
-      return;
-    }
-
     int port = config().getInteger("http.port", 8081);
     vertx.createHttpServer().requestHandler(createRouter()::accept).listen(port, h -> {
       if (h.failed()) {
         startFuture.fail("Unable to start HttpServer on port " + port);
       } else {
         // TODO: do this periodically
-        processAllTenants();
+        if (!config().getBoolean("testing")) {
+          processAllTenants();
+        } else {
+          LOG.info("TEST ENV");
+        }
+
         startFuture.complete();
       }
     });
