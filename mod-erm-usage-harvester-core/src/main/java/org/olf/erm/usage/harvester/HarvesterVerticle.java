@@ -114,7 +114,7 @@ public class HarvesterVerticle extends AbstractVerticle {
         startFuture.fail("Unable to start HttpServer on port " + port);
       } else {
         // TODO: do this periodically
-        if (!config().getBoolean("testing")) {
+        if (!config().getBoolean("testing", false)) {
           processAllTenants();
         } else {
           LOG.info("TEST ENV");
