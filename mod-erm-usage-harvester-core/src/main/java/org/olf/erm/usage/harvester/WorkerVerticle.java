@@ -40,6 +40,7 @@ public class WorkerVerticle extends AbstractVerticle {
   private String providerPath;
   private String aggregatorPath;
   private Token token;
+  private String providerId = null;
 
   // TODO: handle limits > 30
   public Future<UsageDataProviders> getActiveProviders() {
@@ -395,12 +396,40 @@ public class WorkerVerticle extends AbstractVerticle {
     });
   }
 
+  public void runSingleProvider() {
+    WebClient client = WebClient.create(vertx);
+    client.getAbs(okapiUrl + providerPath + "/" + providerId)
+        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
+        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
+        .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
+        .send(h -> {
+          if (h.succeeded()) {
+            if (h.result().statusCode() == 200) {
+              UsageDataProvider provider = h.result().bodyAsJson(UsageDataProvider.class);
+              if (provider.getHarvestingStatus().equals(HarvestingStatus.ACTIVE)) {
+                fetchAndPostReports(provider);
+              } else {
+                LOG.error("Tenant: " + token.getTenantId() + ", Provider: " + provider.getLabel()
+                    + ", HarvestingStatus not ACTIVE");
+              }
+            }
+          } else {
+            LOG.error(h.cause());
+          }
+        });
+  }
+
   private Future<Object> handleErrorFuture(String logPrefix) {
     return Future.future().setHandler(ar -> LOG.error(logPrefix + ar.cause().getMessage()));
   }
 
   public WorkerVerticle(Token token) {
     this.token = token;
+  }
+
+  public WorkerVerticle(Token token, String providerId) {
+    this.token = token;
+    this.providerId = providerId;
   }
 
   @Override
@@ -418,9 +447,12 @@ public class WorkerVerticle extends AbstractVerticle {
     providerPath = config().getString("providerPath");
     aggregatorPath = config().getString("aggregatorPath");
 
-    LOG.info("Tenant: " + token.getTenantId() + ", deployed HarvesterVericle");
+    LOG.info("Tenant: " + token.getTenantId() + ", deployed WorkerVericle");
     if (!config().getBoolean("testing", false)) {
-      run();
+      if (providerId == null)
+        run();
+      else
+        runSingleProvider();
     } else {
       LOG.info("TEST ENV");
     }

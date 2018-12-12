@@ -11,6 +11,10 @@
           "pathPattern": "/harvester/start"
         },
         {
+          "methods": [ "GET" ],
+          "pathPattern": "/harvester/start/{id}"
+        },
+        {
           "methods": [ "GET"],
           "pathPattern": "/harvester/impl"
         }

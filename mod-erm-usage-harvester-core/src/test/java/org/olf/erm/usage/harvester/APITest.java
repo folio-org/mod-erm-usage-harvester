@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -68,6 +69,22 @@ public class APITest {
         .then()
         .statusCode(200)
         .body("message", containsString("testtenant"));
+  }
+
+  @Test
+  public void startProvider403() {
+    when().get("/harvester/start/5b8ab2bd-e470-409c-9a6c-845d979da05e").then().statusCode(403);
+  }
+
+  @Test
+  public void startProvider200() {
+    given().header(new Header(XOkapiHeaders.TENANT, "testtenant"))
+        .when()
+        .get("/harvester/start/5b8ab2bd-e470-409c-9a6c-845d979da05e")
+        .then()
+        .statusCode(200)
+        .body("message", allOf(containsString("testtenant"),
+            containsString("5b8ab2bd-e470-409c-9a6c-845d979da05e")));
   }
 
   @Test

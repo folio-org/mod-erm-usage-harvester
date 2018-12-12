@@ -69,6 +69,25 @@ public class HarvesterVerticle extends AbstractVerticle {
     });
   }
 
+  public void processSingleProvider(String tenantId, String providerId) {
+    OkapiClient okapiClient = new OkapiClient(vertx, config());
+    okapiClient.hasEnabledUsageModules(tenantId).compose(en -> {
+      if (en) {
+        return okapiClient.getAuthToken(tenantId, "diku_admin", "admin", "ermusage.all");
+      } else {
+        return Future.failedFuture("Module not enabled for Tenant " + tenantId);
+      }
+    }).setHandler(h -> {
+      if (h.succeeded()) {
+        // deploy WorkerVerticle for tenant
+        vertx.deployVerticle(new WorkerVerticle(h.result(), providerId),
+            new DeploymentOptions().setConfig(config()));
+      } else {
+        LOG.error(h.cause().getMessage());
+      }
+    });
+  }
+
   public Router createRouter() {
     Router router = Router.router(vertx);
     router.route("/harvester/start").handler(h -> {
@@ -81,6 +100,24 @@ public class HarvesterVerticle extends AbstractVerticle {
         String msg = "Processing of tenant " + tenantId + " requested.";
         LOG.info(msg);
         processSingleTenant(tenantId);
+        h.response()
+            .setStatusCode(200)
+            .putHeader(HttpHeaders.CONTENT_TYPE, MediaType.JSON_UTF_8.toString())
+            .end(new JsonObject().put("message", msg).toString());
+      }
+    });
+    router.route("/harvester/start/:id").handler(h -> {
+      String tenantId = h.request().getHeader(XOkapiHeaders.TENANT);
+      String providerId = h.request().getParam("id");
+      if (Strings.isNullOrEmpty(tenantId)) {
+        String msg = "No " + XOkapiHeaders.TENANT + " header present.";
+        LOG.error(msg);
+        h.response().setStatusCode(403).end(msg);
+      } else {
+        String msg =
+            "Processing of ProviderId: " + providerId + ", Tenant: " + tenantId + " requested.";
+        LOG.info(msg);
+        processSingleProvider(tenantId, providerId);
         h.response()
             .setStatusCode(200)
             .putHeader(HttpHeaders.CONTENT_TYPE, MediaType.JSON_UTF_8.toString())
