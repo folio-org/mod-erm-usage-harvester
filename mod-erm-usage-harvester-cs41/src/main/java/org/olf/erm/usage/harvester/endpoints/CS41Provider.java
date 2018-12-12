@@ -16,6 +16,16 @@ public class CS41Provider implements ServiceEndpointProvider {
   }
 
   @Override
+  public String getServiceDescription() {
+    return "SOAP-based implementation for CounterSushi 4.1";
+  }
+
+  @Override
+  public Boolean isAggregator() {
+    return false;
+  }
+
+  @Override
   public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
     return new CS41Impl(provider);
   }

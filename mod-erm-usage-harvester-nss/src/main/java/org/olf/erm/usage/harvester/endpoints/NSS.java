@@ -1,7 +1,5 @@
 package org.olf.erm.usage.harvester.endpoints;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -30,7 +28,7 @@ public class NSS implements ServiceEndpoint {
     String url = "%s?APIKey=%s&RequestorID="
         + "%s&CustomerID=%s&Report=%s&Release=%s&BeginDate=%s&EndDate=%s&Platform=%s&Format=xml";
 
-    if (aggregator != null) {
+    if (aggregator != null && aggregator.getAggregatorConfig() != null) {
       Map<String, Object> props = aggregator.getAggregatorConfig().getAdditionalProperties();
       return String.format(url, aggregator.getServiceUrl(), props.get("apiKey"),
           props.get("requestorId"), props.get("customerId"), report, props.get("reportRelease"),
@@ -42,11 +40,6 @@ public class NSS implements ServiceEndpoint {
   @Override
   public boolean isValidReport(String report) {
     return !(report == null || report.contains("<s:Exception>"));
-  }
-
-  @Override
-  public List<String> getConfigurationParameters() {
-    return Arrays.asList("apiKey", "requestorId", "customerId", "reportRelease");
   }
 
   @Override

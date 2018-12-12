@@ -20,6 +20,11 @@
     </dependency>
     <dependency>
       <groupId>org.olf</groupId>
+      <artifactId>mod-erm-usage-harvester-spi</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.olf</groupId>
       <artifactId>mod-erm-usage-harvester-nss</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
@@ -91,9 +96,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.jayway.restassured</groupId>
+      <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
-      <version>2.4.0</version>
+      <version>3.2.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
