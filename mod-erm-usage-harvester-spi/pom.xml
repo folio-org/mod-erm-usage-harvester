@@ -11,7 +11,7 @@
     <dependency>
       <groupId>org.olf</groupId>
       <artifactId>mod-erm-usage-client</artifactId>
-      <version>1.0.0</version>
+      <version>${erm.usage.version}</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>

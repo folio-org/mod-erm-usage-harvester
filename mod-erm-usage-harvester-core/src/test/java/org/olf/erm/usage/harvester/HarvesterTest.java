@@ -154,8 +154,9 @@ public class HarvesterTest {
     final UsageDataProvider provider = new ObjectMapper().readValue(Resources
         .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
         UsageDataProvider.class);
-    stubFor(get(urlEqualTo(aggregatorPath + "/" + provider.getAggregator().getId()))
-        .willReturn(aResponse().withBodyFile("aggregator-setting.json")));
+    stubFor(get(
+        urlEqualTo(aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
+            .willReturn(aResponse().withBodyFile("aggregator-setting.json")));
 
     Async async = context.async();
     harvester.getAggregatorSetting(provider).setHandler(ar -> {
@@ -175,7 +176,7 @@ public class HarvesterTest {
         .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
         UsageDataProvider.class);
 
-    provider1.setAggregator(null);
+    provider1.getHarvestingConfig().setAggregator(null);
     Async async = context.async();
     harvester.getAggregatorSetting(provider1).setHandler(ar -> {
       context.assertTrue(ar.failed());
@@ -184,7 +185,7 @@ public class HarvesterTest {
       async.complete();
     });
 
-    provider2.getAggregator().setId(null);
+    provider2.getHarvestingConfig().getAggregator().setId(null);
     Async async2 = context.async();
     harvester.getAggregatorSetting(provider2).setHandler(ar -> {
       context.assertTrue(ar.failed());
@@ -200,8 +201,9 @@ public class HarvesterTest {
     final UsageDataProvider provider = new ObjectMapper().readValue(Resources
         .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
         UsageDataProvider.class);
-    stubFor(get(urlEqualTo(aggregatorPath + "/" + provider.getAggregator().getId()))
-        .willReturn(aResponse().withBody("garbage")));
+    stubFor(get(
+        urlEqualTo(aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
+            .willReturn(aResponse().withBody("garbage")));
 
     Async async = context.async();
     harvester.getAggregatorSetting(provider).setHandler(ar -> {
@@ -218,8 +220,10 @@ public class HarvesterTest {
     final UsageDataProvider provider = new ObjectMapper().readValue(Resources
         .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
         UsageDataProvider.class);
-    stubFor(get(urlEqualTo(aggregatorPath + "/" + provider.getAggregator().getId())).willReturn(
-        aResponse().withBody("Aggregator settingObject does not exist").withStatus(404)));
+    stubFor(get(
+        urlEqualTo(aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
+            .willReturn(
+                aResponse().withBody("Aggregator settingObject does not exist").withStatus(404)));
 
     Async async = context.async();
     harvester.getAggregatorSetting(provider).setHandler(ar -> {
@@ -262,8 +266,8 @@ public class HarvesterTest {
     assertEquals(reportName, result.getReportName());
     assertEquals(reportData, result.getReport());
     assertEquals(yearMonth.toString(), result.getYearMonth());
-    assertEquals(provider.getPlatformId(), result.getPlatformId());
-    assertEquals(provider.getCustomerId(), result.getCustomerId());
+    assertEquals(provider.getPlatform().getId(), result.getPlatformId());
+    assertEquals(provider.getSushiCredentials().getCustomerId(), result.getCustomerId());
   }
 
   @Test
@@ -312,8 +316,9 @@ public class HarvesterTest {
         .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
         UsageDataProvider.class);
 
-    stubFor(get(urlEqualTo(aggregatorPath + "/" + provider.getAggregator().getId()))
-        .willReturn(aResponse().withBodyFile("aggregator-setting.json")));
+    stubFor(get(
+        urlEqualTo(aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
+            .willReturn(aResponse().withBodyFile("aggregator-setting.json")));
 
     Async async = context.async();
     harvester.getServiceEndpoint(provider).setHandler(ar -> {

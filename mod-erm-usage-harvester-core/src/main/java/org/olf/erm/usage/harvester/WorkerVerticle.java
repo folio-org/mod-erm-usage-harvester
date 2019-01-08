@@ -15,8 +15,9 @@ import org.folio.rest.jaxrs.model.Aggregator;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.CounterReports;
+import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
+import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.folio.rest.jaxrs.model.UsageDataProvider.HarvestingStatus;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import com.google.common.net.HttpHeaders;
@@ -46,7 +47,8 @@ public class WorkerVerticle extends AbstractVerticle {
   public Future<UsageDataProviders> getActiveProviders() {
     final String logprefix = "Tenant: " + token.getTenantId() + ", ";
     final String url = okapiUrl + providerPath;
-    final String queryStr = String.format("(harvestingStatus=%s)", HarvestingStatus.ACTIVE);
+    final String queryStr =
+        String.format("(harvestingConfig.harvestingStatus=%s)", HarvestingStatus.ACTIVE);
     LOG.info(logprefix + "getting providers");
 
     Future<UsageDataProviders> future = Future.future();
@@ -86,7 +88,7 @@ public class WorkerVerticle extends AbstractVerticle {
     final String logprefix = "Tenant: " + token.getTenantId() + ", ";
     Future<AggregatorSetting> future = Future.future();
 
-    Aggregator aggregator = provider.getAggregator();
+    Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
     if (aggregator == null || aggregator.getId() == null) {
       return Future
           .failedFuture(logprefix + "no aggregator found for provider " + provider.getLabel());
@@ -129,11 +131,13 @@ public class WorkerVerticle extends AbstractVerticle {
     cr.setId(UUID.randomUUID().toString());
     cr.setYearMonth(yearMonth.toString());
     cr.setReportName(reportName);
-    cr.setPlatformId(provider.getPlatformId());
-    cr.setCustomerId(provider.getCustomerId());
-    cr.setRelease(provider.getReportRelease().toString()); // TODO: update release to be a integer
+    cr.setPlatformId(provider.getPlatform().getId());
+    cr.setCustomerId(provider.getSushiCredentials().getCustomerId());
+    cr.setRelease(provider.getHarvestingConfig().getReportRelease().toString()); // TODO: update
+                                                                                 // release to be a
+                                                                                 // integer
     cr.setDownloadTime(Date.from(Instant.now())); // FIXME
-    cr.setVendorId(provider.getVendorId());
+    cr.setVendorId(provider.getVendor().getId());
     if (reportData != null) {
       cr.setFormat("???"); // FIXME
       cr.setReport(reportData);
@@ -147,9 +151,11 @@ public class WorkerVerticle extends AbstractVerticle {
     Future<AggregatorSetting> aggrFuture = Future.future();
     Future<ServiceEndpoint> sepFuture = Future.future();
 
-    Aggregator aggregator = provider.getAggregator();
+    boolean useAggregator =
+        provider.getHarvestingConfig().getHarvestVia().equals(HarvestVia.AGGREGATOR);
+    Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
     // Complete aggrFuture if aggregator is not set.. aka skip it
-    if (aggregator != null) {
+    if (useAggregator && aggregator != null && aggregator.getId() != null) {
       aggrFuture = getAggregatorSetting(provider);
     } else {
       aggrFuture.complete(null);
@@ -208,26 +214,28 @@ public class WorkerVerticle extends AbstractVerticle {
     final String logprefix = "Tenant: " + token.getTenantId() + ", ";
 
     // check if harvesting status is 'active'
-    if (!provider.getHarvestingStatus().equals(HarvestingStatus.ACTIVE)) {
+    if (!provider.getHarvestingConfig().getHarvestingStatus().equals(HarvestingStatus.ACTIVE)) {
       LOG.info(logprefix + "skipping " + provider.getLabel() + " as harvesting status is "
-          + provider.getHarvestingStatus());
+          + provider.getHarvestingConfig().getHarvestingStatus());
       return Future.failedFuture("Harvesting not active");
     }
 
     Future<List<FetchItem>> future = Future.future();
 
-    YearMonth startMonth = DateUtil.getStartMonth(provider.getHarvestingStart());
-    YearMonth endMonth = DateUtil.getEndMonth(provider.getHarvestingEnd());
+    YearMonth startMonth =
+        DateUtil.getStartMonth(provider.getHarvestingConfig().getHarvestingStart());
+    YearMonth endMonth = DateUtil.getEndMonth(provider.getHarvestingConfig().getHarvestingEnd());
 
     List<FetchItem> fetchList = new ArrayList<>();
 
     @SuppressWarnings("rawtypes")
     List<Future> futures = new ArrayList<>();
-    provider.getRequestedReports().forEach(reportName -> {
-      futures.add(
-          getValidMonths(provider.getVendorId(), reportName, startMonth, endMonth).map(list -> {
+    provider.getHarvestingConfig().getRequestedReports().forEach(reportName -> {
+      futures.add(getValidMonths(provider.getVendor().getId(), reportName, startMonth, endMonth)
+          .map(list -> {
             List<YearMonth> arrayList =
-                DateUtil.getYearMonths(provider.getHarvestingStart(), provider.getHarvestingEnd());
+                DateUtil.getYearMonths(provider.getHarvestingConfig().getHarvestingStart(),
+                    provider.getHarvestingConfig().getHarvestingEnd());
             arrayList.removeAll(list);
             arrayList.forEach(li -> fetchList.add(
                 new FetchItem(reportName, li.atDay(1).toString(), li.atEndOfMonth().toString())));
@@ -406,7 +414,9 @@ public class WorkerVerticle extends AbstractVerticle {
           if (h.succeeded()) {
             if (h.result().statusCode() == 200) {
               UsageDataProvider provider = h.result().bodyAsJson(UsageDataProvider.class);
-              if (provider.getHarvestingStatus().equals(HarvestingStatus.ACTIVE)) {
+              if (provider.getHarvestingConfig()
+                  .getHarvestingStatus()
+                  .equals(HarvestingStatus.ACTIVE)) {
                 fetchAndPostReports(provider);
               } else {
                 LOG.error("Tenant: " + token.getTenantId() + ", Provider: " + provider.getLabel()

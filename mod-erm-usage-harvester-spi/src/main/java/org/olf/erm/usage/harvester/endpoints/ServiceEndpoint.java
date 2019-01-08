@@ -30,7 +30,8 @@ public interface ServiceEndpoint {
     final Logger LOG = Logger.getLogger(ServiceEndpoint.class);
 
     String serviceType =
-        (aggregator == null) ? provider.getServiceType() : aggregator.getServiceType();
+        (aggregator == null) ? provider.getHarvestingConfig().getSushiConfig().getServiceType()
+            : aggregator.getServiceType();
 
 
     if (Strings.isNullOrEmpty(serviceType)) {
