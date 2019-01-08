@@ -32,7 +32,7 @@ public class NSS implements ServiceEndpoint {
       Map<String, Object> props = aggregator.getAggregatorConfig().getAdditionalProperties();
       return String.format(url, aggregator.getServiceUrl(), props.get("apiKey"),
           props.get("requestorId"), props.get("customerId"), report, props.get("reportRelease"),
-          begin, end, provider.getAggregator().getVendorCode());
+          begin, end, provider.getHarvestingConfig().getAggregator().getVendorCode());
     }
     return null;
   }

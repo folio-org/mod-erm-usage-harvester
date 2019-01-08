@@ -32,16 +32,16 @@ public class CS41Impl implements ServiceEndpoint {
 
   public ReportRequest createReportRequest(String report, String beginDate, String endDate) {
     Requestor requestor = new Requestor();
-    requestor.setID(provider.getRequestorId());
+    requestor.setID(provider.getSushiCredentials().getRequestorId());
     // requestor.setName(provider.getRequestorName());
     // requestor.setEmail(provider.getRequestorMail());
 
     CustomerReference ref = new CustomerReference();
-    ref.setID(provider.getCustomerId());
+    ref.setID(provider.getSushiCredentials().getCustomerId());
 
     ReportDefinition rep = new ReportDefinition();
     rep.setName(report);
-    rep.setRelease(provider.getReportRelease().toString());
+    rep.setRelease(provider.getHarvestingConfig().getReportRelease().toString());
     Filters filter = new Filters();
     Range range = new Range();
     try {
@@ -70,7 +70,8 @@ public class CS41Impl implements ServiceEndpoint {
     port = service.getPort(next, SushiServiceInterface.class);
     BindingProvider bindingProvider = (BindingProvider) port;
     bindingProvider.getRequestContext()
-        .put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, provider.getServiceUrl());
+        .put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY,
+            provider.getHarvestingConfig().getSushiConfig().getServiceUrl());
   }
 
   @Override
