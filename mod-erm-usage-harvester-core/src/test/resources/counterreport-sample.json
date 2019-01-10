@@ -1,0 +1,15 @@
+{
+  "id": "d90bc588-1c7c-4b0c-879c-6e3f6c87c3a6",
+  "downloadTime": "2018-08-01T15:04:05.967",
+  "creationTime": "2018-08-01T15:04:06.539",
+  "release": 4,
+  "reportName": "JR1",
+  "yearMonth": "2016-03",
+  "customerId": "12345def",
+  "vendorId": "uuid-123456789",
+  "platformId": "uuid-123456789",
+  "format": "???",
+  "report": {
+    "data": "xxx"
+  }
+}
