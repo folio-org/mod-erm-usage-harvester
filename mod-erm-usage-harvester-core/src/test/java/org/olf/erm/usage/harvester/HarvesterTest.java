@@ -21,6 +21,7 @@ import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
@@ -55,13 +56,7 @@ public class HarvesterTest {
   private static final WorkerVerticle harvester = new WorkerVerticle(token);
 
 
-  private final static JsonObject crJson = new JsonObject("{\n" + "  \"yearMonth\" : \"2016-03\",\n"
-      + "  \"reportName\" : \"JR1\",\n" + "  \"platformId\" : \"uuid-123456789\",\n"
-      + "  \"customerId\" : \"12345def\",\n" + "  \"release\" : 4,\n" + "  \"format\" : \"???\",\n"
-      + "  \"downloadTime\" : \"2018-08-01T15:04:05.967\",\n"
-      + "  \"creationTime\" : \"2018-08-01T15:04:06.539\",\n"
-      + "  \"vendorId\" : \"uuid-123456789\",\n" + "  \"report\" : \"reportdata\","
-      + "  \"id\" : \"d90bc588-1c7c-4b0c-879c-6e3f6c87c3a6\"\n" + "}");
+  private static CounterReport cr;
 
   private static final String deployCfg = "{\n" + "  \"okapiUrl\": \"http://localhost\",\n"
       + "  \"tenantsPath\": \"/_/proxy/tenants\",\n" + "  \"reportsPath\": \"/counter-reports\",\n"
@@ -76,6 +71,17 @@ public class HarvesterTest {
   private String providerPath;
   private String aggregatorPath;
   private String moduleId;
+
+  @BeforeClass
+  public static void beforeClass(TestContext context) {
+    try {
+      final String str =
+          Resources.toString(Resources.getResource("counterreport-sample.json"), Charsets.UTF_8);
+      cr = Json.decodeValue(str, CounterReport.class);
+    } catch (Exception e) {
+      context.fail(e);
+    }
+  }
 
   @Before
   public void setup(TestContext context) {
@@ -257,14 +263,14 @@ public class HarvesterTest {
         UsageDataProvider.class);
 
     final String reportName = "JR1";
-    final String reportData = "testreport";
+    final String reportData = new JsonObject().put("data", "testreport").toString();
     final YearMonth yearMonth = YearMonth.of(2018, 01);
 
     CounterReport result =
         harvester.createCounterReport(reportData, reportName, provider, yearMonth);
     assertTrue(result != null);
     assertEquals(reportName, result.getReportName());
-    assertEquals(reportData, result.getReport());
+    assertEquals(reportData, Json.encode(result.getReport()).toString());
     assertEquals(yearMonth.toString(), result.getYearMonth());
     assertEquals(provider.getPlatform().getId(), result.getPlatformId());
     assertEquals(provider.getSushiCredentials().getCustomerId(), result.getCustomerId());
@@ -278,15 +284,14 @@ public class HarvesterTest {
     stubFor(post(urlEqualTo(url)).willReturn(aResponse().withStatus(201)));
 
     Async async = context.async();
-    harvester.postReport(Json.decodeValue(crJson.toString(), CounterReport.class))
-        .setHandler(ar -> {
-          if (ar.succeeded()) {
-            wireMockRule.verify(postRequestedFor(urlEqualTo(url)));
-            async.complete();
-          } else {
-            context.fail(ar.cause());
-          }
-        });
+    harvester.postReport(cr).setHandler(ar -> {
+      if (ar.succeeded()) {
+        wireMockRule.verify(postRequestedFor(urlEqualTo(url)));
+        async.complete();
+      } else {
+        context.fail(ar.cause());
+      }
+    });
   }
 
   @Test
@@ -298,15 +303,14 @@ public class HarvesterTest {
     stubFor(put(urlEqualTo(urlId)).willReturn(aResponse().withStatus(201)));
 
     Async async = context.async();
-    harvester.postReport(Json.decodeValue(crJson.toString(), CounterReport.class))
-        .setHandler(ar -> {
-          if (ar.succeeded()) {
-            wireMockRule.verify(putRequestedFor(urlEqualTo(urlId)));
-            async.complete();
-          } else {
-            context.fail(ar.cause());
-          }
-        });
+    harvester.postReport(cr).setHandler(ar -> {
+      if (ar.succeeded()) {
+        wireMockRule.verify(putRequestedFor(urlEqualTo(urlId)));
+        async.complete();
+      } else {
+        context.fail(ar.cause());
+      }
+    });
   }
 
   @Test

@@ -17,6 +17,7 @@ import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.CounterReports;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
+import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
@@ -27,6 +28,7 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
@@ -136,11 +138,12 @@ public class WorkerVerticle extends AbstractVerticle {
     cr.setRelease(provider.getHarvestingConfig().getReportRelease().toString()); // TODO: update
                                                                                  // release to be a
                                                                                  // integer
+    cr.setProviderId(provider.getId());
     cr.setDownloadTime(Date.from(Instant.now())); // FIXME
     cr.setVendorId(provider.getVendor().getId());
     if (reportData != null) {
       cr.setFormat("???"); // FIXME
-      cr.setReport(reportData);
+      cr.setReport(Json.decodeValue(reportData, Report.class));
     } else {
       cr.setFailedAttempts(1);
     }
