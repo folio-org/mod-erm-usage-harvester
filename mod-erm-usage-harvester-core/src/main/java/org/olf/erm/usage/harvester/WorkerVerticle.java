@@ -138,6 +138,7 @@ public class WorkerVerticle extends AbstractVerticle {
     cr.setRelease(provider.getHarvestingConfig().getReportRelease().toString()); // TODO: update
                                                                                  // release to be a
                                                                                  // integer
+    cr.setProviderId(provider.getId());
     cr.setDownloadTime(Date.from(Instant.now())); // FIXME
     cr.setVendorId(provider.getVendor().getId());
     if (reportData != null) {
