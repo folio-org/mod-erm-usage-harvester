@@ -1,8 +1,16 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import java.io.StringReader;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import javax.xml.bind.JAXB;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.niso.schemas.counter.Report;
+import org.niso.schemas.sushi.Exception;
+import org.niso.schemas.sushi.ExceptionSeverity;
+import org.niso.schemas.sushi.counter.CounterReportResponse;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
@@ -39,7 +47,16 @@ public class NSS implements ServiceEndpoint {
 
   @Override
   public boolean isValidReport(String report) {
-    return !(report == null || report.contains("<s:Exception>"));
+    return false;
+  }
+
+  public boolean isValidReport(CounterReportResponse response) {
+    List<Exception> exceptions = response.getException()
+        .stream()
+        .filter(e -> e.getSeverity().equals(ExceptionSeverity.ERROR)
+            || e.getSeverity().equals(ExceptionSeverity.FATAL))
+        .collect(Collectors.toList());
+    return exceptions.isEmpty();
   }
 
   @Override
@@ -53,10 +70,14 @@ public class NSS implements ServiceEndpoint {
         client.close();
         if (ar.result().statusCode() == 200) {
           String result = ar.result().bodyAsString();
-          if (isValidReport(result))
-            future.complete(result);
-          else
+          CounterReportResponse reportResponse =
+              JAXB.unmarshal(new StringReader(result), CounterReportResponse.class);
+          if (isValidReport(reportResponse) && !reportResponse.getReport().getReport().isEmpty()) {
+            Report report2 = reportResponse.getReport().getReport().get(0);
+            future.complete(Tool.toJSON(report2));
+          } else {
             future.fail("Report not valid");
+          }
         } else {
           future.fail(url + " - " + ar.result().statusCode() + " : " + ar.result().statusMessage());
         }
