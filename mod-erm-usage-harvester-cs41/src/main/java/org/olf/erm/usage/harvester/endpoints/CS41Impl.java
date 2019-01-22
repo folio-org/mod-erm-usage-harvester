@@ -82,14 +82,14 @@ public class CS41Impl implements ServiceEndpoint {
     Vertx.currentContext().executeBlocking(block -> {
       ReportRequest reportRequest = createReportRequest(report, beginDate, endDate);
       CounterReportResponse counterReportResponse = port.getReport(reportRequest);
-      Report reportResult = counterReportResponse.getReport().getReport().get(0);
 
       List<Exception> exceptions = counterReportResponse.getException()
           .stream()
           .filter(e -> e.getSeverity().equals(ExceptionSeverity.ERROR)
               || e.getSeverity().equals(ExceptionSeverity.FATAL))
           .collect(Collectors.toList());
-      if (exceptions.isEmpty()) {
+      if (exceptions.isEmpty() && !counterReportResponse.getReport().getReport().isEmpty()) {
+        Report reportResult = counterReportResponse.getReport().getReport().get(0);
         block.complete(Tool.toJSON(reportResult));
       } else {
         block.fail("Report not valid: "
