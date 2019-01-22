@@ -104,8 +104,10 @@ public class NSSTest {
     Async async = context.async();
     Future<String> fetchSingleReport = sep.fetchSingleReport(reportType, beginDate, endDate);
     fetchSingleReport.setHandler(ar -> {
-      System.out.println(ar.result());
       if (ar.failed()) {
+        LOG.info(ar.cause().getMessage());
+        assertThat(ar.cause().getMessage()).contains("1030", "RequestorID", "Insufficient");
+        assertThat(ar.cause().getMessage()).doesNotContain("HelpUrl");
         async.complete();
       } else {
         context.fail();
@@ -162,8 +164,8 @@ public class NSSTest {
     CounterReportResponse reportInvalid = JAXB.unmarshal(
         Resources.getResource("__files/nss-report-2018-03-fail.xml"), CounterReportResponse.class);
     NSS nss = new NSS(provider, aggregator);
-    assertThat(nss.isValidReport(reportValid)).isTrue();
-    assertThat(nss.isValidReport(reportInvalid)).isFalse();
+    assertThat(nss.getExceptions(reportValid)).isEmpty();
+    assertThat(nss.getExceptions(reportInvalid)).isNotEmpty();
   }
 
 }
