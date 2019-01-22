@@ -1,4 +1,4 @@
-package org.olf.erm.usage.harvester.endpoints;
+package org.olf.erm.usage.counter41;
 
 import java.io.IOException;
 import javax.xml.datatype.XMLGregorianCalendar;
@@ -8,7 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 
-public class Tool {
+public class Counter4Utils {
 
   private static ObjectMapper mapper = createObjectMapper();
 
@@ -45,5 +45,5 @@ public class Tool {
     return result;
   }
 
-  private Tool() {}
+  private Counter4Utils() {}
 }

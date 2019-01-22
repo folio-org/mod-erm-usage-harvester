@@ -18,6 +18,7 @@ import org.niso.schemas.sushi.ReportDefinition.Filters;
 import org.niso.schemas.sushi.ReportRequest;
 import org.niso.schemas.sushi.Requestor;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
+import org.olf.erm.usage.counter41.Counter4Utils;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import sushiservice.SushiService;
@@ -90,7 +91,7 @@ public class CS41Impl implements ServiceEndpoint {
           .collect(Collectors.toList());
       if (exceptions.isEmpty() && !counterReportResponse.getReport().getReport().isEmpty()) {
         Report reportResult = counterReportResponse.getReport().getReport().get(0);
-        block.complete(Tool.toJSON(reportResult));
+        block.complete(Counter4Utils.toJSON(reportResult));
       } else {
         block.fail("Report not valid: "
             + exceptions.stream().map(Exception::getMessage).collect(Collectors.joining(", ")));

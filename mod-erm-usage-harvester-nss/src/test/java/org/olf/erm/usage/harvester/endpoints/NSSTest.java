@@ -19,6 +19,7 @@ import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
+import org.olf.erm.usage.counter41.Counter4Utils;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -81,7 +82,7 @@ public class NSSTest {
 
         Report origReport = JAXB.unmarshal(Resources.getResource("__files/nss-report-2016-03.xml"),
             CounterReportResponse.class).getReport().getReport().get(0);
-        Report respReport = Tool.fromJSON(ar.result());
+        Report respReport = Counter4Utils.fromJSON(ar.result());
         assertThat(origReport).isEqualToComparingFieldByFieldRecursively(respReport);
 
         async.complete();

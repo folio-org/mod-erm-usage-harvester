@@ -12,6 +12,7 @@ import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.Exception;
 import org.niso.schemas.sushi.ExceptionSeverity;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
+import org.olf.erm.usage.counter41.Counter4Utils;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import io.vertx.core.Future;
@@ -98,7 +99,7 @@ public class NSS implements ServiceEndpoint {
           if (exceptions.isEmpty() && reportResponse.getReport() != null
               && !reportResponse.getReport().getReport().isEmpty()) {
             Report report2 = reportResponse.getReport().getReport().get(0);
-            future.complete(Tool.toJSON(report2));
+            future.complete(Counter4Utils.toJSON(report2));
           } else {
             future.fail("Report not valid: " + getErrorMessages(exceptions));
           }

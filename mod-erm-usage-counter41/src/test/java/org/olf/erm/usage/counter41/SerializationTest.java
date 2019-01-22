@@ -1,4 +1,4 @@
-package org.olf.erm.usage.harvester.endpoints;
+package org.olf.erm.usage.counter41;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -10,12 +10,12 @@ import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
 import org.junit.Test;
 import org.niso.schemas.counter.Report;
-import org.olf.erm.usage.harvester.endpoints.Tool;
+import org.olf.erm.usage.counter41.Counter4Utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class SerializationTest {
 
-  private static ObjectMapper mapper = Tool.createObjectMapper();
+  private static ObjectMapper mapper = Counter4Utils.createObjectMapper();
 
   public void testXMLGregCalString(String datetime) {
     try {
@@ -44,8 +44,8 @@ public class SerializationTest {
     InputStream is = this.getClass().getClassLoader().getResource("reportJSTOR.xml").openStream();
     Report report = JAXB.unmarshal(is, Report.class);
 
-    String json = Tool.toJSON(report);
-    Report fromJSON = Tool.fromJSON(json);
+    String json = Counter4Utils.toJSON(report);
+    Report fromJSON = Counter4Utils.fromJSON(json);
 
     assertThat(report).isEqualToComparingFieldByFieldRecursively(fromJSON);
   }
