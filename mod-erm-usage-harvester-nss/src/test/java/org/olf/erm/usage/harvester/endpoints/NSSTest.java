@@ -164,9 +164,8 @@ public class NSSTest {
         Resources.getResource("__files/nss-report-2016-03.xml"), CounterReportResponse.class);
     CounterReportResponse reportInvalid = JAXB.unmarshal(
         Resources.getResource("__files/nss-report-2018-03-fail.xml"), CounterReportResponse.class);
-    NSS nss = new NSS(provider, aggregator);
-    assertThat(nss.getExceptions(reportValid)).isEmpty();
-    assertThat(nss.getExceptions(reportInvalid)).isNotEmpty();
+    assertThat(Counter4Utils.getExceptions(reportValid)).isEmpty();
+    assertThat(Counter4Utils.getExceptions(reportInvalid)).isNotEmpty();
   }
 
 }

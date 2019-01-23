@@ -7,7 +7,7 @@
     <artifactId>mod-erm-usage-harvester</artifactId>
     <version>1.1.0-SNAPSHOT</version>
   </parent>
-  
+
   <groupId>org.olf</groupId>
   <artifactId>mod-erm-usage-counter41</artifactId>
   <version>1.0.0-SNAPSHOT</version>
@@ -32,6 +32,11 @@
       <groupId>org.apache.cxf</groupId>
       <artifactId>cxf-rt-transports-http</artifactId>
       <version>${cxf.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>27.0.1-jre</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
