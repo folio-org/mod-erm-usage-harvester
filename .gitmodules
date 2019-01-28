@@ -1,0 +1,3 @@
+[submodule "ramls/raml-util"]
+	path = ramls/raml-util
+	url = git@github.com:folio-org/raml.git
