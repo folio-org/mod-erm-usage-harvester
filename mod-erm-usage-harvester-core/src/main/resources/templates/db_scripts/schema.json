@@ -1,0 +1,15 @@
+{
+  "scripts": [],
+  "tables": [
+    {
+      "tableName": "harvester_settings",
+      "generateId": true,
+      "fromModuleVersion": "1.0",
+      "populateJsonWithId": true,
+      "pkColumnName": "_id",
+      "withMetadata": true,
+      "uniqueIndex": []
+    }
+  ],
+  "views": []
+}
