@@ -66,7 +66,7 @@ public class OkapiClient {
     return future;
   }
 
-  Future<Boolean> hasEnabledUsageModules(String tenantId) {
+  public Future<Boolean> hasEnabledUsageModules(String tenantId) {
     final String logprefix = "Tenant: " + tenantId + ", ";
     final String modulesUrl = okapiUrl + tenantsPath + "/" + tenantId + "/modules";
 
