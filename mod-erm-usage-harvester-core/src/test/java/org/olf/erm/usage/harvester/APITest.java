@@ -25,6 +25,9 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class APITest {
 
+  private static final String TENANT_ERR_MSG = "Tenant must be set";
+  private static final String TENANT = "testtenant";
+
   private static Vertx vertx;
 
   private static final String deployCfg =
@@ -66,18 +69,18 @@ public class APITest {
 
   @Test
   public void startHarvesterNoTenant() {
-    when().get("/start").then().statusCode(400).body(containsString("Tenant must be set"));
+    when().get("/start").then().statusCode(400).body(containsString(TENANT_ERR_MSG));
   }
 
   @Test
   public void startHarvester200() {
     given()
-        .header(new Header(XOkapiHeaders.TENANT, "testtenant"))
+        .header(new Header(XOkapiHeaders.TENANT, TENANT))
         .when()
         .get("/start")
         .then()
         .statusCode(200)
-        .body("message", containsString("testtenant"));
+        .body("message", containsString(TENANT));
   }
 
   @Test
@@ -86,28 +89,26 @@ public class APITest {
         .get("/start/5b8ab2bd-e470-409c-9a6c-845d979da05e")
         .then()
         .statusCode(400)
-        .body(containsString("Tenant must be set"));
+        .body(containsString(TENANT_ERR_MSG));
   }
 
   @Test
   public void startProvider200() {
     given()
-        .header(new Header(XOkapiHeaders.TENANT, "testtenant"))
+        .header(new Header(XOkapiHeaders.TENANT, TENANT))
         .when()
         .get("/start/5b8ab2bd-e470-409c-9a6c-845d979da05e")
         .then()
         .statusCode(200)
         .body(
             "message",
-            allOf(
-                containsString("testtenant"),
-                containsString("5b8ab2bd-e470-409c-9a6c-845d979da05e")));
+            allOf(containsString(TENANT), containsString("5b8ab2bd-e470-409c-9a6c-845d979da05e")));
   }
 
   @Test
   public void getImplementations() {
     given()
-        .header(new Header(XOkapiHeaders.TENANT, "testtenant"))
+        .header(new Header(XOkapiHeaders.TENANT, TENANT))
         .when()
         .get("/impl")
         .then()
@@ -119,7 +120,7 @@ public class APITest {
   @Test
   public void getImplementationsAggregator() {
     given()
-        .header(new Header(XOkapiHeaders.TENANT, "testtenant"))
+        .header(new Header(XOkapiHeaders.TENANT, TENANT))
         .when()
         .get("/impl?aggregator=true")
         .then()
@@ -132,7 +133,7 @@ public class APITest {
   @Test
   public void getImplementationsNonAggregator() {
     given()
-        .header(new Header(XOkapiHeaders.TENANT, "testtenant"))
+        .header(new Header(XOkapiHeaders.TENANT, TENANT))
         .when()
         .get("/impl?aggregator=false")
         .then()
