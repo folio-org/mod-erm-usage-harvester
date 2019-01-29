@@ -65,8 +65,8 @@ public class APITest {
   }
 
   @Test
-  public void startHarvester403() {
-    when().get("/start").then().statusCode(403);
+  public void startHarvesterNoTenant() {
+    when().get("/start").then().statusCode(400).body(containsString("Tenant must be set"));
   }
 
   @Test
@@ -81,8 +81,12 @@ public class APITest {
   }
 
   @Test
-  public void startProvider403() {
-    when().get("/start/5b8ab2bd-e470-409c-9a6c-845d979da05e").then().statusCode(403);
+  public void startProviderNoTenant() {
+    when()
+        .get("/start/5b8ab2bd-e470-409c-9a6c-845d979da05e")
+        .then()
+        .statusCode(400)
+        .body(containsString("Tenant must be set"));
   }
 
   @Test
@@ -102,7 +106,9 @@ public class APITest {
 
   @Test
   public void getImplementations() {
-    when()
+    given()
+        .header(new Header(XOkapiHeaders.TENANT, "testtenant"))
+        .when()
         .get("/impl")
         .then()
         .statusCode(200)
@@ -112,7 +118,9 @@ public class APITest {
 
   @Test
   public void getImplementationsAggregator() {
-    when()
+    given()
+        .header(new Header(XOkapiHeaders.TENANT, "testtenant"))
+        .when()
         .get("/impl?aggregator=true")
         .then()
         .statusCode(200)
@@ -123,7 +131,9 @@ public class APITest {
 
   @Test
   public void getImplementationsNonAggregator() {
-    when()
+    given()
+        .header(new Header(XOkapiHeaders.TENANT, "testtenant"))
+        .when()
         .get("/impl?aggregator=false")
         .then()
         .statusCode(200)
