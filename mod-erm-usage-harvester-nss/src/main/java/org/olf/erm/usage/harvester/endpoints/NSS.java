@@ -1,8 +1,15 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import java.io.StringReader;
+import java.util.List;
 import java.util.Map;
+import javax.xml.bind.JAXB;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.niso.schemas.counter.Report;
+import org.niso.schemas.sushi.Exception;
+import org.niso.schemas.sushi.counter.CounterReportResponse;
+import org.olf.erm.usage.counter41.Counter4Utils;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
@@ -39,7 +46,7 @@ public class NSS implements ServiceEndpoint {
 
   @Override
   public boolean isValidReport(String report) {
-    return !(report == null || report.contains("<s:Exception>"));
+    return false;
   }
 
   @Override
@@ -53,10 +60,16 @@ public class NSS implements ServiceEndpoint {
         client.close();
         if (ar.result().statusCode() == 200) {
           String result = ar.result().bodyAsString();
-          if (isValidReport(result))
-            future.complete(result);
-          else
-            future.fail("Report not valid");
+          CounterReportResponse reportResponse =
+              JAXB.unmarshal(new StringReader(result), CounterReportResponse.class);
+          List<Exception> exceptions = Counter4Utils.getExceptions(reportResponse);
+          if (exceptions.isEmpty() && reportResponse.getReport() != null
+              && !reportResponse.getReport().getReport().isEmpty()) {
+            Report report2 = reportResponse.getReport().getReport().get(0);
+            future.complete(Counter4Utils.toJSON(report2));
+          } else {
+            future.fail("Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
+          }
         } else {
           future.fail(url + " - " + ar.result().statusCode() + " : " + ar.result().statusMessage());
         }

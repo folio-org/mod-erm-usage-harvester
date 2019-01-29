@@ -5,8 +5,10 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 import java.io.IOException;
+import javax.xml.bind.JAXB;
 import org.apache.log4j.Logger;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -15,6 +17,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
+import org.niso.schemas.counter.Report;
+import org.niso.schemas.sushi.counter.CounterReportResponse;
+import org.olf.erm.usage.counter41.Counter4Utils;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +33,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class NSSTest {
-
 
   @Rule
   public Timeout timeoutRule = Timeout.seconds(5);
@@ -75,11 +79,15 @@ public class NSSTest {
     fetchSingleReport.setHandler(ar -> {
       if (ar.succeeded()) {
         context.assertTrue(ar.succeeded());
-        context.assertTrue(ar.result().startsWith("<!-- wiremock -->"));
+
+        Report origReport = JAXB.unmarshal(Resources.getResource("__files/nss-report-2016-03.xml"),
+            CounterReportResponse.class).getReport().getReport().get(0);
+        Report respReport = Counter4Utils.fromJSON(ar.result());
+        assertThat(origReport).isEqualToComparingFieldByFieldRecursively(respReport);
+
         async.complete();
       } else {
-        System.out.println(ar.cause());
-        context.fail();
+        context.fail(ar.cause());
       }
     });
   }
@@ -98,6 +106,9 @@ public class NSSTest {
     Future<String> fetchSingleReport = sep.fetchSingleReport(reportType, beginDate, endDate);
     fetchSingleReport.setHandler(ar -> {
       if (ar.failed()) {
+        LOG.info(ar.cause().getMessage());
+        assertThat(ar.cause().getMessage()).contains("1030", "RequestorID", "Insufficient");
+        assertThat(ar.cause().getMessage()).doesNotContain("HelpUrl");
         async.complete();
       } else {
         context.fail();
@@ -145,6 +156,16 @@ public class NSSTest {
         async.complete();
       }
     });
+  }
+
+  @Test
+  public void testIsValidReport() {
+    CounterReportResponse reportValid = JAXB.unmarshal(
+        Resources.getResource("__files/nss-report-2016-03.xml"), CounterReportResponse.class);
+    CounterReportResponse reportInvalid = JAXB.unmarshal(
+        Resources.getResource("__files/nss-report-2018-03-fail.xml"), CounterReportResponse.class);
+    assertThat(Counter4Utils.getExceptions(reportValid)).isEmpty();
+    assertThat(Counter4Utils.getExceptions(reportInvalid)).isNotEmpty();
   }
 
 }

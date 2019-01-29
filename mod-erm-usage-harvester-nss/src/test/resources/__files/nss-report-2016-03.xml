@@ -1,4 +1,3 @@
-<!-- wiremock -->
 <?xml version="1.0" encoding="UTF-8"?>
 <cs:ReportResponse xmlns:cs="http://www.niso.org/schemas/sushi/counter" xmlns:s="http://www.niso.org/schemas/sushi" xmlns="http://www.niso.org/schemas/counter">
   <s:Requestor>

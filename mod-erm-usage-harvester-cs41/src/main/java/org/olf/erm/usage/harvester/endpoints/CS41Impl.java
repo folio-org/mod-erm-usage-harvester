@@ -1,7 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.namespace.QName;
@@ -11,13 +10,13 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.CustomerReference;
 import org.niso.schemas.sushi.Exception;
-import org.niso.schemas.sushi.ExceptionSeverity;
 import org.niso.schemas.sushi.Range;
 import org.niso.schemas.sushi.ReportDefinition;
 import org.niso.schemas.sushi.ReportDefinition.Filters;
 import org.niso.schemas.sushi.ReportRequest;
 import org.niso.schemas.sushi.Requestor;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
+import org.olf.erm.usage.counter41.Counter4Utils;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import sushiservice.SushiService;
@@ -82,18 +81,14 @@ public class CS41Impl implements ServiceEndpoint {
     Vertx.currentContext().executeBlocking(block -> {
       ReportRequest reportRequest = createReportRequest(report, beginDate, endDate);
       CounterReportResponse counterReportResponse = port.getReport(reportRequest);
-      Report reportResult = counterReportResponse.getReport().getReport().get(0);
 
-      List<Exception> exceptions = counterReportResponse.getException()
-          .stream()
-          .filter(e -> e.getSeverity().equals(ExceptionSeverity.ERROR)
-              || e.getSeverity().equals(ExceptionSeverity.FATAL))
-          .collect(Collectors.toList());
-      if (exceptions.isEmpty()) {
-        block.complete(Tool.toJSON(reportResult));
+      List<Exception> exceptions = Counter4Utils.getExceptions(counterReportResponse);
+      if (exceptions.isEmpty() && counterReportResponse.getReport() != null
+          && !counterReportResponse.getReport().getReport().isEmpty()) {
+        Report reportResult = counterReportResponse.getReport().getReport().get(0);
+        block.complete(Counter4Utils.toJSON(reportResult));
       } else {
-        block.fail("Report not valid: "
-            + exceptions.stream().map(Exception::getMessage).collect(Collectors.joining(", ")));
+        block.fail("Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
       }
     }, handler -> {
       if (handler.succeeded()) {

@@ -1,4 +1,4 @@
-package org.olf.erm.usage.harvester.endpoints;
+package org.olf.erm.usage.counter41;
 
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;

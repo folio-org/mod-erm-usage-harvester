@@ -270,19 +270,18 @@ public class WorkerVerticle extends AbstractVerticle {
           }
           list.forEach(li -> {
             sep.fetchSingleReport(li.reportType, li.begin, li.end).setHandler(h -> {
-              String reportData;
+              CounterReport report;
+              LocalDate parse = LocalDate.parse(li.begin);
+              YearMonth month = YearMonth.of(parse.getYear(), parse.getMonth());
               if (h.succeeded()) {
-                reportData = h.result();
+                report = createCounterReport(h.result(), li.reportType, provider, month);
+                // report.setFormat();
               } else {
-                reportData = null;
+                report = createCounterReport(null, li.reportType, provider, month);
+                report.setFailedReason(h.cause().getMessage());
                 LOG.error("Tenant: " + token.getTenantId() + ", Provider: " + provider.getLabel()
                     + ", " + li.toString() + ", " + h.cause().getMessage());
               }
-
-              LocalDate parse = LocalDate.parse(li.begin);
-              YearMonth month = YearMonth.of(parse.getYear(), parse.getMonth());
-              CounterReport report =
-                  createCounterReport(reportData, li.reportType, provider, month);
               postReport(report);
             });
           });
