@@ -15,7 +15,6 @@ import org.olf.erm.usage.harvester.HarvesterVerticle;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
 import com.google.common.base.Strings;
-import com.google.common.net.HttpHeaders;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -98,37 +97,33 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
-    
+
     String tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     String providerId = id;
-      String msg =
-          "Processing of ProviderId: "
-              + providerId
-              + ", Tenant: "
-              + tenantId
-              + " requested.";
-      LOG.info(msg);
-      // harvester.processSingleProvider(tenantId, providerId);
-      String result = new JsonObject().put("message", msg).toString();
-      asyncResultHandler.handle(
-          Future.succeededFuture(Response.ok(result, MediaType.APPLICATION_JSON_TYPE).build()));
+    String msg =
+        "Processing of ProviderId: " + providerId + ", Tenant: " + tenantId + " requested.";
+    LOG.info(msg);
+    // harvester.processSingleProvider(tenantId, providerId);
+    String result = new JsonObject().put("message", msg).toString();
+    asyncResultHandler.handle(
+        Future.succeededFuture(Response.ok(result, MediaType.APPLICATION_JSON_TYPE).build()));
   }
 
   @Override
   public void getErmUsageHarvesterImpl(
+      String aggregator,
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
-
-    String param = null; // FIXME
-    boolean paramValue = true;
 
     List<JsonObject> collect =
         ServiceEndpoint.getAvailableProviders()
             .stream()
             .filter(
                 provider ->
-                    param == null || (param != null && provider.isAggregator().equals(paramValue)))
+                    Strings.isNullOrEmpty(aggregator)
+                        || (aggregator != null
+                            && provider.isAggregator().equals(Boolean.valueOf(aggregator))))
             .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))
             .map(ServiceEndpointProvider::toJson)
             .collect(Collectors.toList());
