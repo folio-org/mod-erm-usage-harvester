@@ -16,5 +16,4 @@ public class FetchItem {
   public String toString() {
     return "FetchItem [reportType=" + reportType + ", begin=" + begin + ", end=" + end + "]";
   }
-
 }

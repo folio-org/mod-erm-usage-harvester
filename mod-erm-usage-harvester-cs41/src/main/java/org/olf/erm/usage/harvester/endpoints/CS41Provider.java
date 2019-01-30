@@ -29,7 +29,4 @@ public class CS41Provider implements ServiceEndpointProvider {
   public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
     return new CS41Impl(provider);
   }
-
-
-
 }

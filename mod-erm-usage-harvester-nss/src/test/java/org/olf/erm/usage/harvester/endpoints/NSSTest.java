@@ -34,12 +34,9 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class NSSTest {
 
-  @Rule
-  public Timeout timeoutRule = Timeout.seconds(5);
-  @Rule
-  public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
-  @Rule
-  public RunTestOnContext ctx = new RunTestOnContext();
+  @Rule public Timeout timeoutRule = Timeout.seconds(5);
+  @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
+  @Rule public RunTestOnContext ctx = new RunTestOnContext();
 
   private static final Logger LOG = Logger.getLogger(NSSTest.class);
   private UsageDataProvider provider;
@@ -52,12 +49,15 @@ public class NSSTest {
   @Before
   public void setup(TestContext context)
       throws JsonParseException, JsonMappingException, IOException {
-    provider = new ObjectMapper().readValue(
-        new File(Resources.getResource("__files/usage-data-provider.json").getFile()),
-        UsageDataProvider.class);
+    provider =
+        new ObjectMapper()
+            .readValue(
+                new File(Resources.getResource("__files/usage-data-provider.json").getFile()),
+                UsageDataProvider.class);
     aggregator =
         new ObjectMapper()
-            .readValue(new File(Resources.getResource("__files/aggregator-setting.json").getFile()),
+            .readValue(
+                new File(Resources.getResource("__files/aggregator-setting.json").getFile()),
                 AggregatorSetting.class)
             .withServiceUrl(wireMockRule.url("mockedAPI"));
     LOG.info("Setting Aggregator URL to: " + aggregator.getServiceUrl());
@@ -71,25 +71,32 @@ public class NSSTest {
     final String url = ((NSS) sep).buildURL(reportType, beginDate, endDate);
 
     LOG.info("Creating stub for: " + url);
-    stubFor(get(urlEqualTo(url.replaceAll(wireMockRule.url(""), "/")))
-        .willReturn(aResponse().withBodyFile("nss-report-2016-03.xml")));
+    stubFor(
+        get(urlEqualTo(url.replaceAll(wireMockRule.url(""), "/")))
+            .willReturn(aResponse().withBodyFile("nss-report-2016-03.xml")));
 
     Async async = context.async();
     Future<String> fetchSingleReport = sep.fetchSingleReport(reportType, beginDate, endDate);
-    fetchSingleReport.setHandler(ar -> {
-      if (ar.succeeded()) {
-        context.assertTrue(ar.succeeded());
+    fetchSingleReport.setHandler(
+        ar -> {
+          if (ar.succeeded()) {
+            context.assertTrue(ar.succeeded());
 
-        Report origReport = JAXB.unmarshal(Resources.getResource("__files/nss-report-2016-03.xml"),
-            CounterReportResponse.class).getReport().getReport().get(0);
-        Report respReport = Counter4Utils.fromJSON(ar.result());
-        assertThat(origReport).isEqualToComparingFieldByFieldRecursively(respReport);
+            Report origReport =
+                JAXB.unmarshal(
+                        Resources.getResource("__files/nss-report-2016-03.xml"),
+                        CounterReportResponse.class)
+                    .getReport()
+                    .getReport()
+                    .get(0);
+            Report respReport = Counter4Utils.fromJSON(ar.result());
+            assertThat(origReport).isEqualToComparingFieldByFieldRecursively(respReport);
 
-        async.complete();
-      } else {
-        context.fail(ar.cause());
-      }
-    });
+            async.complete();
+          } else {
+            context.fail(ar.cause());
+          }
+        });
   }
 
   @Test
@@ -99,21 +106,23 @@ public class NSSTest {
     final String url = ((NSS) sep).buildURL(reportType, beginDate, endDate);
 
     LOG.info("Creating stub for: " + url);
-    stubFor(get(urlEqualTo(url.replaceAll(wireMockRule.url(""), "/")))
-        .willReturn(aResponse().withBodyFile("nss-report-2018-03-fail.xml")));
+    stubFor(
+        get(urlEqualTo(url.replaceAll(wireMockRule.url(""), "/")))
+            .willReturn(aResponse().withBodyFile("nss-report-2018-03-fail.xml")));
 
     Async async = context.async();
     Future<String> fetchSingleReport = sep.fetchSingleReport(reportType, beginDate, endDate);
-    fetchSingleReport.setHandler(ar -> {
-      if (ar.failed()) {
-        LOG.info(ar.cause().getMessage());
-        assertThat(ar.cause().getMessage()).contains("1030", "RequestorID", "Insufficient");
-        assertThat(ar.cause().getMessage()).doesNotContain("HelpUrl");
-        async.complete();
-      } else {
-        context.fail();
-      }
-    });
+    fetchSingleReport.setHandler(
+        ar -> {
+          if (ar.failed()) {
+            LOG.info(ar.cause().getMessage());
+            assertThat(ar.cause().getMessage()).contains("1030", "RequestorID", "Insufficient");
+            assertThat(ar.cause().getMessage()).doesNotContain("HelpUrl");
+            async.complete();
+          } else {
+            context.fail();
+          }
+        });
   }
 
   @Test
@@ -123,20 +132,22 @@ public class NSSTest {
     final String url = ((NSS) sep).buildURL(reportType, beginDate, endDate);
 
     LOG.info("Creating stub for: " + url);
-    stubFor(get(urlEqualTo(url.replaceAll(wireMockRule.url(""), "/")))
-        .willReturn(aResponse().withStatus(404)));
+    stubFor(
+        get(urlEqualTo(url.replaceAll(wireMockRule.url(""), "/")))
+            .willReturn(aResponse().withStatus(404)));
 
     Async async = context.async();
     Future<String> fetchSingleReport = sep.fetchSingleReport(reportType, beginDate, endDate);
-    fetchSingleReport.setHandler(ar -> {
-      if (ar.succeeded()) {
-        context.fail();
-      } else {
-        context.assertTrue(ar.failed());
-        context.assertTrue(ar.cause().getMessage().contains("404"));
-        async.complete();
-      }
-    });
+    fetchSingleReport.setHandler(
+        ar -> {
+          if (ar.succeeded()) {
+            context.fail();
+          } else {
+            context.assertTrue(ar.failed());
+            context.assertTrue(ar.cause().getMessage().contains("404"));
+            async.complete();
+          }
+        });
   }
 
   @Test
@@ -148,24 +159,27 @@ public class NSSTest {
 
     Async async = context.async();
     Future<String> fetchSingleReport = sep.fetchSingleReport(reportType, beginDate, endDate);
-    fetchSingleReport.setHandler(ar -> {
-      if (ar.succeeded()) {
-        context.fail();
-      } else {
-        context.assertTrue(ar.failed());
-        async.complete();
-      }
-    });
+    fetchSingleReport.setHandler(
+        ar -> {
+          if (ar.succeeded()) {
+            context.fail();
+          } else {
+            context.assertTrue(ar.failed());
+            async.complete();
+          }
+        });
   }
 
   @Test
   public void testIsValidReport() {
-    CounterReportResponse reportValid = JAXB.unmarshal(
-        Resources.getResource("__files/nss-report-2016-03.xml"), CounterReportResponse.class);
-    CounterReportResponse reportInvalid = JAXB.unmarshal(
-        Resources.getResource("__files/nss-report-2018-03-fail.xml"), CounterReportResponse.class);
+    CounterReportResponse reportValid =
+        JAXB.unmarshal(
+            Resources.getResource("__files/nss-report-2016-03.xml"), CounterReportResponse.class);
+    CounterReportResponse reportInvalid =
+        JAXB.unmarshal(
+            Resources.getResource("__files/nss-report-2018-03-fail.xml"),
+            CounterReportResponse.class);
     assertThat(Counter4Utils.getExceptions(reportValid)).isEmpty();
     assertThat(Counter4Utils.getExceptions(reportInvalid)).isNotEmpty();
   }
-
 }

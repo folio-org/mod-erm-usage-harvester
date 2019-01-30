@@ -10,7 +10,6 @@ public class Token {
   private final String userId;
   private final String tenantId;
 
-
   public String getToken() {
     return token;
   }

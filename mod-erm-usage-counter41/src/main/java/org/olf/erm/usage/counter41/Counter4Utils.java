@@ -24,7 +24,8 @@ public class Counter4Utils {
     ObjectMapper mapper = new ObjectMapper();
     SimpleModule module = new SimpleModule();
     module.addSerializer(new XMLGregorianCalendarSerializer(XMLGregorianCalendar.class));
-    module.addDeserializer(XMLGregorianCalendar.class,
+    module.addDeserializer(
+        XMLGregorianCalendar.class,
         new XMLGregorianCalendarDeserializer(XMLGregorianCalendar.class));
     mapper.registerModule(module);
     mapper.setSerializationInclusion(Include.NON_NULL);
@@ -54,31 +55,39 @@ public class Counter4Utils {
   }
 
   public static List<Exception> getExceptions(CounterReportResponse response) {
-    return response.getException()
+    return response
+        .getException()
         .stream()
-        .filter(e -> e.getSeverity().equals(ExceptionSeverity.ERROR)
-            || e.getSeverity().equals(ExceptionSeverity.FATAL))
+        .filter(
+            e ->
+                e.getSeverity().equals(ExceptionSeverity.ERROR)
+                    || e.getSeverity().equals(ExceptionSeverity.FATAL))
         .collect(Collectors.toList());
   }
 
   public static String getErrorMessages(List<Exception> exs) {
-    return exs.stream().map(e -> {
-      String data = null;
-      if (e.getData() != null && e.getData().getValue() instanceof Element) {
-        Node n = ((Element) e.getData().getValue()).getFirstChild();
-        if (n != null && !n.getTextContent().isEmpty())
-          data = n.getTextContent();
-      }
-      String helpUrl = (e.getHelpUrl() == null || e.getHelpUrl().getValue().isEmpty()) ? null
-          : e.getHelpUrl().getValue();
-      return toStringHelper(e).add("Number", e.getNumber())
-          .add("Severity", e.getSeverity())
-          .add("Message", e.getMessage())
-          .add("HelpUrl", helpUrl)
-          .add("Data", data)
-          .omitNullValues()
-          .toString();
-    }).collect(Collectors.joining(", "));
+    return exs.stream()
+        .map(
+            e -> {
+              String data = null;
+              if (e.getData() != null && e.getData().getValue() instanceof Element) {
+                Node n = ((Element) e.getData().getValue()).getFirstChild();
+                if (n != null && !n.getTextContent().isEmpty()) data = n.getTextContent();
+              }
+              String helpUrl =
+                  (e.getHelpUrl() == null || e.getHelpUrl().getValue().isEmpty())
+                      ? null
+                      : e.getHelpUrl().getValue();
+              return toStringHelper(e)
+                  .add("Number", e.getNumber())
+                  .add("Severity", e.getSeverity())
+                  .add("Message", e.getMessage())
+                  .add("HelpUrl", helpUrl)
+                  .add("Data", data)
+                  .omitNullValues()
+                  .toString();
+            })
+        .collect(Collectors.joining(", "));
   }
 
   private Counter4Utils() {}

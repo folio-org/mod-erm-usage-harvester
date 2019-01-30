@@ -29,5 +29,4 @@ public class XMLGregorianCalendarDeserializer extends StdDeserializer<XMLGregori
 
     return null;
   }
-
 }

@@ -36,5 +36,4 @@ public class NSSProvider implements ServiceEndpointProvider {
   public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
     return new NSS(provider, aggregator);
   }
-
 }

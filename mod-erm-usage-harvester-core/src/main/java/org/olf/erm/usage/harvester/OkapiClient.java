@@ -40,29 +40,38 @@ public class OkapiClient {
 
     final String url = okapiUrl + tenantsPath;
     WebClient client = WebClient.create(vertx);
-    client.getAbs(url).send(ar -> {
-      client.close();
-      if (ar.succeeded()) {
-        if (ar.result().statusCode() == 200) {
-          JsonArray jsonArray;
-          try {
-            jsonArray = ar.result().bodyAsJsonArray();
-            List<String> tenants = jsonArray.stream()
-                .map(o -> ((JsonObject) o).getString("id"))
-                .collect(Collectors.toList());
-            LOG.info("Found tenants: " + tenants);
-            future.complete(tenants);
-          } catch (Exception e) {
-            future.fail(String.format(ERR_MSG_DECODE, url, e.getMessage()));
-          }
-        } else {
-          future.fail(String.format(ERR_MSG_STATUS, ar.result().statusCode(),
-              ar.result().statusMessage(), url));
-        }
-      } else {
-        future.fail(ar.cause());
-      }
-    });
+    client
+        .getAbs(url)
+        .send(
+            ar -> {
+              client.close();
+              if (ar.succeeded()) {
+                if (ar.result().statusCode() == 200) {
+                  JsonArray jsonArray;
+                  try {
+                    jsonArray = ar.result().bodyAsJsonArray();
+                    List<String> tenants =
+                        jsonArray
+                            .stream()
+                            .map(o -> ((JsonObject) o).getString("id"))
+                            .collect(Collectors.toList());
+                    LOG.info("Found tenants: " + tenants);
+                    future.complete(tenants);
+                  } catch (Exception e) {
+                    future.fail(String.format(ERR_MSG_DECODE, url, e.getMessage()));
+                  }
+                } else {
+                  future.fail(
+                      String.format(
+                          ERR_MSG_STATUS,
+                          ar.result().statusCode(),
+                          ar.result().statusMessage(),
+                          url));
+                }
+              } else {
+                future.fail(ar.cause());
+              }
+            });
     return future;
   }
 
@@ -72,65 +81,87 @@ public class OkapiClient {
 
     Future<Boolean> future = Future.future();
     WebClient client = WebClient.create(vertx);
-    client.getAbs(modulesUrl).send(ar -> {
-      if (ar.succeeded()) {
-        if (ar.result().statusCode() == 200) {
-          try {
-            List<String> modules = ar.result()
-                .bodyAsJsonArray()
-                .stream()
-                .map(o -> ((JsonObject) o).getString("id"))
-                .collect(Collectors.toList());
-            future.complete(modules.containsAll(moduleIds));
-          } catch (Exception e) {
-            future.fail(logprefix + String.format(ERR_MSG_DECODE, modulesUrl, e.getMessage()));
-          }
-        } else if (ar.result().statusCode() == 404) {
-          future.complete(false);
-        } else {
-          future.fail(logprefix + String.format(ERR_MSG_STATUS, ar.result().statusCode(),
-              ar.result().statusMessage(), modulesUrl));
-        }
-      } else {
-        future.fail(ar.cause());
-      }
-    });
+    client
+        .getAbs(modulesUrl)
+        .send(
+            ar -> {
+              if (ar.succeeded()) {
+                if (ar.result().statusCode() == 200) {
+                  try {
+                    List<String> modules =
+                        ar.result()
+                            .bodyAsJsonArray()
+                            .stream()
+                            .map(o -> ((JsonObject) o).getString("id"))
+                            .collect(Collectors.toList());
+                    future.complete(modules.containsAll(moduleIds));
+                  } catch (Exception e) {
+                    future.fail(
+                        logprefix + String.format(ERR_MSG_DECODE, modulesUrl, e.getMessage()));
+                  }
+                } else if (ar.result().statusCode() == 404) {
+                  future.complete(false);
+                } else {
+                  future.fail(
+                      logprefix
+                          + String.format(
+                              ERR_MSG_STATUS,
+                              ar.result().statusCode(),
+                              ar.result().statusMessage(),
+                              modulesUrl));
+                }
+              } else {
+                future.fail(ar.cause());
+              }
+            });
     return future;
   }
 
-  public Future<Token> getAuthToken(String tenantId, String username, String password,
-      String requiredPerm) {
+  public Future<Token> getAuthToken(
+      String tenantId, String username, String password, String requiredPerm) {
     JsonObject userCred = new JsonObject().put("username", username).put("password", password);
     WebClient client = WebClient.create(vertx);
     Future<Token> future = Future.future();
-    client.postAbs(okapiUrl + loginPath)
+    client
+        .postAbs(okapiUrl + loginPath)
         .addQueryParam("expandPermissions", "false")
         .addQueryParam("fullPermissions", "false")
         .putHeader(XOkapiHeaders.TENANT, tenantId)
         .putHeader(HttpHeaders.CONTENT_TYPE, MediaType.JSON_UTF_8.toString())
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
-        .sendJson(userCred, h -> {
-          if (h.succeeded()) {
-            String token = h.result().getHeader(XOkapiHeaders.TOKEN);
-            if (h.result().statusCode() != 201) {
-              future.fail("Could not authenticate for Tenant " + tenantId + ": "
-                  + h.result().statusCode() + " " + h.result().statusMessage() + " "
-                  + h.result().bodyAsJsonObject().getString("errorMessage"));
-            } else if (Strings.isNullOrEmpty(token)) {
-              future.fail("No token received: " + h.result().statusCode() + " "
-                  + h.result().statusMessage());
-            } else if (h.result()
-                .bodyAsJsonObject()
-                .getJsonArray("permissions.permissions", new JsonArray())
-                .contains(requiredPerm)) {
-              future.fail("Required permission not found");
-            } else {
-              future.complete(new Token(token));
-            }
-          } else {
-            future.fail(h.cause());
-          }
-        });
+        .sendJson(
+            userCred,
+            h -> {
+              if (h.succeeded()) {
+                String token = h.result().getHeader(XOkapiHeaders.TOKEN);
+                if (h.result().statusCode() != 201) {
+                  future.fail(
+                      "Could not authenticate for Tenant "
+                          + tenantId
+                          + ": "
+                          + h.result().statusCode()
+                          + " "
+                          + h.result().statusMessage()
+                          + " "
+                          + h.result().bodyAsJsonObject().getString("errorMessage"));
+                } else if (Strings.isNullOrEmpty(token)) {
+                  future.fail(
+                      "No token received: "
+                          + h.result().statusCode()
+                          + " "
+                          + h.result().statusMessage());
+                } else if (h.result()
+                    .bodyAsJsonObject()
+                    .getJsonArray("permissions.permissions", new JsonArray())
+                    .contains(requiredPerm)) {
+                  future.fail("Required permission not found");
+                } else {
+                  future.complete(new Token(token));
+                }
+              } else {
+                future.fail(h.cause());
+              }
+            });
     return future;
   }
 }

@@ -45,24 +45,25 @@ public class HarvesterTest {
 
   private static final Logger LOG = Logger.getLogger(HarvesterTest.class);
 
-  @Rule
-  public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
-  @Rule
-  public Timeout timeoutRule = Timeout.seconds(5);
+  @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
+  @Rule public Timeout timeoutRule = Timeout.seconds(5);
 
   private static final String tenantId = "diku";
   private static final Token token =
       Token.createDummy(tenantId, "6bf2a318-17a9-4fd9-a889-8baf665ab3c8", tenantId);
   private static final WorkerVerticle harvester = new WorkerVerticle(token);
 
-
   private static CounterReport cr;
 
-  private static final String deployCfg = "{\n" + "  \"okapiUrl\": \"http://localhost\",\n"
-      + "  \"tenantsPath\": \"/_/proxy/tenants\",\n" + "  \"reportsPath\": \"/counter-reports\",\n"
-      + "  \"providerPath\": \"/usage-data-providers\",\n"
-      + "  \"aggregatorPath\": \"/aggregator-settings\",\n"
-      + "  \"moduleId\": \"mod-erm-usage-0.0.1\"\n" + "}";
+  private static final String deployCfg =
+      "{\n"
+          + "  \"okapiUrl\": \"http://localhost\",\n"
+          + "  \"tenantsPath\": \"/_/proxy/tenants\",\n"
+          + "  \"reportsPath\": \"/counter-reports\",\n"
+          + "  \"providerPath\": \"/usage-data-providers\",\n"
+          + "  \"aggregatorPath\": \"/aggregator-settings\",\n"
+          + "  \"moduleId\": \"mod-erm-usage-0.0.1\"\n"
+          + "}";
 
   private static Vertx vertx;
   private String okapiUrl;
@@ -89,15 +90,18 @@ public class HarvesterTest {
     JsonObject cfg = new JsonObject(deployCfg);
     cfg.put("okapiUrl", StringUtils.removeEnd(wireMockRule.url(""), "/"));
     cfg.put("testing", true);
-    vertx.deployVerticle(harvester, new DeploymentOptions().setConfig(cfg),
-        context.asyncAssertSuccess(h -> {
-          okapiUrl = harvester.config().getString("okapiUrl");
-          tenantsPath = harvester.config().getString("tenantsPath");
-          reportsPath = harvester.config().getString("reportsPath");
-          providerPath = harvester.config().getString("providerPath");
-          aggregatorPath = harvester.config().getString("aggregatorPath");
-          moduleId = harvester.config().getString("moduleId");
-        }));
+    vertx.deployVerticle(
+        harvester,
+        new DeploymentOptions().setConfig(cfg),
+        context.asyncAssertSuccess(
+            h -> {
+              okapiUrl = harvester.config().getString("okapiUrl");
+              tenantsPath = harvester.config().getString("tenantsPath");
+              reportsPath = harvester.config().getString("reportsPath");
+              providerPath = harvester.config().getString("providerPath");
+              aggregatorPath = harvester.config().getString("aggregatorPath");
+              moduleId = harvester.config().getString("moduleId");
+            }));
   }
 
   @After
@@ -107,15 +111,19 @@ public class HarvesterTest {
 
   @Test
   public void getProvidersBodyValid(TestContext context) {
-    stubFor(get(urlPathMatching(providerPath))
-        .willReturn(aResponse().withBodyFile("usage-data-providers.json")));
+    stubFor(
+        get(urlPathMatching(providerPath))
+            .willReturn(aResponse().withBodyFile("usage-data-providers.json")));
 
     Async async = context.async();
-    harvester.getActiveProviders().setHandler(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertEquals(3, ar.result().getTotalRecords());
-      async.complete();
-    });
+    harvester
+        .getActiveProviders()
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.succeeded());
+              context.assertEquals(3, ar.result().getTotalRecords());
+              async.complete();
+            });
   }
 
   @Test
@@ -123,11 +131,14 @@ public class HarvesterTest {
     stubFor(get(urlPathMatching(providerPath)).willReturn(aResponse().withBody("")));
 
     Async async = context.async();
-    harvester.getActiveProviders().setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
-      async.complete();
-    });
+    harvester
+        .getActiveProviders()
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
+              async.complete();
+            });
   }
 
   @Test
@@ -135,11 +146,14 @@ public class HarvesterTest {
     stubFor(get(urlPathMatching(providerPath)).willReturn(aResponse().withStatus(404)));
 
     Async async = context.async();
-    harvester.getActiveProviders().setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      context.assertTrue(ar.cause().getMessage().contains("404"));
-      async.complete();
-    });
+    harvester
+        .getActiveProviders()
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              context.assertTrue(ar.cause().getMessage().contains("404"));
+              async.complete();
+            });
   }
 
   @Test
@@ -147,120 +161,165 @@ public class HarvesterTest {
     wireMockRule.stop();
 
     Async async = context.async();
-    harvester.getActiveProviders().setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      LOG.error(ar.cause());
-      async.complete();
-    });
+    harvester
+        .getActiveProviders()
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              LOG.error(ar.cause());
+              async.complete();
+            });
   }
 
   @Test
   public void getAggregatorSettingsBodyValid(TestContext context)
       throws JsonParseException, JsonMappingException, IOException {
-    final UsageDataProvider provider = new ObjectMapper().readValue(Resources
-        .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
-        UsageDataProvider.class);
-    stubFor(get(
-        urlEqualTo(aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
+    final UsageDataProvider provider =
+        new ObjectMapper()
+            .readValue(
+                Resources.toString(
+                    Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+                UsageDataProvider.class);
+    stubFor(
+        get(urlEqualTo(
+                aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
             .willReturn(aResponse().withBodyFile("aggregator-setting.json")));
 
     Async async = context.async();
-    harvester.getAggregatorSetting(provider).setHandler(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertTrue("Nationaler Statistikserver".equals(ar.result().getLabel()));
-      async.complete();
-    });
+    harvester
+        .getAggregatorSetting(provider)
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.succeeded());
+              context.assertTrue("Nationaler Statistikserver".equals(ar.result().getLabel()));
+              async.complete();
+            });
   }
 
   @Test
   public void getAggregatorSettingsBodyValidNoAggregator(TestContext context)
       throws JsonParseException, JsonMappingException, IOException {
-    final UsageDataProvider provider1 = new ObjectMapper().readValue(Resources
-        .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
-        UsageDataProvider.class);
-    final UsageDataProvider provider2 = new ObjectMapper().readValue(Resources
-        .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
-        UsageDataProvider.class);
+    final UsageDataProvider provider1 =
+        new ObjectMapper()
+            .readValue(
+                Resources.toString(
+                    Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+                UsageDataProvider.class);
+    final UsageDataProvider provider2 =
+        new ObjectMapper()
+            .readValue(
+                Resources.toString(
+                    Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+                UsageDataProvider.class);
 
     provider1.getHarvestingConfig().setAggregator(null);
     Async async = context.async();
-    harvester.getAggregatorSetting(provider1).setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      context.assertTrue(ar.result() == null);
-      context.assertTrue(ar.cause().getMessage().contains("no aggregator found"));
-      async.complete();
-    });
+    harvester
+        .getAggregatorSetting(provider1)
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              context.assertTrue(ar.result() == null);
+              context.assertTrue(ar.cause().getMessage().contains("no aggregator found"));
+              async.complete();
+            });
 
     provider2.getHarvestingConfig().getAggregator().setId(null);
     Async async2 = context.async();
-    harvester.getAggregatorSetting(provider2).setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      context.assertTrue(ar.result() == null);
-      context.assertTrue(ar.cause().getMessage().contains("no aggregator found"));
-      async2.complete();
-    });
+    harvester
+        .getAggregatorSetting(provider2)
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              context.assertTrue(ar.result() == null);
+              context.assertTrue(ar.cause().getMessage().contains("no aggregator found"));
+              async2.complete();
+            });
   }
 
   @Test
   public void getAggregatorSettingsBodyInvalid(TestContext context)
       throws JsonParseException, JsonMappingException, IOException {
-    final UsageDataProvider provider = new ObjectMapper().readValue(Resources
-        .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
-        UsageDataProvider.class);
-    stubFor(get(
-        urlEqualTo(aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
+    final UsageDataProvider provider =
+        new ObjectMapper()
+            .readValue(
+                Resources.toString(
+                    Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+                UsageDataProvider.class);
+    stubFor(
+        get(urlEqualTo(
+                aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
             .willReturn(aResponse().withBody("garbage")));
 
     Async async = context.async();
-    harvester.getAggregatorSetting(provider).setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      context.assertTrue(ar.result() == null);
-      context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
-      async.complete();
-    });
+    harvester
+        .getAggregatorSetting(provider)
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              context.assertTrue(ar.result() == null);
+              context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
+              async.complete();
+            });
   }
 
   @Test
   public void getAggregatorSettingsResponseInvalid(TestContext context)
       throws JsonParseException, JsonMappingException, IOException {
-    final UsageDataProvider provider = new ObjectMapper().readValue(Resources
-        .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
-        UsageDataProvider.class);
-    stubFor(get(
-        urlEqualTo(aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
+    final UsageDataProvider provider =
+        new ObjectMapper()
+            .readValue(
+                Resources.toString(
+                    Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+                UsageDataProvider.class);
+    stubFor(
+        get(urlEqualTo(
+                aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
             .willReturn(
                 aResponse().withBody("Aggregator settingObject does not exist").withStatus(404)));
 
     Async async = context.async();
-    harvester.getAggregatorSetting(provider).setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      context.assertTrue(ar.result() == null);
-      context.assertTrue(ar.cause().getMessage().contains("404"));
-      async.complete();
-    });
+    harvester
+        .getAggregatorSetting(provider)
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              context.assertTrue(ar.result() == null);
+              context.assertTrue(ar.cause().getMessage().contains("404"));
+              async.complete();
+            });
   }
 
   @Test
   public void getAggregatorSettingsNoService(TestContext context)
       throws JsonParseException, JsonMappingException, IOException {
-    final UsageDataProvider provider = new ObjectMapper().readValue(Resources
-        .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
-        UsageDataProvider.class);
+    final UsageDataProvider provider =
+        new ObjectMapper()
+            .readValue(
+                Resources.toString(
+                    Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+                UsageDataProvider.class);
     wireMockRule.stop();
 
     Async async = context.async();
-    harvester.getAggregatorSetting(provider).setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      async.complete();
-    });
+    harvester
+        .getAggregatorSetting(provider)
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              async.complete();
+            });
   }
 
   @Test
   public void createReportJsonObject()
       throws JsonParseException, JsonMappingException, IOException {
-    final UsageDataProvider provider = new ObjectMapper().readValue(Resources
-        .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
-        UsageDataProvider.class);
+    final UsageDataProvider provider =
+        new ObjectMapper()
+            .readValue(
+                Resources.toString(
+                    Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+                UsageDataProvider.class);
 
     final String reportName = "JR1";
     final String reportData = new JsonObject().put("data", "testreport").toString();
@@ -279,59 +338,74 @@ public class HarvesterTest {
   @Test
   public void postReportNoExisting(TestContext context) {
     final String url = reportsPath;
-    stubFor(get(urlPathEqualTo(url))
-        .willReturn(aResponse().withStatus(200).withBodyFile("counter-reports-empty.json")));
+    stubFor(
+        get(urlPathEqualTo(url))
+            .willReturn(aResponse().withStatus(200).withBodyFile("counter-reports-empty.json")));
     stubFor(post(urlEqualTo(url)).willReturn(aResponse().withStatus(201)));
 
     Async async = context.async();
-    harvester.postReport(cr).setHandler(ar -> {
-      if (ar.succeeded()) {
-        wireMockRule.verify(postRequestedFor(urlEqualTo(url)));
-        async.complete();
-      } else {
-        context.fail(ar.cause());
-      }
-    });
+    harvester
+        .postReport(cr)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                wireMockRule.verify(postRequestedFor(urlEqualTo(url)));
+                async.complete();
+              } else {
+                context.fail(ar.cause());
+              }
+            });
   }
 
   @Test
   public void postReportExisting(TestContext context) {
     final String url = reportsPath;
     final String urlId = url + "/43d7e87c-fb32-4ce2-81f9-11fe75c29bbb";
-    stubFor(get(urlPathEqualTo(url))
-        .willReturn(aResponse().withStatus(200).withBodyFile("counter-reports-one.json")));
+    stubFor(
+        get(urlPathEqualTo(url))
+            .willReturn(aResponse().withStatus(200).withBodyFile("counter-reports-one.json")));
     stubFor(put(urlEqualTo(urlId)).willReturn(aResponse().withStatus(201)));
 
     Async async = context.async();
-    harvester.postReport(cr).setHandler(ar -> {
-      if (ar.succeeded()) {
-        wireMockRule.verify(putRequestedFor(urlEqualTo(urlId)));
-        async.complete();
-      } else {
-        context.fail(ar.cause());
-      }
-    });
+    harvester
+        .postReport(cr)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                wireMockRule.verify(putRequestedFor(urlEqualTo(urlId)));
+                async.complete();
+              } else {
+                context.fail(ar.cause());
+              }
+            });
   }
 
   @Test
   public void getServiceEndpoint(TestContext context)
       throws JsonParseException, JsonMappingException, IOException {
-    final UsageDataProvider provider = new ObjectMapper().readValue(Resources
-        .toString(Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
-        UsageDataProvider.class);
+    final UsageDataProvider provider =
+        new ObjectMapper()
+            .readValue(
+                Resources.toString(
+                    Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+                UsageDataProvider.class);
 
-    stubFor(get(
-        urlEqualTo(aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
+    stubFor(
+        get(urlEqualTo(
+                aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
             .willReturn(aResponse().withBodyFile("aggregator-setting.json")));
 
     Async async = context.async();
-    harvester.getServiceEndpoint(provider).setHandler(ar -> {
-      if (ar.succeeded()) {
-        context.assertTrue(ar.result() != null);
-        async.complete();
-      } else {
-        context.fail();
-      }
-    });
+    harvester
+        .getServiceEndpoint(provider)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                context.assertTrue(ar.result() != null);
+                async.complete();
+              } else {
+                context.fail();
+              }
+            });
   }
 }
