@@ -30,6 +30,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
   private static final String PERM_REQUIRED = "ermusage.all";
   private static final String SETTINGS_TABLE = "harvester_settings";
+  private static final String SETTINGS_ID = "8bf5fe33-5ec8-420c-a86d-6320c55ba554";
   private static final Logger LOG = Logger.getLogger(ErmUsageHarvesterAPI.class);
 
   public Future<Token> getAuthToken(Vertx vertx, String tenantId) {
@@ -161,7 +162,10 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     PostgresClient.getInstance(vertxContext.owner(), okapiHeaders.get(XOkapiHeaders.TENANT))
         .save(
             SETTINGS_TABLE,
+            SETTINGS_ID,
             entity,
+            false,
+            true,
             ar -> {
               if (ar.succeeded()) {
                 LOG.info("succeeded saving setting");
