@@ -15,6 +15,7 @@ import org.olf.erm.usage.harvester.OkapiClient;
 import org.olf.erm.usage.harvester.WorkerVerticle;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Strings;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -27,6 +28,7 @@ import io.vertx.core.json.JsonObject;
 
 public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
+  private static final String PERM_REQUIRED = "ermusage.all";
   private static final String SETTINGS_TABLE = "harvester_settings";
   private static final Logger LOG = Logger.getLogger(ErmUsageHarvesterAPI.class);
 
@@ -47,7 +49,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
                               en -> {
                                 if (en) {
                                   return okapiClient.getAuthToken(
-                                      t, "diku_admin", "admin", "ermusage.all");
+                                      t, "diku_admin", "admin", PERM_REQUIRED);
                                 } else {
                                   return Future.failedFuture("Module not enabled for Tenant " + t);
                                 }
@@ -79,10 +81,16 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
         .compose(
             en -> {
               if (en) {
-                return okapiClient.getAuthToken(tenantId, "diku_admin", "admin", "ermusage.all");
+                return getHarvesterSettingsFromDB(vertx, tenantId);
               } else {
                 return Future.failedFuture("Module not enabled for Tenant " + tenantId);
               }
+            })
+        .compose(
+            setting -> {
+              System.out.println(MoreObjects.toStringHelper(setting).toString());
+              return okapiClient.getAuthToken(
+                  tenantId, setting.getUsername(), setting.getPassword(), PERM_REQUIRED);
             })
         .setHandler(
             h -> {
@@ -104,7 +112,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
         .compose(
             en -> {
               if (en) {
-                return okapiClient.getAuthToken(tenantId, "diku_admin", "admin", "ermusage.all");
+                return okapiClient.getAuthToken(tenantId, "diku_admin", "admin", PERM_REQUIRED);
               } else {
                 return Future.failedFuture("Module not enabled for Tenant " + tenantId);
               }
@@ -122,17 +130,10 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
             });
   }
 
-  public Future<HarvesterSetting> getHarvesterSetting() {
-    return Future.succeededFuture();
-  }
+  public Future<HarvesterSetting> getHarvesterSettingsFromDB(Vertx vertx, String tenantId) {
 
-  @Override
-  public void getErmUsageHarvesterSettings(
-      Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler,
-      Context vertxContext) {
-
-    PostgresClient.getInstance(vertxContext.owner(), okapiHeaders.get(XOkapiHeaders.TENANT))
+    Future<HarvesterSetting> future = Future.future();
+    PostgresClient.getInstance(vertx, tenantId)
         .get(
             SETTINGS_TABLE,
             HarvesterSetting.class,
@@ -141,11 +142,26 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
             false,
             ar -> {
               if (ar.succeeded()) {
-                asyncResultHandler.handle(
-                    Future.succeededFuture(Response.ok(ar.result().getResults().get(0)).build()));
+                future.complete(ar.result().getResults().get(0));
               } else {
-                asyncResultHandler.handle(Future.succeededFuture(Response.status(400).build()));
+                future.fail(ar.cause());
               }
+            });
+    return future;
+  }
+
+  @Override
+  public void getErmUsageHarvesterSettings(
+      Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+
+    getHarvesterSettingsFromDB(vertxContext.owner(), okapiHeaders.get(XOkapiHeaders.TENANT))
+        .setHandler(
+            ar -> {
+              if (ar.succeeded())
+                asyncResultHandler.handle(Future.succeededFuture(Response.ok(ar.result()).build()));
+              else asyncResultHandler.handle(Future.succeededFuture(Response.status(400).build()));
             });
   }
 
