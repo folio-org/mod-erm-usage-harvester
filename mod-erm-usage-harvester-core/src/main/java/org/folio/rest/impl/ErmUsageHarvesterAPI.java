@@ -12,10 +12,10 @@ import org.folio.rest.jaxrs.model.HarvesterSetting;
 import org.folio.rest.jaxrs.resource.ErmUsageHarvester;
 import org.folio.rest.persist.PostgresClient;
 import org.olf.erm.usage.harvester.OkapiClient;
+import org.olf.erm.usage.harvester.Token;
 import org.olf.erm.usage.harvester.WorkerVerticle;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
-import com.google.common.base.MoreObjects;
 import com.google.common.base.Strings;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -32,51 +32,10 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
   private static final String SETTINGS_TABLE = "harvester_settings";
   private static final Logger LOG = Logger.getLogger(ErmUsageHarvesterAPI.class);
 
-  public void processAllTenants(Vertx vertx) {
+  public Future<Token> getAuthToken(Vertx vertx, String tenantId) {
     JsonObject config = vertx.getOrCreateContext().config();
     OkapiClient okapiClient = new OkapiClient(vertx, config);
-    okapiClient
-        .getTenants()
-        .setHandler(
-            ar -> {
-              if (ar.succeeded()) {
-                List<String> tenantList = ar.result();
-                tenantList.forEach(
-                    t -> {
-                      okapiClient
-                          .hasEnabledUsageModules(t)
-                          .compose(
-                              en -> {
-                                if (en) {
-                                  return okapiClient.getAuthToken(
-                                      t, "diku_admin", "admin", PERM_REQUIRED);
-                                } else {
-                                  return Future.failedFuture("Module not enabled for Tenant " + t);
-                                }
-                              })
-                          .setHandler(
-                              h -> {
-                                if (h.succeeded()) {
-                                  // deploy WorkerVerticle for tenant
-                                  System.out.println(config.encodePrettily());
-                                  vertx.deployVerticle(
-                                      new WorkerVerticle(h.result()),
-                                      new DeploymentOptions().setConfig(config));
-                                } else {
-                                  LOG.error(h.cause().getMessage());
-                                }
-                              });
-                    });
-              } else {
-                LOG.error("Failed to get tenants: " + ar.cause().getMessage());
-              }
-            });
-  }
-
-  public void processSingleTenant(Vertx vertx, String tenantId) {
-    JsonObject config = vertx.getOrCreateContext().config();
-    OkapiClient okapiClient = new OkapiClient(vertx, config);
-    okapiClient
+    return okapiClient
         .hasEnabledUsageModules(tenantId)
         .compose(
             en -> {
@@ -87,17 +46,49 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
               }
             })
         .compose(
-            setting -> {
-              System.out.println(MoreObjects.toStringHelper(setting).toString());
-              return okapiClient.getAuthToken(
-                  tenantId, setting.getUsername(), setting.getPassword(), PERM_REQUIRED);
-            })
+            setting ->
+                okapiClient.getAuthToken(
+                    tenantId, setting.getUsername(), setting.getPassword(), PERM_REQUIRED));
+  }
+
+  public void processAllTenants(Vertx vertx) {
+    JsonObject config = vertx.getOrCreateContext().config();
+    OkapiClient okapiClient = new OkapiClient(vertx, config);
+    okapiClient
+        .getTenants()
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                List<String> tenantList = ar.result();
+                tenantList.forEach(
+                    tenandId ->
+                        getAuthToken(vertx, tenandId)
+                            .setHandler(
+                                h -> {
+                                  if (h.succeeded()) {
+                                    // deploy WorkerVerticle for each tenant
+                                    vertx.deployVerticle(
+                                        new WorkerVerticle(h.result()),
+                                        new DeploymentOptions().setConfig(config));
+                                  } else {
+                                    LOG.error(h.cause().getMessage());
+                                  }
+                                }));
+              } else {
+                LOG.error("Failed to get tenants: " + ar.cause().getMessage());
+              }
+            });
+  }
+
+  public void processSingleTenant(Vertx vertx, String tenantId) {
+    getAuthToken(vertx, tenantId)
         .setHandler(
             h -> {
               if (h.succeeded()) {
                 // deploy WorkerVerticle for tenant
                 vertx.deployVerticle(
-                    new WorkerVerticle(h.result()), new DeploymentOptions().setConfig(config));
+                    new WorkerVerticle(h.result()),
+                    new DeploymentOptions().setConfig(vertx.getOrCreateContext().config()));
               } else {
                 LOG.error(h.cause().getMessage());
               }
@@ -105,25 +96,14 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
   }
 
   public void processSingleProvider(Vertx vertx, String tenantId, String providerId) {
-    JsonObject config = vertx.getOrCreateContext().config();
-    OkapiClient okapiClient = new OkapiClient(vertx, config);
-    okapiClient
-        .hasEnabledUsageModules(tenantId)
-        .compose(
-            en -> {
-              if (en) {
-                return okapiClient.getAuthToken(tenantId, "diku_admin", "admin", PERM_REQUIRED);
-              } else {
-                return Future.failedFuture("Module not enabled for Tenant " + tenantId);
-              }
-            })
+    getAuthToken(vertx, tenantId)
         .setHandler(
             h -> {
               if (h.succeeded()) {
-                // deploy WorkerVerticle for tenant
+                // deploy WorkerVerticle for tenant with providerId
                 vertx.deployVerticle(
                     new WorkerVerticle(h.result(), providerId),
-                    new DeploymentOptions().setConfig(config));
+                    new DeploymentOptions().setConfig(vertx.getOrCreateContext().config()));
               } else {
                 LOG.error(h.cause().getMessage());
               }
@@ -131,7 +111,6 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
   }
 
   public Future<HarvesterSetting> getHarvesterSettingsFromDB(Vertx vertx, String tenantId) {
-
     Future<HarvesterSetting> future = Future.future();
     PostgresClient.getInstance(vertx, tenantId)
         .get(
@@ -142,9 +121,14 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
             false,
             ar -> {
               if (ar.succeeded()) {
-                future.complete(ar.result().getResults().get(0));
+                if (!ar.result().getResults().isEmpty()) {
+                  future.complete(ar.result().getResults().get(0));
+                } else {
+                  future.fail("No harvester settings found for Tenant: " + tenantId);
+                }
               } else {
-                future.fail(ar.cause());
+                future.fail(
+                    "Failed to get harvester settings for Tenant: " + tenantId + ", " + ar.cause());
               }
             });
     return future;
@@ -159,9 +143,11 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     getHarvesterSettingsFromDB(vertxContext.owner(), okapiHeaders.get(XOkapiHeaders.TENANT))
         .setHandler(
             ar -> {
-              if (ar.succeeded())
+              if (ar.succeeded()) {
                 asyncResultHandler.handle(Future.succeededFuture(Response.ok(ar.result()).build()));
-              else asyncResultHandler.handle(Future.succeededFuture(Response.status(400).build()));
+              } else {
+                asyncResultHandler.handle(Future.succeededFuture(Response.status(400).build()));
+              }
             });
   }
 
@@ -199,7 +185,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     String tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     String msg = "Processing of tenant " + tenantId + " requested.";
     LOG.info(msg);
-    processSingleTenant(vertxContext.owner(), tenantId); // FIXME
+    processSingleTenant(vertxContext.owner(), tenantId);
     String result = new JsonObject().put("message", msg).toString();
     asyncResultHandler.handle(
         Future.succeededFuture(Response.ok(result, MediaType.APPLICATION_JSON_TYPE).build()));
