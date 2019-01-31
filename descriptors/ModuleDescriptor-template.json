@@ -3,7 +3,7 @@
   "name": "erm-usage-harvester",
   "provides": [
     {
-      "id": "usage-harvester",
+      "id": "erm-usage-harvester",
       "version": "1.1",
       "handlers": [
         {
