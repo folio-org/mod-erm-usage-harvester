@@ -4,6 +4,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import javax.crypto.SecretKey;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.log4j.Logger;
@@ -11,6 +12,7 @@ import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.HarvesterSetting;
 import org.folio.rest.jaxrs.resource.ErmUsageHarvester;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.security.AES;
 import org.olf.erm.usage.harvester.OkapiClient;
 import org.olf.erm.usage.harvester.Token;
 import org.olf.erm.usage.harvester.WorkerVerticle;
@@ -33,6 +35,12 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
   private static final String SETTINGS_ID = "8bf5fe33-5ec8-420c-a86d-6320c55ba554";
   private static final Logger LOG = Logger.getLogger(ErmUsageHarvesterAPI.class);
 
+  private static SecretKey secretKey = null;
+
+  public static void setSecretKey(SecretKey secretKey) {
+    ErmUsageHarvesterAPI.secretKey = secretKey;
+  }
+
   public Future<Token> getAuthToken(Vertx vertx, String tenantId) {
     JsonObject config = vertx.getOrCreateContext().config();
     OkapiClient okapiClient = new OkapiClient(vertx, config);
@@ -47,9 +55,18 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
               }
             })
         .compose(
-            setting ->
-                okapiClient.getAuthToken(
-                    tenantId, setting.getUsername(), setting.getPassword(), PERM_REQUIRED));
+            setting -> {
+              if (secretKey != null) {
+                try {
+                  setting.setPassword(AES.decryptPassword(setting.getPassword(), secretKey));
+                } catch (Exception e) {
+                  e.printStackTrace();
+                  return Future.failedFuture(e);
+                }
+              }
+              return okapiClient.getAuthToken(
+                  tenantId, setting.getUsername(), setting.getPassword(), PERM_REQUIRED);
+            });
   }
 
   public void processAllTenants(Vertx vertx) {
@@ -147,7 +164,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
               if (ar.succeeded()) {
                 asyncResultHandler.handle(Future.succeededFuture(Response.ok(ar.result()).build()));
               } else {
-                asyncResultHandler.handle(Future.succeededFuture(Response.status(400).build()));
+                asyncResultHandler.handle(Future.succeededFuture(Response.status(404).build()));
               }
             });
   }
@@ -158,6 +175,15 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
+
+    if (secretKey != null) {
+      try {
+        entity.setPassword(AES.encryptPasswordAsBase64(entity.getPassword(), secretKey));
+      } catch (Exception e) {
+        asyncResultHandler.handle(Future.succeededFuture(Response.serverError().build()));
+        e.printStackTrace();
+      }
+    }
 
     PostgresClient.getInstance(vertxContext.owner(), okapiHeaders.get(XOkapiHeaders.TENANT))
         .save(
@@ -175,7 +201,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
                             .respond200WithApplicationJson(entity)));
               } else {
                 LOG.info("failed saving setting", ar.cause());
-                asyncResultHandler.handle(Future.succeededFuture(Response.status(400).build()));
+                asyncResultHandler.handle(Future.succeededFuture(Response.status(500).build()));
               }
             });
   }
