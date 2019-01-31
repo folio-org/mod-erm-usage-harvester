@@ -1,4 +1,4 @@
-package org.olf.erm.usage.harvester;
+package org.folio.rest.impl;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
@@ -23,7 +23,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class APITest {
+public class ErmUsageHarvesterAPITest {
 
   private static final String TENANT_ERR_MSG = "Tenant must be set";
   private static final String TENANT = "testtenant";
