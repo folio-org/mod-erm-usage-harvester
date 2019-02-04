@@ -10,6 +10,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -50,10 +51,11 @@ public class ErmUsageHarvesterAPITest {
   public static void setup(TestContext context) {
     vertx = Vertx.vertx();
 
+    int port = NetworkUtils.nextFreePort();
     JsonObject cfg = new JsonObject(deployCfg);
     cfg.put("testing", true);
-    cfg.put("http.port", 8082);
-    RestAssured.port = 8082;
+    cfg.put("http.port", port);
+    RestAssured.port = port;
     RestAssured.basePath = "erm-usage-harvester";
     vertx.deployVerticle(
         "org.folio.rest.RestVerticle",
