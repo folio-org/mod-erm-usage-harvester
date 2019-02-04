@@ -65,11 +65,8 @@
       <artifactId>commons-io</artifactId>
       <version>2.6</version>
     </dependency>
-    <!-- <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>26.0-jre</version>
-    </dependency> -->
+    <!-- <dependency> <groupId>com.google.guava</groupId> <artifactId>guava</artifactId> 
+      <version>26.0-jre</version> </dependency> -->
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
@@ -101,7 +98,7 @@
       <artifactId>wiremock</artifactId>
       <version>2.18.0</version>
       <scope>test</scope>
-       <exclusions>
+      <exclusions>
         <exclusion>
           <groupId>net.sf.jopt-simple</groupId>
           <artifactId>jopt-simple</artifactId>
@@ -171,7 +168,7 @@
           </execution>
         </executions>
       </plugin>
-      
+
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
@@ -274,26 +271,13 @@
               </resources>
             </configuration>
           </execution>
-         <!--  <execution>
-            <id>filter-descriptor-inputs</id>
-            <phase>generate-resources</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${project.build.directory}</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${basedir}/descriptors</directory>
-                  <include>*Descriptor*-template.json</include>
-                  <filtering>true</filtering>
-                </resource>
-              </resources>
-            </configuration>
-          </execution> -->
+          <!-- <execution> <id>filter-descriptor-inputs</id> <phase>generate-resources</phase> 
+            <goals> <goal>copy-resources</goal> </goals> <configuration> <outputDirectory>${project.build.directory}</outputDirectory> 
+            <resources> <resource> <directory>${basedir}/descriptors</directory> <include>*Descriptor*-template.json</include> 
+            <filtering>true</filtering> </resource> </resources> </configuration> </execution> -->
         </executions>
       </plugin>
-      
+
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
@@ -313,7 +297,7 @@
           </execution>
         </executions>
       </plugin>
-      
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -326,6 +310,10 @@
             </goals>
             <configuration>
               <transformers>
+                <transformer
+                  implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/cxf/bus-extensions.txt</resource>
+                </transformer>
                 <!-- merge services -->
                 <transformer
                   implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
@@ -333,8 +321,8 @@
                   implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
                     <Main-Class>org.olf.erm.usage.harvester.Launcher</Main-Class>
-                    <!-- <Main-Verticle>org.olf.erm.usage.harvester.HarvesterVerticle</Main-Verticle>
-                    <Main-Class>org.folio.rest.RestLauncher</Main-Class> -->
+                    <!-- <Main-Verticle>org.olf.erm.usage.harvester.HarvesterVerticle</Main-Verticle> 
+                      <Main-Class>org.folio.rest.RestLauncher</Main-Class> -->
                     <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
                   </manifestEntries>
                 </transformer>
