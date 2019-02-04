@@ -175,9 +175,9 @@
   </distributionManagement>
 
   <scm>
-    <url>https://github.com/folio-org/${artifactId}</url>
-    <connection>scm:git:git://github.com/folio-org/${artifactId}.git</connection>
-    <developerConnection>scm:git:git@github.com:folio-org/${artifactId}.git</developerConnection>
+    <url>https://github.com/folio-org/${project.artifactId}</url>
+    <connection>scm:git:git://github.com/folio-org/${project.artifactId}.git</connection>
+    <developerConnection>scm:git:git@github.com:folio-org/${project.artifactId}.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 

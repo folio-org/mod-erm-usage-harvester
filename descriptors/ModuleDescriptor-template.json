@@ -1,5 +1,5 @@
 {
-  "id": "${artifactId}-${version}",
+  "id": "${project.artifactId}-${project.version}",
   "name": "erm-usage-harvester",
   "provides": [
     {
@@ -55,7 +55,7 @@
     }
   ],
   "launchDescriptor": {
-    "dockerImage": "${artifactId}:${version}",
+    "dockerImage": "${project.artifactId}:${project.version}",
     "dockerArgs": {
       "HostConfig": {
         "PortBindings": {
