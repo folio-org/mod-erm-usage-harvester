@@ -29,18 +29,20 @@ public class OkapiClientTest {
 
   private static final Logger LOG = Logger.getLogger(OkapiClientTest.class);
 
-  @Rule
-  public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
-  @Rule
-  public Timeout timeoutRule = Timeout.seconds(5);
+  @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
+  @Rule public Timeout timeoutRule = Timeout.seconds(5);
 
   private static final String tenantId = "diku";
 
-  private static final String deployCfg = "{\n" + "  \"okapiUrl\": \"http://localhost\",\n"
-      + "  \"tenantsPath\": \"/_/proxy/tenants\",\n" + "  \"reportsPath\": \"/counter-reports\",\n"
-      + "  \"providerPath\": \"/usage-data-providers\",\n"
-      + "  \"aggregatorPath\": \"/aggregator-settings\",\n"
-      + "  \"moduleIds\": [\"mod-erm-usage-0.0.1\"] \n" + "}";
+  private static final String deployCfg =
+      "{\n"
+          + "  \"okapiUrl\": \"http://localhost\",\n"
+          + "  \"tenantsPath\": \"/_/proxy/tenants\",\n"
+          + "  \"reportsPath\": \"/counter-reports\",\n"
+          + "  \"providerPath\": \"/usage-data-providers\",\n"
+          + "  \"aggregatorPath\": \"/aggregator-settings\",\n"
+          + "  \"moduleIds\": [\"mod-erm-usage-0.0.1\"] \n"
+          + "}";
 
   private static Vertx vertx;
   private String tenantsPath;
@@ -66,16 +68,20 @@ public class OkapiClientTest {
 
   @Test
   public void getTenantsBodyValid(TestContext context) {
-    stubFor(get(urlEqualTo(tenantsPath))
-        .willReturn(aResponse().withBodyFile("TenantsResponse200.json")));
+    stubFor(
+        get(urlEqualTo(tenantsPath))
+            .willReturn(aResponse().withBodyFile("TenantsResponse200.json")));
 
     Async async = context.async();
-    okapiClient.getTenants().setHandler(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertEquals(2, ar.result().size());
-      context.assertEquals(tenantId, ar.result().get(0));
-      async.complete();
-    });
+    okapiClient
+        .getTenants()
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.succeeded());
+              context.assertEquals(2, ar.result().size());
+              context.assertEquals(tenantId, ar.result().get(0));
+              async.complete();
+            });
   }
 
   @Test
@@ -83,11 +89,14 @@ public class OkapiClientTest {
     stubFor(get(urlEqualTo(tenantsPath)).willReturn(aResponse().withBody("{ }")));
 
     Async async = context.async();
-    okapiClient.getTenants().setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
-      async.complete();
-    });
+    okapiClient
+        .getTenants()
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
+              async.complete();
+            });
   }
 
   @Test
@@ -95,11 +104,14 @@ public class OkapiClientTest {
     stubFor(get(urlEqualTo(tenantsPath)).willReturn(aResponse().withBody("[ ]")));
 
     Async async = context.async();
-    okapiClient.getTenants().setHandler(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertTrue(ar.result().isEmpty());
-      async.complete();
-    });
+    okapiClient
+        .getTenants()
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.succeeded());
+              context.assertTrue(ar.result().isEmpty());
+              async.complete();
+            });
   }
 
   @Test
@@ -107,11 +119,14 @@ public class OkapiClientTest {
     stubFor(get(urlEqualTo(tenantsPath)).willReturn(aResponse().withStatus(404)));
 
     Async async = context.async();
-    okapiClient.getTenants().setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      context.assertTrue(ar.cause().getMessage().contains("404"));
-      async.complete();
-    });
+    okapiClient
+        .getTenants()
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              context.assertTrue(ar.cause().getMessage().contains("404"));
+              async.complete();
+            });
   }
 
   @Test
@@ -119,49 +134,64 @@ public class OkapiClientTest {
     wireMockRule.stop();
 
     Async async = context.async();
-    okapiClient.getTenants().setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      LOG.error(ar.cause());
-      async.complete();
-    });
+    okapiClient
+        .getTenants()
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              LOG.error(ar.cause());
+              async.complete();
+            });
   }
 
   @Test
   public void getTenantsWithFault(TestContext context) {
-    stubFor(get(urlEqualTo(tenantsPath))
-        .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
+    stubFor(
+        get(urlEqualTo(tenantsPath))
+            .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
     Async async = context.async();
-    okapiClient.getTenants().setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      async.complete();
-    });
+    okapiClient
+        .getTenants()
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              async.complete();
+            });
   }
 
   @Test
   public void hasEnabledModuleNo(TestContext context) {
-    stubFor(get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
-        .willReturn(aResponse().withBody("[]")));
+    stubFor(
+        get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
+            .willReturn(aResponse().withBody("[]")));
 
     Async async = context.async();
-    okapiClient.hasEnabledUsageModules(tenantId).setHandler(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertTrue(ar.result() == false);
-      async.complete();
-    });
+    okapiClient
+        .hasEnabledUsageModules(tenantId)
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.succeeded());
+              context.assertTrue(ar.result() == false);
+              async.complete();
+            });
   }
 
   @Test
   public void hasEnabledModuleResponseInvalid(TestContext context) {
-    stubFor(get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
-        .willReturn(aResponse().withBody("{}")));
+    stubFor(
+        get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
+            .willReturn(aResponse().withBody("{}")));
 
     Async async = context.async();
-    okapiClient.hasEnabledUsageModules(tenantId).setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
-      async.complete();
-    });
+    okapiClient
+        .hasEnabledUsageModules(tenantId)
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
+              async.complete();
+            });
   }
 
   @Test
@@ -169,10 +199,13 @@ public class OkapiClientTest {
     wireMockRule.stop();
 
     Async async = context.async();
-    okapiClient.hasEnabledUsageModules(tenantId).setHandler(ar -> {
-      context.assertTrue(ar.failed());
-      async.complete();
-    });
+    okapiClient
+        .hasEnabledUsageModules(tenantId)
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.failed());
+              async.complete();
+            });
   }
 
   @Test
@@ -180,13 +213,17 @@ public class OkapiClientTest {
     JsonArray response = new JsonArray();
     moduleIds.forEach(s -> response.add(new JsonObject().put("id", s)));
 
-    stubFor(get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
-        .willReturn(aResponse().withBody(response.toString())));
+    stubFor(
+        get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
+            .willReturn(aResponse().withBody(response.toString())));
 
     Async async = context.async();
-    okapiClient.hasEnabledUsageModules(tenantId).setHandler(ar -> {
-      context.assertTrue(ar.succeeded());
-      async.complete();
-    });
+    okapiClient
+        .hasEnabledUsageModules(tenantId)
+        .setHandler(
+            ar -> {
+              context.assertTrue(ar.succeeded());
+              async.complete();
+            });
   }
 }

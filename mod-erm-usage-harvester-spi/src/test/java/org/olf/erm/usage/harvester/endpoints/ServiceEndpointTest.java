@@ -19,8 +19,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class ServiceEndpointTest {
 
-  @Rule
-  public RunTestOnContext ctx = new RunTestOnContext();
+  @Rule public RunTestOnContext ctx = new RunTestOnContext();
 
   private static UsageDataProvider provider;
   private static AggregatorSetting aggregator;
@@ -28,12 +27,16 @@ public class ServiceEndpointTest {
   @BeforeClass
   public static void setup(TestContext context)
       throws JsonParseException, JsonMappingException, IOException {
-    provider = new ObjectMapper().readValue(
-        new File(Resources.getResource("__files/usage-data-provider.json").getFile()),
-        UsageDataProvider.class);
-    aggregator = new ObjectMapper().readValue(
-        new File(Resources.getResource("__files/aggregator-setting.json").getFile()),
-        AggregatorSetting.class);
+    provider =
+        new ObjectMapper()
+            .readValue(
+                new File(Resources.getResource("__files/usage-data-provider.json").getFile()),
+                UsageDataProvider.class);
+    aggregator =
+        new ObjectMapper()
+            .readValue(
+                new File(Resources.getResource("__files/aggregator-setting.json").getFile()),
+                AggregatorSetting.class);
   }
 
   // @Test

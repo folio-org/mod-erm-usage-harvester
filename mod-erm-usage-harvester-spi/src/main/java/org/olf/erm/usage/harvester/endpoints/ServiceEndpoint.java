@@ -1,6 +1,5 @@
 package org.olf.erm.usage.harvester.endpoints;
 
-
 import java.util.List;
 import java.util.Objects;
 import java.util.ServiceLoader;
@@ -10,7 +9,6 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import io.vertx.core.Future;
-
 
 public interface ServiceEndpoint {
 
@@ -30,9 +28,9 @@ public interface ServiceEndpoint {
     final Logger LOG = Logger.getLogger(ServiceEndpoint.class);
 
     String serviceType =
-        (aggregator == null) ? provider.getHarvestingConfig().getSushiConfig().getServiceType()
+        (aggregator == null)
+            ? provider.getHarvestingConfig().getSushiConfig().getServiceType()
             : aggregator.getServiceType();
-
 
     if (Strings.isNullOrEmpty(serviceType)) {
       LOG.error("serviceType is null or empty");

@@ -3,20 +3,35 @@
   "name": "erm-usage-harvester",
   "provides": [
     {
-      "id": "usage-harvester",
+      "id": "erm-usage-harvester",
       "version": "1.1",
       "handlers": [
         {
-          "methods": [ "GET" ],
-          "pathPattern": "/harvester/start"
+          "methods": ["GET"],
+          "pathPattern": "/erm-usage-harvester/start"
         },
         {
-          "methods": [ "GET" ],
-          "pathPattern": "/harvester/start/{id}"
+          "methods": ["GET"],
+          "pathPattern": "/erm-usage-harvester/start/{id}"
         },
         {
-          "methods": [ "GET"],
-          "pathPattern": "/harvester/impl"
+          "methods": ["GET"],
+          "pathPattern": "/erm-usage-harvester/impl"
+        },
+        {
+          "methods": ["GET", "POST", "DELETE"],
+          "pathPattern": "/erm-usage-harvester/settings"
+        }
+      ]
+    },
+    {
+      "id": "_tenant",
+      "version": "1.0",
+      "interfaceType": "system",
+      "handlers": [
+        {
+          "methods": ["POST", "DELETE"],
+          "pathPattern": "/_/tenant"
         }
       ]
     }

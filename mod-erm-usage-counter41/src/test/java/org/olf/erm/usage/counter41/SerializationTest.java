@@ -49,5 +49,4 @@ public class SerializationTest {
 
     assertThat(report).isEqualToComparingFieldByFieldRecursively(fromJSON);
   }
-
 }

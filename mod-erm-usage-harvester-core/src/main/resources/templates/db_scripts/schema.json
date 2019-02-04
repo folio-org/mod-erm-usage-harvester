@@ -1,0 +1,23 @@
+{
+  "scripts": [
+    {
+      "run": "after",
+      "snippet": "ALTER TABLE harvester_settings ALTER _id SET DEFAULT '8bf5fe33-5ec8-420c-a86d-6320c55ba554';"
+    },
+    {
+      "run": "after",
+      "snippet": "ALTER TABLE harvester_settings ADD CONSTRAINT check_uuid CHECK (_id='8bf5fe33-5ec8-420c-a86d-6320c55ba554');"
+    }
+  ],
+  "tables": [
+    {
+      "tableName": "harvester_settings",
+      "generateId": true,
+      "fromModuleVersion": "1.0",
+      "pkColumnName": "_id",
+      "withMetadata": true,
+      "uniqueIndex": []
+    }
+  ],
+  "views": []
+}

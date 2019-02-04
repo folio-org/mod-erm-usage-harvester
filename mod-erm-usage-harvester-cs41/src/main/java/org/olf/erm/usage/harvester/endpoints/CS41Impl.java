@@ -68,8 +68,10 @@ public class CS41Impl implements ServiceEndpoint {
     QName next = service.getPorts().next();
     port = service.getPort(next, SushiServiceInterface.class);
     BindingProvider bindingProvider = (BindingProvider) port;
-    bindingProvider.getRequestContext()
-        .put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY,
+    bindingProvider
+        .getRequestContext()
+        .put(
+            BindingProvider.ENDPOINT_ADDRESS_PROPERTY,
             provider.getHarvestingConfig().getSushiConfig().getServiceUrl());
   }
 
@@ -78,23 +80,27 @@ public class CS41Impl implements ServiceEndpoint {
     Future<String> future = Future.future();
 
     // TODO: blocking
-    Vertx.currentContext().executeBlocking(block -> {
-      ReportRequest reportRequest = createReportRequest(report, beginDate, endDate);
-      CounterReportResponse counterReportResponse = port.getReport(reportRequest);
+    Vertx.currentContext()
+        .executeBlocking(
+            block -> {
+              ReportRequest reportRequest = createReportRequest(report, beginDate, endDate);
+              CounterReportResponse counterReportResponse = port.getReport(reportRequest);
 
-      List<Exception> exceptions = Counter4Utils.getExceptions(counterReportResponse);
-      if (exceptions.isEmpty() && counterReportResponse.getReport() != null
-          && !counterReportResponse.getReport().getReport().isEmpty()) {
-        Report reportResult = counterReportResponse.getReport().getReport().get(0);
-        block.complete(Counter4Utils.toJSON(reportResult));
-      } else {
-        block.fail("Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
-      }
-    }, handler -> {
-      if (handler.succeeded()) {
-        future.complete(handler.result().toString());
-      }
-    });
+              List<Exception> exceptions = Counter4Utils.getExceptions(counterReportResponse);
+              if (exceptions.isEmpty()
+                  && counterReportResponse.getReport() != null
+                  && !counterReportResponse.getReport().getReport().isEmpty()) {
+                Report reportResult = counterReportResponse.getReport().getReport().get(0);
+                block.complete(Counter4Utils.toJSON(reportResult));
+              } else {
+                block.fail("Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
+              }
+            },
+            handler -> {
+              if (handler.succeeded()) {
+                future.complete(handler.result().toString());
+              }
+            });
 
     return future;
   }
@@ -104,5 +110,4 @@ public class CS41Impl implements ServiceEndpoint {
     // TODO Auto-generated method stub
     return false;
   }
-
 }

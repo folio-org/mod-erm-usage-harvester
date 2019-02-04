@@ -44,8 +44,8 @@ public class Launcher extends io.vertx.core.Launcher {
     String envConfig = System.getenv("CONFIG");
     if (envConfig != null) {
       try {
-        deploymentOptions
-            .setConfig(deploymentOptions.getConfig().mergeIn(new JsonObject(envConfig)));
+        deploymentOptions.setConfig(
+            deploymentOptions.getConfig().mergeIn(new JsonObject(envConfig)));
       } catch (DecodeException e) {
         System.err.println("Error decoding JSON configuration from environment variable 'CONFIG'");
         System.err.println(e.getMessage());
@@ -55,21 +55,32 @@ public class Launcher extends io.vertx.core.Launcher {
     }
 
     // override port from command line
-    getProcessArguments().stream()
+    getProcessArguments()
+        .stream()
         .filter(arg -> arg.startsWith("-Dhttp.port="))
         .findFirst()
-        .ifPresent(line -> {
-          try {
-            int parseInt = Integer.parseInt(line.split("=")[1]);
-            deploymentOptions.getConfig().put("http.port", parseInt);
-          } catch (Exception e) {
-            // ignore
-          }
-        });
+        .ifPresent(
+            line -> {
+              try {
+                int parseInt = Integer.parseInt(line.split("=")[1]);
+                deploymentOptions.getConfig().put("http.port", parseInt);
+              } catch (Exception e) {
+                // ignore
+              }
+            });
 
     // check configuration and abort if something is missing
-    String[] configParams = new String[] {"okapiUrl", "tenantsPath", "reportsPath", "providerPath",
-        "aggregatorPath", "moduleIds", "loginPath", "requiredPerm"};
+    String[] configParams =
+        new String[] {
+          "okapiUrl",
+          "tenantsPath",
+          "reportsPath",
+          "providerPath",
+          "aggregatorPath",
+          "moduleIds",
+          "loginPath",
+          "requiredPerm"
+        };
     System.out.println("Using configuration:\n" + deploymentOptions.getConfig().encodePrettily());
 
     boolean exit = false;
@@ -84,5 +95,4 @@ public class Launcher extends io.vertx.core.Launcher {
       System.exit(1);
     }
   }
-
 }

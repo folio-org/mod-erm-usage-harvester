@@ -27,10 +27,12 @@ public interface ServiceEndpointProvider {
   }
 
   default JsonObject toJson() {
-    JsonObject result = new JsonObject().put("name", getServiceName())
-        .put("description", getServiceDescription())
-        .put("type", getServiceType())
-        .put("isAggregator", isAggregator());
+    JsonObject result =
+        new JsonObject()
+            .put("name", getServiceName())
+            .put("description", getServiceDescription())
+            .put("type", getServiceType())
+            .put("isAggregator", isAggregator());
     if (!getConfigurationParameters().isEmpty())
       result.put("configurationParameters", getConfigurationParameters());
     return result;

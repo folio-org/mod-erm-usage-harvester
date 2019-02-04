@@ -13,33 +13,43 @@ public class Utils {
 
   public static void clearCounterReports(int i) {
     WebClient client = WebClient.create(Vertx.vertx());
-    client.requestAbs(HttpMethod.GET, url)
+    client
+        .requestAbs(HttpMethod.GET, url)
         .putHeader("x-okapi-tenant", "diku")
         .putHeader("accept", "application/json")
         .addQueryParam("limit", String.valueOf(i))
-        .send(ar -> {
-          if (ar.succeeded()) {
-            CounterReports reportsCollection = ar.result().bodyAsJson(CounterReports.class);
-            reportsCollection.getCounterReports()
-                .forEach(r -> client.requestAbs(HttpMethod.DELETE, url + "/" + r.getId())
-                    .putHeader("x-okapi-tenant", "diku")
-                    .putHeader("accept", "text/plain")
-                    .send(ar2 -> {
-                      if (ar2.succeeded()) {
-                        LOG.info(String.format("%s: %s, %s", r.getId(), ar2.result().statusCode(),
-                            ar2.result().statusMessage()));
-                      } else {
-                        LOG.error(ar.cause());
-                      }
-                    }));
-          } else {
-            LOG.error(ar.cause());
-          }
-        });
+        .send(
+            ar -> {
+              if (ar.succeeded()) {
+                CounterReports reportsCollection = ar.result().bodyAsJson(CounterReports.class);
+                reportsCollection
+                    .getCounterReports()
+                    .forEach(
+                        r ->
+                            client
+                                .requestAbs(HttpMethod.DELETE, url + "/" + r.getId())
+                                .putHeader("x-okapi-tenant", "diku")
+                                .putHeader("accept", "text/plain")
+                                .send(
+                                    ar2 -> {
+                                      if (ar2.succeeded()) {
+                                        LOG.info(
+                                            String.format(
+                                                "%s: %s, %s",
+                                                r.getId(),
+                                                ar2.result().statusCode(),
+                                                ar2.result().statusMessage()));
+                                      } else {
+                                        LOG.error(ar.cause());
+                                      }
+                                    }));
+              } else {
+                LOG.error(ar.cause());
+              }
+            });
   }
 
   public static void main(String[] args) {
     clearCounterReports(100);
   }
-
 }

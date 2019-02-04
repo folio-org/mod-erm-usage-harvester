@@ -1,0 +1,56 @@
+#%RAML 1.0
+title: Aggregator Settings
+version: v1
+baseUri: http://localhost/erm-usage-harvester
+
+documentation:
+  - title: mod-erm-usage API
+    content: This documents the API calls that can be made to query and manage aggregator settings
+
+types:
+  harvesterSetting: !include schemas/harvesterSetting.schema
+  errors: !include raml-util/schemas/errors.schema
+
+traits:
+  orderable: !include ./raml-util/traits/orderable.raml
+  pageable: !include ./raml-util/traits/pageable.raml
+  searchable: !include ./raml-util/traits/searchable.raml
+  language: !include ./raml-util/traits/language.raml
+  validate: !include ./raml-util/traits/validation.raml
+
+resourceTypes:
+  collection: !include ./raml-util/rtypes/collection.raml
+  collection-item: !include ./raml-util/rtypes/item-collection.raml
+
+/erm-usage-harvester:
+  /settings:
+    get:
+      description: Get settings for tenant
+      responses:
+        200:
+          body:
+            application/json:
+              type: harvesterSetting
+    post:
+      description: Set settings for tenant
+      body:
+        application/json:
+          type: harvesterSetting
+    delete:
+      description: Delete settings for tenant
+  /start:
+    get:
+      description: Start harvesting for tenant - process all defined usage data providers
+    /{id}:
+      get:
+        description: Start harvesting for tenant - process a specific usage data provider only
+  /impl:
+    get:
+      description: Get available service implementations
+      queryParameters: 
+        aggregator:
+          description: Filter by 'isAggregator' property (true or false)
+          type: string
+          required: false
+
+    

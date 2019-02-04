@@ -24,10 +24,10 @@ public class XMLGregorianCalendarSerializer extends StdSerializer<XMLGregorianCa
     if (value.getXMLSchemaType().equals(DatatypeConstants.DATE)) {
       gen.writeString(gcal.toZonedDateTime().toLocalDate().toString());
     } else {
-      gen.writeString(gcal.toZonedDateTime()
-          .toOffsetDateTime()
-          .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ")));
+      gen.writeString(
+          gcal.toZonedDateTime()
+              .toOffsetDateTime()
+              .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ")));
     }
   }
-
 }
