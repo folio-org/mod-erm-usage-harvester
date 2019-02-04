@@ -19,7 +19,7 @@
           "pathPattern": "/erm-usage-harvester/impl"
         },
         {
-          "methods": ["GET", "POST"],
+          "methods": ["GET", "POST", "DELETE"],
           "pathPattern": "/erm-usage-harvester/settings"
         }
       ]

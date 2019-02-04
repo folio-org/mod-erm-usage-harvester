@@ -25,23 +25,31 @@ resourceTypes:
 /erm-usage-harvester:
   /settings:
     get:
+      description: Get settings for tenant
       responses:
         200:
           body:
             application/json:
               type: harvesterSetting
     post:
+      description: Set settings for tenant
       body:
         application/json:
           type: harvesterSetting
+    delete:
+      description: Delete settings for tenant
   /start:
     get:
+      description: Start harvesting for tenant - process all defined usage data providers
     /{id}:
       get:
+        description: Start harvesting for tenant - process a specific usage data provider only
   /impl:
     get:
+      description: Get available service implementations
       queryParameters: 
         aggregator:
+          description: Filter by 'isAggregator' property (true or false)
           type: string
           required: false
 

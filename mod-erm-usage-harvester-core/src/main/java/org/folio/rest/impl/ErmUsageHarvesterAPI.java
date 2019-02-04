@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import org.apache.log4j.Logger;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.HarvesterSetting;
@@ -202,6 +203,30 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
               } else {
                 LOG.info("failed saving setting", ar.cause());
                 asyncResultHandler.handle(Future.succeededFuture(Response.status(500).build()));
+              }
+            });
+  }
+
+  @Override
+  public void deleteErmUsageHarvesterSettings(
+      Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+
+    PostgresClient.getInstance(vertxContext.owner(), okapiHeaders.get(XOkapiHeaders.TENANT))
+        .delete(
+            SETTINGS_TABLE,
+            SETTINGS_ID,
+            ar -> {
+              if (ar.succeeded()) {
+                if (ar.result().getUpdated() == 1) {
+                  asyncResultHandler.handle(Future.succeededFuture(Response.noContent().build()));
+                } else {
+                  asyncResultHandler.handle(
+                      Future.succeededFuture(Response.status(Status.NOT_FOUND).build()));
+                }
+              } else {
+                asyncResultHandler.handle(Future.succeededFuture(Response.serverError().build()));
               }
             });
   }

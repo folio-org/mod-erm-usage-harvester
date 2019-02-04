@@ -36,6 +36,7 @@ public class ErmUsageHarvesterAPIIT {
   private static Vertx vertx;
   private static final String BASE_URI = "http://localhost";
   private static final String BASE_PATH = "/erm-usage-harvester";
+  private static final String SETTINGS_PATH = "/settings";
   private static final String TENANT = "diku";
   private static final HarvesterSetting SETTINGS =
       new HarvesterSetting().withUsername("user").withPassword("1234");
@@ -106,7 +107,7 @@ public class ErmUsageHarvesterAPIIT {
             }));
   }
 
-  private void testPostAndGetSettings(TestContext ctx, SecretKey secretKey) {
+  private void testPostGetAndDeleteSettings(TestContext ctx, SecretKey secretKey) {
     ErmUsageHarvesterAPI.setSecretKey(secretKey);
 
     String password = "";
@@ -124,7 +125,7 @@ public class ErmUsageHarvesterAPIIT {
     HarvesterSetting postResponse =
         given()
             .body(SETTINGS)
-            .post("/settings")
+            .post(SETTINGS_PATH)
             .then()
             .statusCode(200)
             .extract()
@@ -133,23 +134,31 @@ public class ErmUsageHarvesterAPIIT {
     assertThat(postResponse.getPassword()).isEqualTo(password);
 
     HarvesterSetting getResponse =
-        given().get("/settings").then().statusCode(200).extract().as(HarvesterSetting.class);
+        given().get(SETTINGS_PATH).then().statusCode(200).extract().as(HarvesterSetting.class);
     assertThat(getResponse.getUsername()).isEqualTo(SETTINGS.getUsername());
     assertThat(getResponse.getPassword()).isEqualTo(password);
+
+    given().delete(SETTINGS_PATH).then().statusCode(204);
+    given().get(SETTINGS_PATH).then().statusCode(404);
   }
 
   @Test
-  public void testPostAndGetWithoutSecretKey(TestContext ctx) {
-    testPostAndGetSettings(ctx, null);
+  public void testPostGetAndDeleteSettingsWithoutSecretKey(TestContext ctx) {
+    testPostGetAndDeleteSettings(ctx, null);
   }
 
   @Test
-  public void testPostAndGetWithSecretKey(TestContext ctx) {
+  public void testPostGetAndDeleteSettingsWithSecretKey(TestContext ctx) {
     try {
-      testPostAndGetSettings(ctx, AES.generateSecretKey());
+      testPostGetAndDeleteSettings(ctx, AES.generateSecretKey());
     } catch (NoSuchAlgorithmException e) {
       e.printStackTrace();
       ctx.fail();
     }
+  }
+
+  @Test
+  public void testDeleteSettings404() {
+    given().delete(SETTINGS_PATH).then().statusCode(404);
   }
 }
