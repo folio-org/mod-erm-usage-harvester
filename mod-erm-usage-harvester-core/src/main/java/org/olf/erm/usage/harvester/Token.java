@@ -8,7 +8,7 @@ public class Token {
 
   private final String token;
   private final String userId;
-  private final String tenantId;
+  private String tenantId;
 
   public String getToken() {
     return token;
@@ -20,6 +20,11 @@ public class Token {
 
   public String getTenantId() {
     return tenantId;
+  }
+
+  public Token withTenantId(String tenantId) {
+    this.tenantId = tenantId;
+    return this;
   }
 
   public Token(String token) {
@@ -36,8 +41,6 @@ public class Token {
 
     this.userId = json.getString("user_id");
     this.tenantId = json.getString("tenant");
-    Objects.requireNonNull(userId);
-    Objects.requireNonNull(tenantId);
   }
 
   public static Token createDummy(String token, String userId, String tenantId) {
