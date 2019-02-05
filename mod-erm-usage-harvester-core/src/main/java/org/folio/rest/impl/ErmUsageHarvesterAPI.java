@@ -70,27 +70,6 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
             });
   }
 
-  public void processAllTenants(Vertx vertx, Token token) {
-    JsonObject config = vertx.getOrCreateContext().config();
-    OkapiClient okapiClient = new OkapiClient(vertx, config);
-    okapiClient
-        .getTenants()
-        .setHandler(
-            ar -> {
-              if (ar.succeeded()) {
-                List<String> tenantList = ar.result();
-                tenantList.forEach(
-                    tenantId ->
-                        // deploy WorkerVerticle for each tenant
-                        vertx.deployVerticle(
-                            new WorkerVerticle(token.withTenantId(tenantId)),
-                            new DeploymentOptions().setConfig(config)));
-              } else {
-                LOG.error("Failed to get tenants: " + ar.cause().getMessage());
-              }
-            });
-  }
-
   public void processSingleTenant(Vertx vertx, Token token) {
     // deploy WorkerVerticle for tenant
     vertx.deployVerticle(
