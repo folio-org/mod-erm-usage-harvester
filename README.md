@@ -87,18 +87,6 @@ or from file
 $ docker run -e "CONFIG=$(<config.json)" mod-erm-usage-harvester
 ```
 
-### Requirements
-
-The harvester module needs a folio user with `ermusage.all` permission for the harvesting to work. You can set the user for each tenant by using the `/erm-usage-harvester/settings` endpoint.
-
-```
-curl -iX POST \
-  -H "x-okapi-tenant: diku" \
-  -H "content-type: application/json" \
-  -d '{"username": "diku_admin", "password": "admin" }' \
-  http://192.168.56.103:9130/erm-usage-harvester/settings
-```
-
 ## Additional information
 
 ### Issue tracker
