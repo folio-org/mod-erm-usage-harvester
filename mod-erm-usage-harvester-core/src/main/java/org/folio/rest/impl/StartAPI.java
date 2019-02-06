@@ -1,21 +1,20 @@
 package org.folio.rest.impl;
 
-import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.log4j.Logger;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.resource.Start;
 import org.olf.erm.usage.harvester.OkapiClient;
 import org.olf.erm.usage.harvester.Token;
-import org.olf.erm.usage.harvester.WorkerVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
-import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.WebClient;
 
 public class StartAPI implements Start {
 
@@ -26,18 +25,49 @@ public class StartAPI implements Start {
     OkapiClient okapiClient = new OkapiClient(vertx, config);
     okapiClient
         .getTenants()
+        .compose(
+            tenantList -> {
+              tenantList.forEach(
+                  tenantId ->
+                      okapiClient
+                          .hasEnabledUsageModules(tenantId)
+                          .compose(
+                              en -> {
+                                if (en) {
+                                  // call /start endpoint for each tenant
+                                  LOG.info("Starting harvesting for tenant " + tenantId);
+                                  Future<Void> deploy = Future.future();
+                                  String okapiUrl =
+                                      vertx.getOrCreateContext().config().getString("okapiUrl");
+                                  WebClient.create(vertx)
+                                      .getAbs(okapiUrl + "/erm-usage-harvester/start")
+                                      .putHeader(XOkapiHeaders.TENANT, tenantId)
+                                      .send(
+                                          ar -> {
+                                            if (ar.succeeded()) {
+                                              deploy.complete();
+                                            } else {
+                                              deploy.fail("failed: " + ar.cause().getMessage());
+                                            }
+                                          });
+                                  return deploy;
+                                } else {
+                                  return Future.failedFuture(
+                                      "Module not enabled for Tenant " + tenantId);
+                                }
+                              })
+                          .setHandler(
+                              ar -> {
+                                if (ar.failed()) {
+                                  LOG.error(ar.cause().getMessage(), ar.cause());
+                                }
+                              }));
+              return Future.succeededFuture();
+            })
         .setHandler(
             ar -> {
-              if (ar.succeeded()) {
-                List<String> tenantList = ar.result();
-                tenantList.forEach(
-                    tenantId ->
-                        // deploy WorkerVerticle for each tenant
-                        vertx.deployVerticle(
-                            new WorkerVerticle(token.withTenantId(tenantId)),
-                            new DeploymentOptions().setConfig(config)));
-              } else {
-                LOG.error("Failed to get tenants: " + ar.cause().getMessage());
+              if (ar.failed()) {
+                LOG.error(ar.cause().getMessage(), ar.cause());
               }
             });
   }
