@@ -5,7 +5,6 @@ import java.util.Map;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.log4j.Logger;
-import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.resource.Start;
 import org.olf.erm.usage.harvester.OkapiClient;
 import org.olf.erm.usage.harvester.Token;
@@ -53,7 +52,7 @@ public class StartAPI implements Start {
     try {
       String msg = "Processing of all tenants requested.";
       LOG.info(msg);
-      processAllTenants(vertxContext.owner(), new Token(okapiHeaders.get(XOkapiHeaders.TOKEN)));
+      processAllTenants(vertxContext.owner(), new Token(Token.createFakeJWTForTenant(null)));
       result = new JsonObject().put("message", msg).toString();
       asyncResultHandler.handle(
           Future.succeededFuture(Response.ok(result, MediaType.APPLICATION_JSON_TYPE).build()));

@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
@@ -10,13 +11,16 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.olf.erm.usage.harvester.Token;
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
+import io.restassured.parsing.Parser;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -57,6 +61,7 @@ public class ErmUsageHarvesterAPITest {
     cfg.put("http.port", port);
     RestAssured.port = port;
     RestAssured.basePath = "erm-usage-harvester";
+    RestAssured.defaultParser = Parser.JSON;
     vertx.deployVerticle(
         "org.folio.rest.RestVerticle",
         new DeploymentOptions().setConfig(cfg),
@@ -75,9 +80,25 @@ public class ErmUsageHarvesterAPITest {
   }
 
   @Test
+  public void startHarvesterNoToken() {
+    Error response =
+        given()
+            .header(new Header(XOkapiHeaders.TENANT, TENANT))
+            .when()
+            .get("/start")
+            .then()
+            .statusCode(500)
+            .extract()
+            .as(org.folio.rest.jaxrs.model.Error.class);
+    assertThat(response)
+        .isEqualToComparingFieldByFieldRecursively(ErmUsageHarvesterAPI.ERR_NO_TOKEN);
+  }
+
+  @Test
   public void startHarvester200() {
     given()
         .header(new Header(XOkapiHeaders.TENANT, TENANT))
+        .header(new Header(XOkapiHeaders.TOKEN, Token.createFakeJWTForTenant(TENANT)))
         .when()
         .get("/start")
         .then()
@@ -95,9 +116,25 @@ public class ErmUsageHarvesterAPITest {
   }
 
   @Test
+  public void startProviderNoToken() {
+    Error response =
+        given()
+            .header(new Header(XOkapiHeaders.TENANT, TENANT))
+            .when()
+            .get("/start")
+            .then()
+            .statusCode(500)
+            .extract()
+            .as(Error.class);
+    assertThat(response)
+        .isEqualToComparingFieldByFieldRecursively(ErmUsageHarvesterAPI.ERR_NO_TOKEN);
+  }
+
+  @Test
   public void startProvider200() {
     given()
         .header(new Header(XOkapiHeaders.TENANT, TENANT))
+        .header(new Header(XOkapiHeaders.TOKEN, Token.createFakeJWTForTenant(TENANT)))
         .when()
         .get("/start/5b8ab2bd-e470-409c-9a6c-845d979da05e")
         .then()

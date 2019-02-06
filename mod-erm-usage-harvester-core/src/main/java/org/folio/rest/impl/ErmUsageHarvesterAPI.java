@@ -10,6 +10,7 @@ import javax.ws.rs.core.Response.Status;
 import org.apache.log4j.Logger;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.HarvesterSetting;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.resource.ErmUsageHarvester;
 import org.folio.rest.persist.PostgresClient;
 import org.olf.erm.usage.harvester.Token;
@@ -31,6 +32,8 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
   private static final String SETTINGS_TABLE = "harvester_settings";
   private static final String SETTINGS_ID = "8bf5fe33-5ec8-420c-a86d-6320c55ba554";
   private static final Logger LOG = Logger.getLogger(ErmUsageHarvesterAPI.class);
+  public static final Error ERR_NO_TOKEN =
+      new Error().withType("Error").withMessage("No Okapi Token provided");
 
   public void processSingleTenant(Vertx vertx, Token token) {
     // deploy WorkerVerticle for tenant
@@ -146,9 +149,14 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Context vertxContext) {
 
     String tokenStr = okapiHeaders.get(XOkapiHeaders.TOKEN);
-    Token token = new Token(tokenStr);
+    if (tokenStr == null) {
+      asyncResultHandler.handle(
+          Future.succeededFuture(Response.serverError().entity(ERR_NO_TOKEN).build()));
+      return;
+    }
 
-    String msg = "Processing of tenant " + token.getTenantId() + " requested.";
+    Token token = new Token(tokenStr);
+    String msg = String.format("Processing of tenant: %s requested.", token.getTenantId());
     LOG.info(msg);
     processSingleTenant(vertxContext.owner(), token);
     String result = new JsonObject().put("message", msg).toString();
@@ -164,14 +172,17 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Context vertxContext) {
 
     String tokenStr = okapiHeaders.get(XOkapiHeaders.TOKEN);
+    if (tokenStr == null) {
+      asyncResultHandler.handle(
+          Future.succeededFuture(Response.serverError().entity(ERR_NO_TOKEN).build()));
+      return;
+    }
+
     Token token = new Token(tokenStr);
     String providerId = id;
     String msg =
-        "Processing of ProviderId: "
-            + providerId
-            + ", Tenant: "
-            + token.getTenantId()
-            + " requested.";
+        String.format(
+            "Processing of ProviderId: %s, Tenant: %s requested.", providerId, token.getTenantId());
     LOG.info(msg);
     processSingleProvider(vertxContext.owner(), token, providerId);
     String result = new JsonObject().put("message", msg).toString();

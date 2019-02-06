@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Objects;
 import io.vertx.core.json.JsonObject;
@@ -41,6 +42,17 @@ public class Token {
 
     this.userId = json.getString("user_id");
     this.tenantId = json.getString("tenant");
+  }
+
+  public static String createFakeJWTForTenant(String tenant) {
+    JsonObject header = new JsonObject().put("alg", "HS512");
+    JsonObject payload = new JsonObject().put("tenant", tenant);
+    return String.format(
+        "%s.%s.%s",
+        Base64.getEncoder().encodeToString(header.encode().getBytes(StandardCharsets.UTF_8)),
+        Base64.getEncoder().encodeToString(payload.encode().getBytes(StandardCharsets.UTF_8)),
+        Base64.getEncoder()
+            .encodeToString((header.encode() + payload.encode()).getBytes(StandardCharsets.UTF_8)));
   }
 
   public static Token createDummy(String token, String userId, String tenantId) {
