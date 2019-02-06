@@ -13,7 +13,9 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 
 public class StartAPI implements Start {
@@ -32,29 +34,17 @@ public class StartAPI implements Start {
                       okapiClient
                           .hasEnabledUsageModules(tenantId)
                           .compose(
-                              en -> {
-                                if (en) {
-                                  // call /start endpoint for each tenant
-                                  LOG.info("Starting harvesting for tenant " + tenantId);
-                                  Future<Void> deploy = Future.future();
-                                  String okapiUrl =
-                                      vertx.getOrCreateContext().config().getString("okapiUrl");
-                                  WebClient.create(vertx)
-                                      .getAbs(okapiUrl + "/erm-usage-harvester/start")
-                                      .putHeader(XOkapiHeaders.TENANT, tenantId)
-                                      .send(
-                                          ar -> {
-                                            if (ar.succeeded()) {
-                                              deploy.complete();
-                                            } else {
-                                              deploy.fail("failed: " + ar.cause().getMessage());
-                                            }
-                                          });
-                                  return deploy;
-                                } else {
-                                  return Future.failedFuture(
-                                      "Module not enabled for Tenant " + tenantId);
-                                }
+                              v -> {
+                                // call /start endpoint for each tenant
+                                Future<AsyncResult<HttpResponse<Buffer>>> startTenant =
+                                    Future.future();
+                                String okapiUrl =
+                                    vertx.getOrCreateContext().config().getString("okapiUrl");
+                                WebClient.create(vertx)
+                                    .getAbs(okapiUrl + "/erm-usage-harvester/start")
+                                    .putHeader(XOkapiHeaders.TENANT, tenantId)
+                                    .send(ar -> startTenant.completer());
+                                return startTenant;
                               })
                           .setHandler(
                               ar -> {
