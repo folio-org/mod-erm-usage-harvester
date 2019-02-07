@@ -192,15 +192,15 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   public Future<List<YearMonth>> getValidMonths(
-      String vendorId, String reportName, YearMonth start, YearMonth end) {
+      String providerId, String reportName, YearMonth start, YearMonth end) {
     Future<List<YearMonth>> future = Future.future();
     WebClient client = WebClient.create(vertx);
 
     // TODO: report="" or NOT failedAttempts=""
     String queryStr =
         String.format(
-            "(vendorId=%s AND report=\"\" AND reportName=%s AND yearMonth>=%s AND yearMonth<=%s)",
-            vendorId, reportName, start.toString(), end.toString());
+            "(providerId=%s AND report=\"\" AND reportName=%s AND yearMonth>=%s AND yearMonth<=%s)",
+            providerId, reportName, start.toString(), end.toString());
     client
         .getAbs(okapiUrl + reportsPath)
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
@@ -272,7 +272,7 @@ public class WorkerVerticle extends AbstractVerticle {
         .forEach(
             reportName -> {
               futures.add(
-                  getValidMonths(provider.getVendor().getId(), reportName, startMonth, endMonth)
+                  getValidMonths(provider.getId(), reportName, startMonth, endMonth)
                       .map(
                           list -> {
                             List<YearMonth> arrayList =
@@ -392,7 +392,7 @@ public class WorkerVerticle extends AbstractVerticle {
 
   // TODO: handle failed POST/PUT
   public Future<HttpResponse<Buffer>> postReport(CounterReport report) {
-    return getReport(report.getVendorId(), report.getReportName(), report.getYearMonth(), true)
+    return getReport(report.getProviderId(), report.getReportName(), report.getYearMonth(), true)
         .compose(
             existing -> {
               if (existing == null) { // no report found
@@ -452,12 +452,12 @@ public class WorkerVerticle extends AbstractVerticle {
 
   /** completes with the found report or null if none is found fails otherwise */
   public Future<CounterReport> getReport(
-      String vendorId, String reportName, String month, boolean tiny) {
+      String providerId, String reportName, String month, boolean tiny) {
     WebClient client = WebClient.create(vertx);
     Future<CounterReport> future = Future.future();
     String queryStr =
         String.format(
-            "(vendorId=%s AND yearMonth=%s AND reportName=%s)", vendorId, month, reportName);
+            "(providerId=%s AND yearMonth=%s AND reportName=%s)", providerId, month, reportName);
     client
         .getAbs(okapiUrl + reportsPath)
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
