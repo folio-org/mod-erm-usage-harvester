@@ -1,5 +1,5 @@
 {
-  "id": "${artifactId}-${version}",
+  "id": "${project.artifactId}-${project.version}",
   "name": "erm-usage-harvester",
   "provides": [
     {
@@ -8,11 +8,33 @@
       "handlers": [
         {
           "methods": ["GET"],
-          "pathPattern": "/erm-usage-harvester/start"
+          "pathPattern": "/erm-usage-harvester/start",
+          "modulePermissions": [
+            "usagedataproviders.collection.get",
+            "usagedataproviders.item.get",
+            "aggregatorsettings.collection.get",
+            "aggregatorsettings.item.get",
+            "counterreports.collection.get",
+            "counterreports.item.get",
+            "counterreports.item.post",
+            "counterreports.item.put",
+            "counterreports.item.delete"
+          ]
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/erm-usage-harvester/start/{id}"
+          "pathPattern": "/erm-usage-harvester/start/{id}",
+          "modulePermissions": [
+            "usagedataproviders.collection.get",
+            "usagedataproviders.item.get",
+            "aggregatorsettings.collection.get",
+            "aggregatorsettings.item.get",
+            "counterreports.collection.get",
+            "counterreports.item.get",
+            "counterreports.item.post",
+            "counterreports.item.put",
+            "counterreports.item.delete"
+          ]
         },
         {
           "methods": ["GET"],
@@ -21,6 +43,17 @@
         {
           "methods": ["GET", "POST", "DELETE"],
           "pathPattern": "/erm-usage-harvester/settings"
+        }
+      ]
+    },
+    {
+      "id": "_start",
+      "version": "1.0",
+      "interfaceType": "system",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/_/start"
         }
       ]
     },
@@ -55,7 +88,7 @@
     }
   ],
   "launchDescriptor": {
-    "dockerImage": "${artifactId}:${version}",
+    "dockerImage": "${project.artifactId}:${project.version}",
     "dockerArgs": {
       "HostConfig": {
         "PortBindings": {

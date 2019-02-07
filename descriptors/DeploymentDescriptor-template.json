@@ -1,5 +1,5 @@
 {
-  "srvcId": "${artifactId}-${version}",
+  "srvcId": "${project.artifactId}-${project.version}",
   "nodeId": "localhost",
   "descriptor": {
     "exec": "java -jar ../mod-erm-usage-harvester/mod-erm-usage-harvester-core/target/mod-erm-usage-harvester-core-fat.jar -Dhttp.port=%p"

@@ -69,17 +69,16 @@ public class OkapiClient {
                           url));
                 }
               } else {
-                future.fail(ar.cause());
+                future.fail("Failed getting tenants: " + ar.cause());
               }
             });
     return future;
   }
 
-  public Future<Boolean> hasEnabledUsageModules(String tenantId) {
-    final String logprefix = "Tenant: " + tenantId + ", ";
+  public Future<Void> hasEnabledUsageModules(String tenantId) {
     final String modulesUrl = okapiUrl + tenantsPath + "/" + tenantId + "/modules";
 
-    Future<Boolean> future = Future.future();
+    Future<Void> future = Future.future();
     WebClient client = WebClient.create(vertx);
     client
         .getAbs(modulesUrl)
@@ -94,24 +93,34 @@ public class OkapiClient {
                             .stream()
                             .map(o -> ((JsonObject) o).getString("id"))
                             .collect(Collectors.toList());
-                    future.complete(modules.containsAll(moduleIds));
+                    if (modules.containsAll(moduleIds)) {
+                      future.complete();
+                    } else {
+                      future.fail(
+                          String.format("Tenant: %s, required module not enabled", tenantId));
+                    }
                   } catch (Exception e) {
                     future.fail(
-                        logprefix + String.format(ERR_MSG_DECODE, modulesUrl, e.getMessage()));
+                        String.format(
+                            "Tenant: %s, %s",
+                            tenantId, String.format(ERR_MSG_DECODE, modulesUrl, e.getMessage())));
                   }
-                } else if (ar.result().statusCode() == 404) {
-                  future.complete(false);
                 } else {
                   future.fail(
-                      logprefix
-                          + String.format(
+                      String.format(
+                          "Tenant: %s, failed retrieving enabled modules: %s",
+                          tenantId,
+                          String.format(
                               ERR_MSG_STATUS,
                               ar.result().statusCode(),
                               ar.result().statusMessage(),
-                              modulesUrl));
+                              modulesUrl)));
                 }
               } else {
-                future.fail(ar.cause());
+                future.fail(
+                    String.format(
+                        "Tenant: %s, failed retrieving enabled modules: %s",
+                        tenantId, ar.cause().getMessage()));
               }
             });
     return future;

@@ -5,6 +5,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -171,8 +172,8 @@ public class OkapiClientTest {
         .hasEnabledUsageModules(tenantId)
         .setHandler(
             ar -> {
-              context.assertTrue(ar.succeeded());
-              context.assertTrue(ar.result() == false);
+              assertThat(ar.succeeded()).isFalse();
+              assertThat(ar.cause()).hasMessageContaining("not enabled");
               async.complete();
             });
   }
@@ -203,7 +204,8 @@ public class OkapiClientTest {
         .hasEnabledUsageModules(tenantId)
         .setHandler(
             ar -> {
-              context.assertTrue(ar.failed());
+              assertThat(ar.failed());
+              assertThat(ar.cause()).hasMessageContaining("failed retrieving");
               async.complete();
             });
   }
