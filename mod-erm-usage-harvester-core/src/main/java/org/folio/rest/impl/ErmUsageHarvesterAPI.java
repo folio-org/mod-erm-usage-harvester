@@ -31,7 +31,6 @@ import io.vertx.core.json.JsonObject;
 
 public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
-  private static final String PERM_REQUIRED = "ermusage.all";
   private static final String SETTINGS_TABLE = "harvester_settings";
   private static final String SETTINGS_ID = "8bf5fe33-5ec8-420c-a86d-6320c55ba554";
   private static final Logger LOG = Logger.getLogger(ErmUsageHarvesterAPI.class);
@@ -40,34 +39,6 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
   public static void setSecretKey(SecretKey secretKey) {
     ErmUsageHarvesterAPI.secretKey = secretKey;
-  }
-
-  public Future<Token> getAuthToken(Vertx vertx, String tenantId) {
-    JsonObject config = vertx.getOrCreateContext().config();
-    OkapiClient okapiClient = new OkapiClient(vertx, config);
-    return okapiClient
-        .hasEnabledUsageModules(tenantId)
-        .compose(
-            en -> {
-              if (en) {
-                return getHarvesterSettingsFromDB(vertx, tenantId);
-              } else {
-                return Future.failedFuture("Module not enabled for Tenant " + tenantId);
-              }
-            })
-        .compose(
-            setting -> {
-              if (secretKey != null) {
-                try {
-                  setting.setPassword(AES.decryptPassword(setting.getPassword(), secretKey));
-                } catch (Exception e) {
-                  e.printStackTrace();
-                  return Future.failedFuture(e);
-                }
-              }
-              return okapiClient.getAuthToken(
-                  tenantId, setting.getUsername(), setting.getPassword(), PERM_REQUIRED);
-            });
   }
 
   public void processSingleTenant(Vertx vertx, Token token) {
