@@ -2,13 +2,10 @@ package org.folio.rest.impl;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
-import java.security.NoSuchAlgorithmException;
-import javax.crypto.SecretKey;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.HarvesterSetting;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.security.AES;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -107,21 +104,8 @@ public class ErmUsageHarvesterAPIIT {
             }));
   }
 
-  private void testPostGetAndDeleteSettings(TestContext ctx, SecretKey secretKey) {
-    ErmUsageHarvesterAPI.setSecretKey(secretKey);
-
-    String password = "";
-    try {
-      if (secretKey != null) {
-        password = AES.encryptPasswordAsBase64(SETTINGS.getPassword(), secretKey);
-      } else {
-        password = SETTINGS.getPassword();
-      }
-    } catch (Exception e) {
-      ctx.fail();
-      e.printStackTrace();
-    }
-
+  @Test
+  public void testPostGetAndDeleteSettings(TestContext ctx) {
     HarvesterSetting postResponse =
         given()
             .body(SETTINGS)
@@ -131,30 +115,15 @@ public class ErmUsageHarvesterAPIIT {
             .extract()
             .as(HarvesterSetting.class);
     assertThat(postResponse.getUsername()).isEqualTo(SETTINGS.getUsername());
-    assertThat(postResponse.getPassword()).isEqualTo(password);
+    assertThat(postResponse.getPassword()).isEqualTo(SETTINGS.getPassword());
 
     HarvesterSetting getResponse =
         given().get(SETTINGS_PATH).then().statusCode(200).extract().as(HarvesterSetting.class);
     assertThat(getResponse.getUsername()).isEqualTo(SETTINGS.getUsername());
-    assertThat(getResponse.getPassword()).isEqualTo(password);
+    assertThat(getResponse.getPassword()).isEqualTo(SETTINGS.getPassword());
 
     given().delete(SETTINGS_PATH).then().statusCode(204);
     given().get(SETTINGS_PATH).then().statusCode(404);
-  }
-
-  @Test
-  public void testPostGetAndDeleteSettingsWithoutSecretKey(TestContext ctx) {
-    testPostGetAndDeleteSettings(ctx, null);
-  }
-
-  @Test
-  public void testPostGetAndDeleteSettingsWithSecretKey(TestContext ctx) {
-    try {
-      testPostGetAndDeleteSettings(ctx, AES.generateSecretKey());
-    } catch (NoSuchAlgorithmException e) {
-      e.printStackTrace();
-      ctx.fail();
-    }
   }
 
   @Test
