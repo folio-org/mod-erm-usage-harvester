@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.apache.log4j.Logger;
@@ -24,8 +25,10 @@ import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import com.google.common.net.HttpHeaders;
 import com.google.common.net.MediaType;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.Json;
@@ -43,6 +46,20 @@ public class WorkerVerticle extends AbstractVerticle {
   private String aggregatorPath;
   private Token token;
   private String providerId = null;
+
+  private Handler<AsyncResult<CompositeFuture>> processingCompleteHandler =
+      h -> {
+        if (h.succeeded()) {
+          LOG.info(String.format("Tenant: %s, %s", token.getTenantId(), "Processing completed"));
+          vertx.undeploy(this.deploymentID());
+        } else {
+          LOG.error(
+              String.format(
+                  "Tenant: %s, %s, %s",
+                  token.getTenantId(), "Error during processing", h.cause().getMessage()),
+              h.cause());
+        }
+      };
 
   // TODO: handle limits > 30
   public Future<UsageDataProviders> getActiveProviders() {
@@ -304,9 +321,13 @@ public class WorkerVerticle extends AbstractVerticle {
     return future;
   }
 
-  public void fetchAndPostReports(UsageDataProvider provider) {
+  @SuppressWarnings("rawtypes")
+  public Future<List<Future>> fetchAndPostReports(UsageDataProvider provider) {
     final String logprefix = "Tenant: " + token.getTenantId() + ", ";
     LOG.info(logprefix + "processing provider: " + provider.getLabel());
+
+    List<Future> futList = new ArrayList<>();
+    Future<List<Future>> future = Future.future();
 
     getServiceEndpoint(provider)
         .map(
@@ -325,6 +346,8 @@ public class WorkerVerticle extends AbstractVerticle {
                           }
                           list.forEach(
                               li -> {
+                                Future complete = Future.future();
+                                futList.add(complete);
                                 sep.fetchSingleReport(li.reportType, li.begin, li.end)
                                     .setHandler(
                                         h -> {
@@ -352,19 +375,22 @@ public class WorkerVerticle extends AbstractVerticle {
                                                     + ", "
                                                     + h.cause().getMessage());
                                           }
-                                          postReport(report);
+                                          postReport(report).setHandler(h2 -> complete.complete());
                                         });
                               });
+                          future.complete(futList);
                           return Future.succeededFuture();
                         })
                     .setHandler(
                         h -> {
                           if (h.failed()) {
                             LOG.error(h.cause());
+                            future.complete(Collections.emptyList());
                           }
                         });
                 return Future.succeededFuture();
               } else {
+                future.complete(Collections.emptyList());
                 return Future.failedFuture("No ServiceEndpoint");
               }
             })
@@ -386,8 +412,10 @@ public class WorkerVerticle extends AbstractVerticle {
                         + provider.getLabel()
                         + ", "
                         + h.cause());
+                future.complete(Collections.emptyList());
               }
             });
+    return future;
   }
 
   // TODO: handle failed POST/PUT
@@ -485,12 +513,18 @@ public class WorkerVerticle extends AbstractVerticle {
     return future;
   }
 
-  // TODO: undeploy Verticle when processing is done
   public void run() {
     getActiveProviders()
-        .map(
+        .compose(
             providers -> {
-              providers.getUsageDataProviders().forEach(p -> this.fetchAndPostReports(p));
+              @SuppressWarnings("rawtypes")
+              List<Future> complete = new ArrayList<>();
+              providers
+                  .getUsageDataProviders()
+                  .forEach(
+                      p ->
+                          complete.add(this.fetchAndPostReports(p).compose(CompositeFuture::join)));
+              CompositeFuture.join(complete).setHandler(processingCompleteHandler);
               return Future.succeededFuture();
             })
         .setHandler(
@@ -519,7 +553,9 @@ public class WorkerVerticle extends AbstractVerticle {
                       .getHarvestingConfig()
                       .getHarvestingStatus()
                       .equals(HarvestingStatus.ACTIVE)) {
-                    fetchAndPostReports(provider);
+                    fetchAndPostReports(provider)
+                        .compose(CompositeFuture::join)
+                        .setHandler(processingCompleteHandler);
                   } else {
                     LOG.error(
                         "Tenant: "
@@ -527,16 +563,14 @@ public class WorkerVerticle extends AbstractVerticle {
                             + ", Provider: "
                             + provider.getLabel()
                             + ", HarvestingStatus not ACTIVE");
+                    vertx.undeploy(this.deploymentID());
                   }
                 }
               } else {
                 LOG.error(h.cause());
+                vertx.undeploy(this.deploymentID());
               }
             });
-  }
-
-  private Future<Object> handleErrorFuture(String logPrefix) {
-    return Future.future().setHandler(ar -> LOG.error(logPrefix + ar.cause().getMessage()));
   }
 
   public WorkerVerticle(Token token) {
