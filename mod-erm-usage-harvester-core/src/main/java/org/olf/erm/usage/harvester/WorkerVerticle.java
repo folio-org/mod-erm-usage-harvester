@@ -159,8 +159,6 @@ public class WorkerVerticle extends AbstractVerticle {
     return future;
   }
 
-  // TODO: move
-
   public CounterReport createCounterReport(
       String reportData, String reportName, UsageDataProvider provider, YearMonth yearMonth) {
     CounterReport cr = new CounterReport();
@@ -169,9 +167,7 @@ public class WorkerVerticle extends AbstractVerticle {
     cr.setReportName(reportName);
     cr.setPlatformId(provider.getPlatform().getId());
     cr.setCustomerId(provider.getSushiCredentials().getCustomerId());
-    cr.setRelease(provider.getHarvestingConfig().getReportRelease().toString()); // TODO: update
-    // release to be a
-    // integer
+    cr.setRelease(provider.getHarvestingConfig().getReportRelease().toString());
     cr.setProviderId(provider.getId());
     cr.setDownloadTime(Date.from(Instant.now())); // FIXME
     cr.setVendorId(provider.getVendor().getId());
@@ -201,7 +197,14 @@ public class WorkerVerticle extends AbstractVerticle {
     aggrFuture.compose(
         as -> {
           ServiceEndpoint sep = ServiceEndpoint.create(provider, as);
-          sepFuture.complete(sep);
+          if (sep != null) {
+            sepFuture.complete(sep);
+          } else {
+            sepFuture.fail(
+                String.format(
+                    "Tenant: %s, Provider: %s, No service implementation available",
+                    token.getTenantId(), provider.getLabel()));
+          }
         },
         sepFuture);
 
@@ -287,26 +290,25 @@ public class WorkerVerticle extends AbstractVerticle {
         .getHarvestingConfig()
         .getRequestedReports()
         .forEach(
-            reportName -> {
-              futures.add(
-                  getValidMonths(provider.getId(), reportName, startMonth, endMonth)
-                      .map(
-                          list -> {
-                            List<YearMonth> arrayList =
-                                DateUtil.getYearMonths(
-                                    provider.getHarvestingConfig().getHarvestingStart(),
-                                    provider.getHarvestingConfig().getHarvestingEnd());
-                            arrayList.removeAll(list);
-                            arrayList.forEach(
-                                li ->
-                                    fetchList.add(
-                                        new FetchItem(
-                                            reportName,
-                                            li.atDay(1).toString(),
-                                            li.atEndOfMonth().toString())));
-                            return Future.succeededFuture();
-                          }));
-            });
+            reportName ->
+                futures.add(
+                    getValidMonths(provider.getId(), reportName, startMonth, endMonth)
+                        .map(
+                            list -> {
+                              List<YearMonth> arrayList =
+                                  DateUtil.getYearMonths(
+                                      provider.getHarvestingConfig().getHarvestingStart(),
+                                      provider.getHarvestingConfig().getHarvestingEnd());
+                              arrayList.removeAll(list);
+                              arrayList.forEach(
+                                  li ->
+                                      fetchList.add(
+                                          new FetchItem(
+                                              reportName,
+                                              li.atDay(1).toString(),
+                                              li.atEndOfMonth().toString())));
+                              return Future.succeededFuture();
+                            })));
 
     CompositeFuture.all(futures)
         .setHandler(
@@ -329,82 +331,55 @@ public class WorkerVerticle extends AbstractVerticle {
     List<Future> futList = new ArrayList<>();
     Future<List<Future>> future = Future.future();
 
-    getServiceEndpoint(provider)
-        .map(
-            sep -> {
-              if (sep != null) {
-                getFetchList(provider)
-                    .compose(
-                        list -> {
-                          if (list.isEmpty()) {
-                            LOG.info(
-                                "Tenant: "
-                                    + token.getTenantId()
-                                    + ", Provider: "
-                                    + provider.getLabel()
-                                    + ", No reports need to be fetched.");
-                          }
-                          list.forEach(
-                              li -> {
-                                Future complete = Future.future();
-                                futList.add(complete);
-                                sep.fetchSingleReport(li.reportType, li.begin, li.end)
-                                    .setHandler(
-                                        h -> {
-                                          CounterReport report;
-                                          LocalDate parse = LocalDate.parse(li.begin);
-                                          YearMonth month =
-                                              YearMonth.of(parse.getYear(), parse.getMonth());
-                                          if (h.succeeded()) {
-                                            report =
-                                                createCounterReport(
-                                                    h.result(), li.reportType, provider, month);
-                                            // report.setFormat();
-                                          } else {
-                                            report =
-                                                createCounterReport(
-                                                    null, li.reportType, provider, month);
-                                            report.setFailedReason(h.cause().getMessage());
-                                            LOG.error(
-                                                "Tenant: "
-                                                    + token.getTenantId()
-                                                    + ", Provider: "
-                                                    + provider.getLabel()
-                                                    + ", "
-                                                    + li.toString()
-                                                    + ", "
-                                                    + h.cause().getMessage());
-                                          }
-                                          postReport(report).setHandler(h2 -> complete.complete());
-                                        });
-                              });
-                          future.complete(futList);
-                          return Future.succeededFuture();
-                        })
-                    .setHandler(
-                        h -> {
-                          if (h.failed()) {
-                            LOG.error(h.cause());
-                            future.complete(Collections.emptyList());
-                          }
-                        });
-                return Future.succeededFuture();
-              } else {
-                future.complete(Collections.emptyList());
-                return Future.failedFuture("No ServiceEndpoint");
-              }
-            })
-        .setHandler(
-            h -> {
-              if (h.succeeded() && h.result().failed()) {
-                LOG.error(
+    Future<ServiceEndpoint> sep = getServiceEndpoint(provider);
+    sep.compose(s -> getFetchList(provider))
+        .compose(
+            list -> {
+              if (list.isEmpty()) {
+                LOG.info(
                     "Tenant: "
                         + token.getTenantId()
                         + ", Provider: "
                         + provider.getLabel()
-                        + ", "
-                        + h.result().cause().getMessage());
-              } else if (h.failed()) {
+                        + ", No reports need to be fetched.");
+              }
+              list.forEach(
+                  li -> {
+                    Future complete = Future.future();
+                    futList.add(complete);
+                    sep.result()
+                        .fetchSingleReport(li.reportType, li.begin, li.end)
+                        .setHandler(
+                            h -> {
+                              CounterReport report;
+                              LocalDate parse = LocalDate.parse(li.begin);
+                              YearMonth month = YearMonth.of(parse.getYear(), parse.getMonth());
+                              if (h.succeeded()) {
+                                report =
+                                    createCounterReport(h.result(), li.reportType, provider, month);
+                                // report.setFormat();
+                              } else {
+                                report = createCounterReport(null, li.reportType, provider, month);
+                                report.setFailedReason(h.cause().getMessage());
+                                LOG.error(
+                                    "Tenant: "
+                                        + token.getTenantId()
+                                        + ", Provider: "
+                                        + provider.getLabel()
+                                        + ", "
+                                        + li.toString()
+                                        + ", "
+                                        + h.cause().getMessage());
+                              }
+                              postReport(report).setHandler(h2 -> complete.complete());
+                            });
+                  });
+              future.complete(futList);
+              return Future.<Void>succeededFuture();
+            })
+        .setHandler(
+            h -> {
+              if (h.failed()) {
                 LOG.error(
                     "Tenant: "
                         + token.getTenantId()
@@ -418,7 +393,6 @@ public class WorkerVerticle extends AbstractVerticle {
     return future;
   }
 
-  // TODO: handle failed POST/PUT
   public Future<HttpResponse<Buffer>> postReport(CounterReport report) {
     return getReport(report.getProviderId(), report.getReportName(), report.getYearMonth(), true)
         .compose(
@@ -428,7 +402,6 @@ public class WorkerVerticle extends AbstractVerticle {
                 return sendReportRequest(HttpMethod.POST, report);
               } else {
                 if (report.getFailedAttempts() != null) {
-                  // FIXME: check null
                   report.setFailedAttempts(existing.getFailedAttempts() + 1);
                 }
                 report.setId(existing.getId());
