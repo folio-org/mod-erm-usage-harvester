@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.apache.log4j.Logger;
@@ -24,8 +25,10 @@ import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import com.google.common.net.HttpHeaders;
 import com.google.common.net.MediaType;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.Json;
@@ -43,6 +46,20 @@ public class WorkerVerticle extends AbstractVerticle {
   private String aggregatorPath;
   private Token token;
   private String providerId = null;
+
+  private Handler<AsyncResult<CompositeFuture>> processingCompleteHandler =
+      h -> {
+        if (h.succeeded()) {
+          LOG.info(String.format("Tenant: %s, %s", token.getTenantId(), "Processing completed"));
+          vertx.undeploy(this.deploymentID());
+        } else {
+          LOG.error(
+              String.format(
+                  "Tenant: %s, %s, %s",
+                  token.getTenantId(), "Error during processing", h.cause().getMessage()),
+              h.cause());
+        }
+      };
 
   // TODO: handle limits > 30
   public Future<UsageDataProviders> getActiveProviders() {
@@ -142,8 +159,6 @@ public class WorkerVerticle extends AbstractVerticle {
     return future;
   }
 
-  // TODO: move
-
   public CounterReport createCounterReport(
       String reportData, String reportName, UsageDataProvider provider, YearMonth yearMonth) {
     CounterReport cr = new CounterReport();
@@ -152,9 +167,7 @@ public class WorkerVerticle extends AbstractVerticle {
     cr.setReportName(reportName);
     cr.setPlatformId(provider.getPlatform().getId());
     cr.setCustomerId(provider.getSushiCredentials().getCustomerId());
-    cr.setRelease(provider.getHarvestingConfig().getReportRelease().toString()); // TODO: update
-    // release to be a
-    // integer
+    cr.setRelease(provider.getHarvestingConfig().getReportRelease().toString());
     cr.setProviderId(provider.getId());
     cr.setDownloadTime(Date.from(Instant.now())); // FIXME
     cr.setVendorId(provider.getVendor().getId());
@@ -184,7 +197,14 @@ public class WorkerVerticle extends AbstractVerticle {
     aggrFuture.compose(
         as -> {
           ServiceEndpoint sep = ServiceEndpoint.create(provider, as);
-          sepFuture.complete(sep);
+          if (sep != null) {
+            sepFuture.complete(sep);
+          } else {
+            sepFuture.fail(
+                String.format(
+                    "Tenant: %s, Provider: %s, No service implementation available",
+                    token.getTenantId(), provider.getLabel()));
+          }
         },
         sepFuture);
 
@@ -270,26 +290,25 @@ public class WorkerVerticle extends AbstractVerticle {
         .getHarvestingConfig()
         .getRequestedReports()
         .forEach(
-            reportName -> {
-              futures.add(
-                  getValidMonths(provider.getId(), reportName, startMonth, endMonth)
-                      .map(
-                          list -> {
-                            List<YearMonth> arrayList =
-                                DateUtil.getYearMonths(
-                                    provider.getHarvestingConfig().getHarvestingStart(),
-                                    provider.getHarvestingConfig().getHarvestingEnd());
-                            arrayList.removeAll(list);
-                            arrayList.forEach(
-                                li ->
-                                    fetchList.add(
-                                        new FetchItem(
-                                            reportName,
-                                            li.atDay(1).toString(),
-                                            li.atEndOfMonth().toString())));
-                            return Future.succeededFuture();
-                          }));
-            });
+            reportName ->
+                futures.add(
+                    getValidMonths(provider.getId(), reportName, startMonth, endMonth)
+                        .map(
+                            list -> {
+                              List<YearMonth> arrayList =
+                                  DateUtil.getYearMonths(
+                                      provider.getHarvestingConfig().getHarvestingStart(),
+                                      provider.getHarvestingConfig().getHarvestingEnd());
+                              arrayList.removeAll(list);
+                              arrayList.forEach(
+                                  li ->
+                                      fetchList.add(
+                                          new FetchItem(
+                                              reportName,
+                                              li.atDay(1).toString(),
+                                              li.atEndOfMonth().toString())));
+                              return Future.succeededFuture();
+                            })));
 
     CompositeFuture.all(futures)
         .setHandler(
@@ -304,81 +323,63 @@ public class WorkerVerticle extends AbstractVerticle {
     return future;
   }
 
-  public void fetchAndPostReports(UsageDataProvider provider) {
+  @SuppressWarnings("rawtypes")
+  public Future<List<Future>> fetchAndPostReports(UsageDataProvider provider) {
     final String logprefix = "Tenant: " + token.getTenantId() + ", ";
     LOG.info(logprefix + "processing provider: " + provider.getLabel());
 
-    getServiceEndpoint(provider)
-        .map(
-            sep -> {
-              if (sep != null) {
-                getFetchList(provider)
-                    .compose(
-                        list -> {
-                          if (list.isEmpty()) {
-                            LOG.info(
-                                "Tenant: "
-                                    + token.getTenantId()
-                                    + ", Provider: "
-                                    + provider.getLabel()
-                                    + ", No reports need to be fetched.");
-                          }
-                          list.forEach(
-                              li -> {
-                                sep.fetchSingleReport(li.reportType, li.begin, li.end)
-                                    .setHandler(
-                                        h -> {
-                                          CounterReport report;
-                                          LocalDate parse = LocalDate.parse(li.begin);
-                                          YearMonth month =
-                                              YearMonth.of(parse.getYear(), parse.getMonth());
-                                          if (h.succeeded()) {
-                                            report =
-                                                createCounterReport(
-                                                    h.result(), li.reportType, provider, month);
-                                            // report.setFormat();
-                                          } else {
-                                            report =
-                                                createCounterReport(
-                                                    null, li.reportType, provider, month);
-                                            report.setFailedReason(h.cause().getMessage());
-                                            LOG.error(
-                                                "Tenant: "
-                                                    + token.getTenantId()
-                                                    + ", Provider: "
-                                                    + provider.getLabel()
-                                                    + ", "
-                                                    + li.toString()
-                                                    + ", "
-                                                    + h.cause().getMessage());
-                                          }
-                                          postReport(report);
-                                        });
-                              });
-                          return Future.succeededFuture();
-                        })
-                    .setHandler(
-                        h -> {
-                          if (h.failed()) {
-                            LOG.error(h.cause());
-                          }
-                        });
-                return Future.succeededFuture();
-              } else {
-                return Future.failedFuture("No ServiceEndpoint");
-              }
-            })
-        .setHandler(
-            h -> {
-              if (h.succeeded() && h.result().failed()) {
-                LOG.error(
+    List<Future> futList = new ArrayList<>();
+    Future<List<Future>> future = Future.future();
+
+    Future<ServiceEndpoint> sep = getServiceEndpoint(provider);
+    sep.compose(s -> getFetchList(provider))
+        .compose(
+            list -> {
+              if (list.isEmpty()) {
+                LOG.info(
                     "Tenant: "
                         + token.getTenantId()
                         + ", Provider: "
                         + provider.getLabel()
-                        + ", "
-                        + h.result().cause().getMessage());
-              } else if (h.failed()) {
+                        + ", No reports need to be fetched.");
+              }
+              list.forEach(
+                  li -> {
+                    Future complete = Future.future();
+                    futList.add(complete);
+                    sep.result()
+                        .fetchSingleReport(li.reportType, li.begin, li.end)
+                        .setHandler(
+                            h -> {
+                              CounterReport report;
+                              LocalDate parse = LocalDate.parse(li.begin);
+                              YearMonth month = YearMonth.of(parse.getYear(), parse.getMonth());
+                              if (h.succeeded()) {
+                                report =
+                                    createCounterReport(h.result(), li.reportType, provider, month);
+                                // report.setFormat();
+                              } else {
+                                report = createCounterReport(null, li.reportType, provider, month);
+                                report.setFailedReason(h.cause().getMessage());
+                                LOG.error(
+                                    "Tenant: "
+                                        + token.getTenantId()
+                                        + ", Provider: "
+                                        + provider.getLabel()
+                                        + ", "
+                                        + li.toString()
+                                        + ", "
+                                        + h.cause().getMessage());
+                              }
+                              postReport(report).setHandler(h2 -> complete.complete());
+                            });
+                  });
+              future.complete(futList);
+              return Future.<Void>succeededFuture();
+            })
+        .setHandler(
+            h -> {
+              if (h.failed()) {
                 LOG.error(
                     "Tenant: "
                         + token.getTenantId()
@@ -386,11 +387,12 @@ public class WorkerVerticle extends AbstractVerticle {
                         + provider.getLabel()
                         + ", "
                         + h.cause());
+                future.complete(Collections.emptyList());
               }
             });
+    return future;
   }
 
-  // TODO: handle failed POST/PUT
   public Future<HttpResponse<Buffer>> postReport(CounterReport report) {
     return getReport(report.getProviderId(), report.getReportName(), report.getYearMonth(), true)
         .compose(
@@ -400,7 +402,6 @@ public class WorkerVerticle extends AbstractVerticle {
                 return sendReportRequest(HttpMethod.POST, report);
               } else {
                 if (report.getFailedAttempts() != null) {
-                  // FIXME: check null
                   report.setFailedAttempts(existing.getFailedAttempts() + 1);
                 }
                 report.setId(existing.getId());
@@ -485,12 +486,18 @@ public class WorkerVerticle extends AbstractVerticle {
     return future;
   }
 
-  // TODO: undeploy Verticle when processing is done
   public void run() {
     getActiveProviders()
-        .map(
+        .compose(
             providers -> {
-              providers.getUsageDataProviders().forEach(p -> this.fetchAndPostReports(p));
+              @SuppressWarnings("rawtypes")
+              List<Future> complete = new ArrayList<>();
+              providers
+                  .getUsageDataProviders()
+                  .forEach(
+                      p ->
+                          complete.add(this.fetchAndPostReports(p).compose(CompositeFuture::join)));
+              CompositeFuture.join(complete).setHandler(processingCompleteHandler);
               return Future.succeededFuture();
             })
         .setHandler(
@@ -519,7 +526,9 @@ public class WorkerVerticle extends AbstractVerticle {
                       .getHarvestingConfig()
                       .getHarvestingStatus()
                       .equals(HarvestingStatus.ACTIVE)) {
-                    fetchAndPostReports(provider);
+                    fetchAndPostReports(provider)
+                        .compose(CompositeFuture::join)
+                        .setHandler(processingCompleteHandler);
                   } else {
                     LOG.error(
                         "Tenant: "
@@ -527,16 +536,14 @@ public class WorkerVerticle extends AbstractVerticle {
                             + ", Provider: "
                             + provider.getLabel()
                             + ", HarvestingStatus not ACTIVE");
+                    vertx.undeploy(this.deploymentID());
                   }
                 }
               } else {
                 LOG.error(h.cause());
+                vertx.undeploy(this.deploymentID());
               }
             });
-  }
-
-  private Future<Object> handleErrorFuture(String logPrefix) {
-    return Future.future().setHandler(ar -> LOG.error(logPrefix + ar.cause().getMessage()));
   }
 
   public WorkerVerticle(Token token) {
