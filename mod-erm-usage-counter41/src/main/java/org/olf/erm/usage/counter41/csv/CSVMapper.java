@@ -1,13 +1,14 @@
 package org.olf.erm.usage.counter41.csv;
 
 import java.util.stream.Stream;
-import org.apache.log4j.Logger;
 import org.niso.schemas.counter.Report;
 import org.olf.erm.usage.counter41.csv.mapper.JournalReport1Mapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CSVMapper {
 
-  private static final Logger LOG = Logger.getLogger(CSVMapper.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CSVMapper.class);
   private static final String[] JR1 = new String[] {"JR1", "Journal Report 1"};
 
   public static String toCSV(Report report) {

@@ -3,9 +3,10 @@ package org.olf.erm.usage.harvester.endpoints;
 import java.util.List;
 import java.util.Objects;
 import java.util.ServiceLoader;
-import org.apache.log4j.Logger;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import io.vertx.core.Future;
@@ -25,7 +26,7 @@ public interface ServiceEndpoint {
   public static ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
     Objects.requireNonNull(provider);
 
-    final Logger LOG = Logger.getLogger(ServiceEndpoint.class);
+    final Logger LOG = LoggerFactory.getLogger(ServiceEndpoint.class);
 
     String serviceType =
         (aggregator == null)

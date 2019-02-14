@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 import java.io.IOException;
 import javax.xml.bind.JAXB;
-import org.apache.log4j.Logger;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.Before;
@@ -20,6 +19,8 @@ import org.junit.runner.RunWith;
 import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
 import org.olf.erm.usage.counter41.Counter4Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,7 +39,7 @@ public class NSSTest {
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
   @Rule public RunTestOnContext ctx = new RunTestOnContext();
 
-  private static final Logger LOG = Logger.getLogger(NSSTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(NSSTest.class);
   private UsageDataProvider provider;
   private AggregatorSetting aggregator;
 

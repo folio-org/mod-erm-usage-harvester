@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.log4j.Logger;
 import org.niso.schemas.counter.MetricType;
 import org.niso.schemas.counter.PerformanceCounter;
 import org.niso.schemas.counter.Report;
@@ -21,6 +20,8 @@ import org.niso.schemas.counter.ReportItem;
 import org.olf.erm.usage.counter41.csv.cellprocessor.IdentifierProcessor;
 import org.olf.erm.usage.counter41.csv.cellprocessor.MonthPerformanceProcessor;
 import org.olf.erm.usage.counter41.csv.cellprocessor.ReportingPeriodProcessor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.supercsv.cellprocessor.Optional;
 import org.supercsv.cellprocessor.ift.CellProcessor;
 import org.supercsv.io.CsvListWriter;
@@ -32,7 +33,7 @@ import com.google.common.collect.Iterables;
 
 public class JournalReport1Mapper {
 
-  private static final Logger LOG = Logger.getLogger(JournalReport1Mapper.class);
+  private static final Logger LOG = LoggerFactory.getLogger(JournalReport1Mapper.class);
   private final Report report;
   private final List<YearMonth> YEAR_MONTHS;
   private final String[] FIELD_MAPPING;
