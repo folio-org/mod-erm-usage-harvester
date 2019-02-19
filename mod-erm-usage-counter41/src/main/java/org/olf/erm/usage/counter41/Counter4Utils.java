@@ -9,6 +9,7 @@ import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.Exception;
 import org.niso.schemas.sushi.ExceptionSeverity;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
+import org.olf.erm.usage.counter41.csv.CSVMapper;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -52,6 +53,10 @@ public class Counter4Utils {
       e.printStackTrace();
     }
     return result;
+  }
+
+  public static String toCSV(Report report) {
+    return CSVMapper.toCSV(report);
   }
 
   public static List<Exception> getExceptions(CounterReportResponse response) {

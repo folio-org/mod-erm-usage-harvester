@@ -5,7 +5,6 @@ import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.namespace.QName;
 import javax.xml.ws.BindingProvider;
-import org.apache.log4j.Logger;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.CustomerReference;
@@ -26,8 +25,6 @@ public class CS41Impl implements ServiceEndpoint {
 
   private UsageDataProvider provider;
   private SushiServiceInterface port;
-
-  private static final Logger LOG = Logger.getLogger(CS41Impl.class);
 
   public ReportRequest createReportRequest(String report, String beginDate, String endDate) {
     Requestor requestor = new Requestor();
