@@ -17,6 +17,7 @@ import org.niso.schemas.counter.MetricType;
 import org.niso.schemas.counter.PerformanceCounter;
 import org.niso.schemas.counter.Report;
 import org.niso.schemas.counter.ReportItem;
+import org.olf.erm.usage.counter41.Counter4Utils;
 import org.olf.erm.usage.counter41.csv.cellprocessor.IdentifierProcessor;
 import org.olf.erm.usage.counter41.csv.cellprocessor.MonthPerformanceProcessor;
 import org.olf.erm.usage.counter41.csv.cellprocessor.ReportingPeriodProcessor;
@@ -187,22 +188,9 @@ public class JournalReport1Mapper {
    * @return list of {@code YearMonth}
    */
   private List<YearMonth> getYearMonths() {
-    List<YearMonth> uniqueSortedYearMonths =
-        report
-            .getCustomer()
-            .get(0)
-            .getReportItems()
-            .stream()
-            .flatMap(ri -> ri.getItemPerformance().stream())
-            .map(
-                m ->
-                    YearMonth.of(
-                        m.getPeriod().getBegin().getYear(), m.getPeriod().getBegin().getMonth()))
-            .distinct()
-            .sorted()
-            .collect(Collectors.toList());
+    List<YearMonth> uniqueSortedYearMonths = Counter4Utils.getYearMonthsFromReport(report);
     if (uniqueSortedYearMonths.isEmpty()) {
-      return Collections.<YearMonth>emptyList();
+      return uniqueSortedYearMonths;
     } else {
       YearMonth first = uniqueSortedYearMonths.get(0);
       YearMonth last = uniqueSortedYearMonths.get(uniqueSortedYearMonths.size() - 1);
