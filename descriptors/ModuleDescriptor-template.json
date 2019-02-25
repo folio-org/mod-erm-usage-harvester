@@ -71,10 +71,6 @@
   ],
   "requires": [
     {
-      "id": "users-bl",
-      "version": "3.3"
-    },
-    {
       "id": "usage-data-providers",
       "version": "2.0"
     },
