@@ -100,6 +100,9 @@
                 <arg>-xjc-Xequals</arg>
                 <arg>-xjc-XhashCode</arg>
               </extraargs>
+              <bindingFiles>
+                <bindingFile>${basedir}/src/main/resources/binding.xml</bindingFile>
+              </bindingFiles>
             </wsdlOption>
           </wsdlOptions>
         </configuration>
