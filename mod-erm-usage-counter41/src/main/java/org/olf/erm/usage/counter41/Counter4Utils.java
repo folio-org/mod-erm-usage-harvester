@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.time.YearMonth;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +14,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.xml.bind.JAXB;
 import javax.xml.datatype.XMLGregorianCalendar;
+import org.apache.commons.lang3.SerializationUtils;
 import org.niso.schemas.counter.Report;
+import org.niso.schemas.counter.ReportItem;
 import org.niso.schemas.sushi.Exception;
 import org.niso.schemas.sushi.ExceptionSeverity;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
@@ -154,6 +157,63 @@ public class Counter4Utils {
         .distinct()
         .sorted()
         .collect(Collectors.toList());
+  }
+
+  public static class ReportMergeException extends java.lang.Exception {
+
+    private static final long serialVersionUID = 1L;
+
+    public ReportMergeException() {}
+
+    public ReportMergeException(String message) {
+      super(message);
+    }
+  }
+
+  public static Report merge(Collection<Report> c) throws ReportMergeException {
+    return merge(c.toArray(new Report[0]));
+  }
+
+  public static Report merge(Report... reports) throws ReportMergeException {
+    Report[] clonedReports = SerializationUtils.clone(reports);
+
+    if (!Stream.of(clonedReports).allMatch(r -> r.getCustomer().size() == 1)) {
+      throw new ReportMergeException(
+          "At least one report contains invalid customer definitions (expecting one customer per report)");
+    }
+
+    // check that provided reports have the same attributes
+    if (Stream.of(clonedReports)
+            .map(
+                r -> {
+                  // reset some attributes for equals() check
+                  r.getCustomer().get(0).getReportItems().clear();
+                  r.getCreated().clear();
+                  r.setID(null);
+                  return r;
+                })
+            .distinct()
+            .count()
+        != 1) throw new ReportMergeException("Report attributes do not match");
+
+    List<ReportItem> sortedCombinedReportItems =
+        Stream.of(reports)
+            .flatMap(r -> r.getCustomer().get(0).getReportItems().stream())
+            .collect(
+                Collectors.toMap(
+                    ReportItem::getItemIdentifier,
+                    ri -> ri,
+                    (a, b) -> {
+                      a.getItemPerformance().addAll(b.getItemPerformance());
+                      return a;
+                    }))
+            .values()
+            .stream()
+            .sorted((r1, r2) -> r1.getItemName().compareTo(r2.getItemName()))
+            .collect(Collectors.toList());
+
+    clonedReports[0].getCustomer().get(0).getReportItems().addAll(sortedCombinedReportItems);
+    return clonedReports[0];
   }
 
   private Counter4Utils() {}
