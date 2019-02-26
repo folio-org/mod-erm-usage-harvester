@@ -1,0 +1,124 @@
+{
+  "id": "d6066bcc-f878-419d-8af9-52c3703ea8b1",
+  "downloadTime": "2019-02-12T08:49:19.696+0000",
+  "release": "4",
+  "reportName": "JR1",
+  "yearMonth": "2018-12",
+  "customerId": "CustomerId123",
+  "vendorId": "48b1c9c4-cfb6-47fc-b34f-cff9cd2f8240",
+  "platformId": "uuid-123456789",
+  "providerId": "4b659cb9-e4bb-493d-ae30-5f5690c54802",
+  "format": "???",
+  "report": {
+    "vendor": {
+      "id": "SEM001",
+      "name": "Semantico Ltd.",
+      "contact": [
+        {
+          "email": "info@semantico.com",
+          "contact": "tbc"
+        }
+      ],
+      "logoUrl": "http://www.semantico.com/wp-content/themes/semantico/images/logo-new.png",
+      "webSiteUrl": "http://www.semantico.com"
+    },
+    "created": "2019-02-11T12:35:45.066Z",
+    "name": "Journal Report 1 (R4)",
+    "id": "1549888545066",
+    "title": "JR1:4",
+    "version": "4",
+    "customer": [
+      {
+        "id": "CustomerId123",
+        "contact": [],
+        "reportItems": [
+          {
+            "itemDate": [],
+            "itemName": "19th-Century Music",
+            "itemDataType": "JOURNAL",
+            "itemPlatform": "Ithaka",
+            "itemAttribute": [],
+            "itemPublisher": "University of California Press",
+            "itemIdentifier": [
+              {
+                "type": "ONLINE_ISSN",
+                "value": "1533-8606"
+              },
+              {
+                "type": "PRINT_ISSN",
+                "value": "0148-2076"
+              }
+            ],
+            "itemContributor": [],
+            "itemPerformance": [
+              {
+                "period": {
+                  "end": "2019-01-31",
+                  "begin": "2019-01-01"
+                },
+                "category": "REQUESTS",
+                "instance": [
+                  {
+                    "count": 5,
+                    "metricType": "FT_HTML"
+                  },
+                  {
+                    "count": 4,
+                    "metricType": "FT_PDF"
+                  },
+                  {
+                    "count": 9,
+                    "metricType": "FT_TOTAL"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "itemDate": [],
+            "itemName": "21th-Century Music",
+            "itemDataType": "JOURNAL",
+            "itemPlatform": "Ithaka",
+            "itemAttribute": [],
+            "itemPublisher": "University of California Press",
+            "itemIdentifier": [
+              {
+                "type": "ONLINE_ISSN",
+                "value": "3456-7890"
+              },
+              {
+                "type": "PRINT_ISSN",
+                "value": "4567-8901"
+              }
+            ],
+            "itemContributor": [],
+            "itemPerformance": [
+              {
+                "period": {
+                  "end": "2019-02-28",
+                  "begin": "2019-02-01"
+                },
+                "category": "REQUESTS",
+                "instance": [
+                  {
+                    "count": 3,
+                    "metricType": "FT_HTML"
+                  },
+                  {
+                    "count": 4,
+                    "metricType": "FT_PDF"
+                  },
+                  {
+                    "count": 7,
+                    "metricType": "FT_TOTAL"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "institutionalIdentifier": []
+      }
+    ]
+  }
+}
