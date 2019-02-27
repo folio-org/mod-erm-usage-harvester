@@ -1,23 +1,32 @@
 package org.olf.erm.usage.counter41;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import org.apache.commons.io.IOUtils;
+import javax.xml.bind.JAXB;
 import org.junit.Test;
+import org.niso.schemas.counter.Report;
+import com.google.common.io.Files;
 import com.google.common.io.Resources;
 
 public class Counter4UtilsTest {
 
   @Test
-  public void testFromString() throws IOException, URISyntaxException {
-    String content =
-        IOUtils.toString(Resources.getResource("reportJSTOR.xml").toURI(), StandardCharsets.UTF_8);
-    System.out.println(content);
-    String string = Counter4Utils.toJSON(Counter4Utils.fromString(content));
-    System.out.println(string);
+  public void testConversions() throws IOException, URISyntaxException {
+    File file = new File(Resources.getResource("reportJSTOR.xml").getFile());
+
+    Report fromXML = JAXB.unmarshal(file, Report.class);
+    Report fromXML2 =
+        Counter4Utils.fromString(Files.asCharSource(file, StandardCharsets.UTF_8).read());
+    Report fromJSON = Counter4Utils.fromJSON(Counter4Utils.toJSON(fromXML));
+    Report fromJSON2 = Counter4Utils.fromJSON(Counter4Utils.mapper.writeValueAsString(fromXML));
+
+    assertThat(fromJSON).isEqualToComparingFieldByFieldRecursively(fromXML);
+    assertThat(fromJSON).isEqualToComparingFieldByFieldRecursively(fromJSON2);
+    assertThat(fromJSON).isEqualToComparingFieldByFieldRecursively(fromXML2);
   }
 
   @Test

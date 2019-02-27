@@ -27,7 +27,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 
 public class Counter4Utils {
 
-  private static ObjectMapper mapper = createObjectMapper();
+  public static final ObjectMapper mapper = createObjectMapper();
   private static Map<String, List<String>> mappingEntries = new HashMap<>();
 
   static {
@@ -61,7 +61,7 @@ public class Counter4Utils {
   }
 
   public static String toJSON(Report report) {
-    String str = "";
+    String str = null;
     try {
       str = mapper.writeValueAsString(report);
     } catch (JsonProcessingException e) {
