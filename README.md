@@ -66,9 +66,7 @@ Configuration is done via JSON file
   "moduleIds": [
     "mod-erm-usage-1.0.0",
     "mod-erm-usage-harvester-1.0.0"
-  ],
-  "loginPath": "/bl-users/login",
-  "requiredPerm": "ermusage.all"
+  ]
 }
 ```
 A [default configuration](mod-erm-usage-harvester-core/config-template.json) is read from `config.json` in the execution directory. It can be overridden by using the `-conf` parameter or setting the `CONFIG` environment variable.

@@ -4,12 +4,8 @@ import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.folio.okapi.common.XOkapiHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.common.base.Strings;
-import com.google.common.net.HttpHeaders;
-import com.google.common.net.MediaType;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
@@ -22,7 +18,6 @@ public class OkapiClient {
 
   private final String okapiUrl;
   private final String tenantsPath;
-  private final String loginPath;
   private final List<String> moduleIds;
   private final Vertx vertx;
 
@@ -30,7 +25,6 @@ public class OkapiClient {
     // TODO: check for null values
     this.okapiUrl = cfg.getString("okapiUrl");
     this.tenantsPath = cfg.getString("tenantsPath");
-    this.loginPath = cfg.getString("loginPath");
     this.moduleIds =
         cfg.getJsonArray("moduleIds").stream().map(Object::toString).collect(Collectors.toList());
     this.vertx = vertx;
@@ -122,54 +116,6 @@ public class OkapiClient {
                     String.format(
                         "Tenant: %s, failed retrieving enabled modules: %s",
                         tenantId, ar.cause().getMessage()));
-              }
-            });
-    return future;
-  }
-
-  public Future<Token> getAuthToken(
-      String tenantId, String username, String password, String requiredPerm) {
-    JsonObject userCred = new JsonObject().put("username", username).put("password", password);
-    WebClient client = WebClient.create(vertx);
-    Future<Token> future = Future.future();
-    client
-        .postAbs(okapiUrl + loginPath)
-        .addQueryParam("expandPermissions", "false")
-        .addQueryParam("fullPermissions", "false")
-        .putHeader(XOkapiHeaders.TENANT, tenantId)
-        .putHeader(HttpHeaders.CONTENT_TYPE, MediaType.JSON_UTF_8.toString())
-        .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
-        .sendJson(
-            userCred,
-            h -> {
-              if (h.succeeded()) {
-                String token = h.result().getHeader(XOkapiHeaders.TOKEN);
-                if (h.result().statusCode() != 201) {
-                  future.fail(
-                      "Could not authenticate for Tenant "
-                          + tenantId
-                          + ": "
-                          + h.result().statusCode()
-                          + " "
-                          + h.result().statusMessage()
-                          + " "
-                          + h.result().bodyAsJsonObject().getString("errorMessage"));
-                } else if (Strings.isNullOrEmpty(token)) {
-                  future.fail(
-                      "No token received: "
-                          + h.result().statusCode()
-                          + " "
-                          + h.result().statusMessage());
-                } else if (h.result()
-                    .bodyAsJsonObject()
-                    .getJsonArray("permissions.permissions", new JsonArray())
-                    .contains(requiredPerm)) {
-                  future.fail("Required permission not found");
-                } else {
-                  future.complete(new Token(token));
-                }
-              } else {
-                future.fail(h.cause());
               }
             });
     return future;

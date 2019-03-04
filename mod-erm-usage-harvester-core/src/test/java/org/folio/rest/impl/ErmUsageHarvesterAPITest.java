@@ -45,9 +45,7 @@ public class ErmUsageHarvesterAPITest {
           + "  \"moduleIds\": [\n"
           + "    \"mod-erm-usage-0.2.0-SNAPSHOT\",\n"
           + "    \"mod-erm-usage-harvester-0.2.0-SNAPSHOT\"\n"
-          + "  ],\n"
-          + "  \"loginPath\": \"/bl-users/login\",\n"
-          + "  \"requiredPerm\": \"ermusage.all\"\n"
+          + "  ]\n"
           + "}\n"
           + "";
 
