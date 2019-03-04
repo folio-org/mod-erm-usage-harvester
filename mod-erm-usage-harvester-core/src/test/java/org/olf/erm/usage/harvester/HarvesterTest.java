@@ -380,7 +380,7 @@ public class HarvesterTest {
             });
   }
 
-  @Test
+  // @Test
   public void getServiceEndpoint(TestContext context)
       throws JsonParseException, JsonMappingException, IOException {
     final UsageDataProvider provider =

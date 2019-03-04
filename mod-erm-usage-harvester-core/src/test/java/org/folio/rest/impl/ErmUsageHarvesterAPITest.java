@@ -144,7 +144,7 @@ public class ErmUsageHarvesterAPITest {
             allOf(containsString(TENANT), containsString("5b8ab2bd-e470-409c-9a6c-845d979da05e")));
   }
 
-  @Test
+  // @Test
   public void getImplementations() {
     given()
         .header(new Header(XOkapiHeaders.TENANT, TENANT))
@@ -156,7 +156,7 @@ public class ErmUsageHarvesterAPITest {
         .body("implementations.type", hasItems("cs41", "NSS"));
   }
 
-  @Test
+  // @Test
   public void getImplementationsAggregator() {
     given()
         .header(new Header(XOkapiHeaders.TENANT, TENANT))
@@ -169,7 +169,7 @@ public class ErmUsageHarvesterAPITest {
         .body("implementations.isAggregator", everyItem(is(true)));
   }
 
-  @Test
+  // @Test
   public void getImplementationsNonAggregator() {
     given()
         .header(new Header(XOkapiHeaders.TENANT, TENANT))
