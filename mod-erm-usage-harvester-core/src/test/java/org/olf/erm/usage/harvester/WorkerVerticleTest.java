@@ -11,12 +11,14 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.time.YearMonth;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.CounterReport;
+import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.After;
 import org.junit.Before;
@@ -35,6 +37,7 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -382,7 +385,7 @@ public class WorkerVerticleTest {
   }
 
   @Test
-  public void getServiceEndpoint(TestContext context)
+  public void testGetServiceEndpoint(TestContext context)
       throws JsonParseException, JsonMappingException, IOException {
     final UsageDataProvider provider =
         new ObjectMapper()
@@ -390,6 +393,55 @@ public class WorkerVerticleTest {
                 Resources.toString(
                     Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
                 UsageDataProvider.class);
+
+    Async async = context.async();
+    harvester
+        .getServiceEndpoint(provider)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                context.assertTrue(ar.result() != null);
+                async.complete();
+              } else {
+                context.fail(ar.cause());
+              }
+            });
+  }
+
+  @Test
+  public void testGetServiceEndpointNoImplementation(TestContext context)
+      throws JsonParseException, JsonMappingException, IOException {
+    final UsageDataProvider provider =
+        new ObjectMapper()
+            .readValue(
+                Resources.toString(
+                    Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+                UsageDataProvider.class);
+    provider.getHarvestingConfig().getSushiConfig().setServiceType("test3");
+
+    Async async = context.async();
+    harvester
+        .getServiceEndpoint(provider)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                context.fail();
+              } else {
+                assertThat(ar.cause().getMessage()).contains("No service implementation");
+                async.complete();
+              }
+            });
+  }
+
+  @Test
+  public void testGetServiceEndpointAggregator(TestContext context)
+      throws DecodeException, IOException {
+    final UsageDataProvider provider =
+        Json.decodeValue(
+            Resources.toString(
+                Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+            UsageDataProvider.class);
+    provider.getHarvestingConfig().setHarvestVia(HarvestVia.AGGREGATOR);
 
     stubFor(
         get(urlEqualTo(
@@ -402,10 +454,60 @@ public class WorkerVerticleTest {
         .setHandler(
             ar -> {
               if (ar.succeeded()) {
-                context.assertTrue(ar.result() != null);
+                assertThat(ar.result()).isNotNull();
                 async.complete();
               } else {
-                context.fail();
+                context.fail(ar.cause());
+              }
+            });
+  }
+
+  @Test
+  public void testGetServiceEndpointAggregatorNull(TestContext context)
+      throws DecodeException, IOException {
+    final UsageDataProvider provider =
+        Json.decodeValue(
+            Resources.toString(
+                Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+            UsageDataProvider.class);
+    provider.getHarvestingConfig().setHarvestVia(HarvestVia.AGGREGATOR);
+    provider.getHarvestingConfig().setAggregator(null);
+
+    Async async = context.async();
+    harvester
+        .getServiceEndpoint(provider)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                assertThat(ar.result()).isNotNull();
+                async.complete();
+              } else {
+                context.fail(ar.cause());
+              }
+            });
+  }
+
+  @Test
+  public void testGetServiceEndpointAggregatorIdNull(TestContext context)
+      throws DecodeException, IOException {
+    final UsageDataProvider provider =
+        Json.decodeValue(
+            Resources.toString(
+                Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
+            UsageDataProvider.class);
+    provider.getHarvestingConfig().setHarvestVia(HarvestVia.AGGREGATOR);
+    provider.getHarvestingConfig().getAggregator().setId(null);
+
+    Async async = context.async();
+    harvester
+        .getServiceEndpoint(provider)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                assertThat(ar.result()).isNotNull();
+                async.complete();
+              } else {
+                context.fail(ar.cause());
               }
             });
   }
