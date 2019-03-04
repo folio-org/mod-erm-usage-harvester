@@ -42,9 +42,9 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class HarvesterTest {
+public class WorkerVerticleTest {
 
-  private static final Logger LOG = LoggerFactory.getLogger(HarvesterTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(WorkerVerticleTest.class);
 
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
   @Rule public Timeout timeoutRule = Timeout.seconds(5);
