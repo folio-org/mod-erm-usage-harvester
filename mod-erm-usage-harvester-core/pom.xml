@@ -101,31 +101,6 @@
   <build>
     <plugins>
       <plugin>
-        <groupId>com.coderplus.maven.plugins</groupId>
-        <artifactId>copy-rename-maven-plugin</artifactId>
-        <version>1.0</version>
-        <executions>
-          <execution>
-            <id>rename-descriptor-outputs</id>
-            <phase>generate-resources</phase>
-            <goals>
-              <goal>rename</goal>
-            </goals>
-            <configuration>
-              <fileSets>
-                <fileSet>
-                  <sourceFile>${project.build.directory}/config-template.json
-                  </sourceFile>
-                  <destinationFile>${project.build.directory}/config.json
-                  </destinationFile>
-                </fileSet>
-              </fileSets>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>1.5.0</version>

@@ -17,8 +17,8 @@ $ mvn clean install
 ## Run plain jar
 
 ```
-$ cd mod-erm-usage-harvester-core
-$ java -jar target/mod-erm-usage-harvester-core-fat.jar -conf target/config.json
+$ cd mod-erm-usage-harvester-bundle
+$ java -jar target/mod-erm-usage-harvester-bundle-fat.jar -conf target/config.json
 ```
 
 ## Run via Docker
