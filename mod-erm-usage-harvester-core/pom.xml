@@ -37,16 +37,6 @@
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.olf</groupId>
-      <artifactId>mod-erm-usage-harvester-nss</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.olf</groupId>
-      <artifactId>mod-erm-usage-harvester-cs41</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.folio.okapi</groupId>
       <artifactId>okapi-common</artifactId>
       <version>${okapi.version}</version>
@@ -66,8 +56,6 @@
       <artifactId>commons-io</artifactId>
       <version>2.6</version>
     </dependency>
-    <!-- <dependency> <groupId>com.google.guava</groupId> <artifactId>guava</artifactId> 
-      <version>26.0-jre</version> </dependency> -->
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
@@ -238,10 +226,6 @@
               </resources>
             </configuration>
           </execution>
-          <!-- <execution> <id>filter-descriptor-inputs</id> <phase>generate-resources</phase> 
-            <goals> <goal>copy-resources</goal> </goals> <configuration> <outputDirectory>${project.build.directory}</outputDirectory> 
-            <resources> <resource> <directory>${basedir}/descriptors</directory> <include>*Descriptor*-template.json</include> 
-            <filtering>true</filtering> </resource> </resources> </configuration> </execution> -->
           <execution>
             <id>filter-descriptor-inputs</id>
             <phase>generate-resources</phase>
@@ -282,41 +266,6 @@
         </executions>
       </plugin>
 
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>2.3</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <transformers>
-                <transformer
-                  implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                  <resource>META-INF/cxf/bus-extensions.txt</resource>
-                </transformer>
-                <!-- merge services -->
-                <transformer
-                  implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                <transformer
-                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <manifestEntries>
-                    <Main-Class>org.olf.erm.usage.harvester.Launcher</Main-Class>
-                    <!-- <Main-Verticle>org.olf.erm.usage.harvester.HarvesterVerticle</Main-Verticle> 
-                      <Main-Class>org.folio.rest.RestLauncher</Main-Class> -->
-                    <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
-                  </manifestEntries>
-                </transformer>
-              </transformers>
-              <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
