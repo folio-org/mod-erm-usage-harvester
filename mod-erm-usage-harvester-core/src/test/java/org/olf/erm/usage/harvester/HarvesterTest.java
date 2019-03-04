@@ -16,7 +16,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.time.YearMonth;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.After;
@@ -26,6 +25,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,7 +44,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class HarvesterTest {
 
-  private static final Logger LOG = Logger.getLogger(HarvesterTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(HarvesterTest.class);
 
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
   @Rule public Timeout timeoutRule = Timeout.seconds(5);
@@ -166,7 +167,7 @@ public class HarvesterTest {
         .setHandler(
             ar -> {
               context.assertTrue(ar.failed());
-              LOG.error(ar.cause());
+              LOG.error(ar.cause().getMessage(), ar.cause());
               async.complete();
             });
   }

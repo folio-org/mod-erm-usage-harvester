@@ -3,11 +3,12 @@ package org.folio.rest.impl;
 import java.util.Map;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import org.apache.log4j.Logger;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.resource.Start;
 import org.olf.erm.usage.harvester.OkapiClient;
 import org.olf.erm.usage.harvester.Token;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -20,7 +21,7 @@ import io.vertx.ext.web.client.WebClient;
 
 public class StartAPI implements Start {
 
-  private static final Logger LOG = Logger.getLogger(StartAPI.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StartAPI.class);
 
   public void processAllTenants(Vertx vertx, Token token) {
     JsonObject config = vertx.getOrCreateContext().config();

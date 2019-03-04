@@ -9,13 +9,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.Vertx;
@@ -28,7 +29,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class OkapiClientTest {
 
-  private static final Logger LOG = Logger.getLogger(OkapiClientTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(OkapiClientTest.class);
 
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
   @Rule public Timeout timeoutRule = Timeout.seconds(5);
@@ -140,7 +141,7 @@ public class OkapiClientTest {
         .setHandler(
             ar -> {
               context.assertTrue(ar.failed());
-              LOG.error(ar.cause());
+              LOG.error(ar.cause().getMessage(), ar.cause());
               async.complete();
             });
   }

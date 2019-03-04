@@ -1,7 +1,8 @@
 package org.olf.erm.usage.harvester.util;
 
-import org.apache.log4j.Logger;
 import org.folio.rest.jaxrs.model.CounterReports;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.client.WebClient;
@@ -9,7 +10,7 @@ import io.vertx.ext.web.client.WebClient;
 public class Utils {
 
   private static final String url = "http://localhost:8081/counter-reports";
-  private static final Logger LOG = Logger.getLogger(Utils.class);
+  private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
 
   public static void clearCounterReports(int i) {
     WebClient client = WebClient.create(Vertx.vertx());
@@ -40,11 +41,11 @@ public class Utils {
                                                 ar2.result().statusCode(),
                                                 ar2.result().statusMessage()));
                                       } else {
-                                        LOG.error(ar.cause());
+                                        LOG.error(ar.cause().getMessage(), ar.cause());
                                       }
                                     }));
               } else {
-                LOG.error(ar.cause());
+                LOG.error(ar.cause().getMessage(), ar.cause());
               }
             });
   }

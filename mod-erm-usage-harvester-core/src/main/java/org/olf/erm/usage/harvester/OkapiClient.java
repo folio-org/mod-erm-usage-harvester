@@ -4,8 +4,9 @@ import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.log4j.Logger;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.google.common.base.Strings;
 import com.google.common.net.HttpHeaders;
 import com.google.common.net.MediaType;
@@ -17,7 +18,7 @@ import io.vertx.ext.web.client.WebClient;
 
 public class OkapiClient {
 
-  private static final Logger LOG = Logger.getLogger(OkapiClient.class);
+  private static final Logger LOG = LoggerFactory.getLogger(OkapiClient.class);
 
   private final String okapiUrl;
   private final String tenantsPath;

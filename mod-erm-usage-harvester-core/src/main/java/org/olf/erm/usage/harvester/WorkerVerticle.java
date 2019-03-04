@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import org.apache.log4j.Logger;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Aggregator;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
@@ -22,6 +21,8 @@ import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.google.common.net.HttpHeaders;
 import com.google.common.net.MediaType;
 import io.vertx.core.AbstractVerticle;
@@ -38,7 +39,7 @@ import io.vertx.ext.web.client.WebClient;
 
 public class WorkerVerticle extends AbstractVerticle {
 
-  private static final Logger LOG = Logger.getLogger(WorkerVerticle.class);
+  private static final Logger LOG = LoggerFactory.getLogger(WorkerVerticle.class);
 
   private String okapiUrl;
   private String reportsPath;
@@ -443,7 +444,7 @@ public class WorkerVerticle extends AbstractVerticle {
                             url));
                 future.complete(ar.result());
               } else {
-                LOG.error(ar.cause());
+                LOG.error(ar.cause().getMessage(), ar.cause());
                 future.fail(ar.cause());
               }
             });
@@ -540,7 +541,7 @@ public class WorkerVerticle extends AbstractVerticle {
                   }
                 }
               } else {
-                LOG.error(h.cause());
+                LOG.error(h.cause().getMessage(), h.cause());
                 vertx.undeploy(this.deploymentID());
               }
             });

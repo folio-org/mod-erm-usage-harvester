@@ -7,10 +7,9 @@ import java.util.stream.Collectors;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import org.apache.log4j.Logger;
 import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.rest.jaxrs.model.HarvesterSetting;
 import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.HarvesterSetting;
 import org.folio.rest.jaxrs.resource.ErmUsageHarvester;
 import org.folio.rest.persist.PostgresClient;
 import org.olf.erm.usage.harvester.OkapiClient;
@@ -18,6 +17,8 @@ import org.olf.erm.usage.harvester.Token;
 import org.olf.erm.usage.harvester.WorkerVerticle;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.google.common.base.Strings;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -32,7 +33,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
   private static final String SETTINGS_TABLE = "harvester_settings";
   private static final String SETTINGS_ID = "8bf5fe33-5ec8-420c-a86d-6320c55ba554";
-  private static final Logger LOG = Logger.getLogger(ErmUsageHarvesterAPI.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ErmUsageHarvesterAPI.class);
   public static final Error ERR_NO_TOKEN =
       new Error().withType("Error").withMessage("No Okapi Token provided");
 
