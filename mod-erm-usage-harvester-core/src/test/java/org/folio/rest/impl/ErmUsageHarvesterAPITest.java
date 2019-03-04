@@ -142,7 +142,7 @@ public class ErmUsageHarvesterAPITest {
             allOf(containsString(TENANT), containsString("5b8ab2bd-e470-409c-9a6c-845d979da05e")));
   }
 
-  // @Test
+  @Test
   public void getImplementations() {
     given()
         .header(new Header(XOkapiHeaders.TENANT, TENANT))
@@ -151,10 +151,10 @@ public class ErmUsageHarvesterAPITest {
         .then()
         .statusCode(200)
         .body("implementations.size()", greaterThanOrEqualTo(2))
-        .body("implementations.type", hasItems("cs41", "NSS"));
+        .body("implementations.type", hasItems("test1", "test2"));
   }
 
-  // @Test
+  @Test
   public void getImplementationsAggregator() {
     given()
         .header(new Header(XOkapiHeaders.TENANT, TENANT))
@@ -163,11 +163,11 @@ public class ErmUsageHarvesterAPITest {
         .then()
         .statusCode(200)
         .body("implementations.size()", greaterThanOrEqualTo(1))
-        .body("implementations.type", hasItem("NSS"))
+        .body("implementations.type", hasItem("test2"))
         .body("implementations.isAggregator", everyItem(is(true)));
   }
 
-  // @Test
+  @Test
   public void getImplementationsNonAggregator() {
     given()
         .header(new Header(XOkapiHeaders.TENANT, TENANT))
@@ -176,7 +176,7 @@ public class ErmUsageHarvesterAPITest {
         .then()
         .statusCode(200)
         .body("implementations.size()", greaterThanOrEqualTo(1))
-        .body("implementations.type", hasItem("cs41"))
+        .body("implementations.type", hasItem("test1"))
         .body("implementations.isAggregator", everyItem(is(false)));
   }
 }
