@@ -1,7 +1,9 @@
 package org.olf.erm.usage.harvester;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
@@ -10,25 +12,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import java.io.IOException;
-import java.time.YearMonth;
-import org.apache.commons.lang3.StringUtils;
-import org.folio.rest.jaxrs.model.CounterReport;
-import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
-import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
-import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,6 +32,30 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.time.YearMonth;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.jaxrs.model.CounterReport;
+import org.folio.rest.jaxrs.model.CounterReports;
+import org.folio.rest.jaxrs.model.HarvestingConfig;
+import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
+import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
+import org.folio.rest.jaxrs.model.Report;
+import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.Timeout;
+import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RunWith(VertxUnitRunner.class)
 public class WorkerVerticleTest {
@@ -505,6 +518,125 @@ public class WorkerVerticleTest {
             ar -> {
               if (ar.succeeded()) {
                 assertThat(ar.result()).isNotNull();
+                async.complete();
+              } else {
+                context.fail(ar.cause());
+              }
+            });
+  }
+
+  private CounterReports createCounterSampleReports() {
+    UUID uuid = UUID.randomUUID();
+    List<CounterReport> reports =
+        Stream.iterate(YearMonth.of(2017, 12), m -> m.plusMonths(1))
+            .limit(3)
+            .map(
+                m ->
+                    new CounterReport()
+                        .withReport(new Report())
+                        .withProviderId(uuid.toString())
+                        .withYearMonth(m.toString()))
+            .collect(Collectors.toList());
+    return new CounterReports().withCounterReports(reports);
+  }
+
+  @Test
+  public void testGetValidMonths(TestContext context) {
+    String encode = Json.encodePrettily(createCounterSampleReports());
+    stubFor(
+        get(urlPathEqualTo("/counter-reports"))
+            .willReturn(aResponse().withStatus(200).withBody(encode)));
+
+    Async async = context.async();
+    harvester
+        .getValidMonths("providerId", "JR1", YearMonth.of(2017, 12), YearMonth.of(2018, 2))
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                assertThat(ar.result())
+                    .isEqualTo(
+                        Arrays.asList(
+                            YearMonth.of(2017, 12), YearMonth.of(2018, 1), YearMonth.of(2018, 2)));
+                async.complete();
+              } else {
+                context.fail(ar.cause());
+              }
+            });
+  }
+
+  @Test
+  public void testGetValidMonthsFail(TestContext context) {
+    stubFor(get(urlPathEqualTo("/counter-reports")).willReturn(aResponse().withStatus(500)));
+    Async async = context.async();
+    async.complete();
+    harvester
+        .getValidMonths("providerId", "JR1", YearMonth.of(2017, 12), YearMonth.of(2018, 2))
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                context.fail(ar.cause());
+              } else {
+                assertThat(ar.cause().getMessage()).contains("Received status code", "500");
+                async.complete();
+              }
+            });
+  }
+
+  @Test
+  public void testGetFetchListHarvestingNotActive(TestContext context) {
+    UsageDataProvider provider =
+        new UsageDataProvider()
+            .withHarvestingConfig(
+                new HarvestingConfig().withHarvestingStatus(HarvestingStatus.INACTIVE));
+
+    Async async = context.async();
+    harvester
+        .getFetchList(provider)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                context.fail();
+              } else {
+                assertThat(ar.cause()).hasMessageContaining("not active");
+                async.complete();
+              }
+            });
+  }
+
+  @Test
+  public void testGetFetchList(TestContext context) {
+    String uuid = "97329ea7-f351-458a-a460-71aa6db75e35";
+    UsageDataProvider provider =
+        new UsageDataProvider()
+            .withId(uuid)
+            .withHarvestingConfig(
+                new HarvestingConfig()
+                    .withHarvestingStatus(HarvestingStatus.ACTIVE)
+                    .withHarvestingStart("2017-12")
+                    .withHarvestingEnd("2018-03")
+                    .withRequestedReports(Arrays.asList("JR1", "JR2", "JR3")));
+
+    stubFor(
+        get(urlPathEqualTo("/counter-reports"))
+            .willReturn(
+                aResponse()
+                    .withStatus(200)
+                    .withBody(Json.encodePrettily(createCounterSampleReports()))));
+
+    Async async = context.async();
+    harvester
+        .getFetchList(provider)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                System.out.println(ar.result());
+                assertThat(ar.result().size()).isEqualTo(3);
+                final String begin = "2018-03-01";
+                final String end = "2018-03-31";
+                assertThat(ar.result().contains(new FetchItem("JR1", begin, end))).isTrue();
+                assertThat(ar.result().contains(new FetchItem("JR2", begin, end))).isTrue();
+                assertThat(ar.result().contains(new FetchItem("JR3", begin, end))).isTrue();
+                verify(exactly(3), getRequestedFor(urlPathEqualTo("/counter-reports")));
                 async.complete();
               } else {
                 context.fail(ar.cause());
