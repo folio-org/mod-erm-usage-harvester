@@ -2,6 +2,20 @@ package org.olf.erm.usage.harvester;
 
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
+
+import com.google.common.net.HttpHeaders;
+import com.google.common.net.MediaType;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
 import java.sql.Date;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -23,19 +37,6 @@ import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.common.net.HttpHeaders;
-import com.google.common.net.MediaType;
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.HttpResponse;
-import io.vertx.ext.web.client.WebClient;
 
 public class WorkerVerticle extends AbstractVerticle {
 
@@ -372,7 +373,14 @@ public class WorkerVerticle extends AbstractVerticle {
                                         + ", "
                                         + h.cause().getMessage());
                               }
-                              postReport(report).setHandler(h2 -> complete.complete());
+                              postReport(report)
+                                  .setHandler(
+                                      h2 -> {
+                                        complete.complete();
+                                        if (h2.failed()) {
+                                          LOG.error(h2.cause().getMessage());
+                                        }
+                                      });
                             });
                   });
               future.complete(futList);
@@ -472,13 +480,25 @@ public class WorkerVerticle extends AbstractVerticle {
               if (handler.succeeded()) {
                 if (handler.result().statusCode() == 200) {
                   CounterReports collection = handler.result().bodyAsJson(CounterReports.class);
-                  if (collection.getCounterReports().size() == 1) {
+                  if (collection.getCounterReports().size() == 0) {
+                    future.complete(null);
+                  } else if (collection.getCounterReports().size() == 1) {
                     future.complete(collection.getCounterReports().get(0));
                   } else {
-                    future.complete(null);
+                    String msg =
+                        String.format(
+                            "Tenant: %s, Provider: %s, %s",
+                            token.getTenantId(),
+                            providerId,
+                            "Too many results for "
+                                + reportName
+                                + ", "
+                                + month
+                                + ", not processed");
+                    future.fail(msg);
                   }
                 } else {
-                  future.complete(null);
+                  future.fail("received status code " + handler.result().statusCode());
                 }
               } else {
                 future.fail(handler.cause());
