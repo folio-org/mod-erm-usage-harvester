@@ -1,8 +1,8 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import io.vertx.core.Future;
 
 public class Test1Provider implements ServiceEndpointProvider {
 
@@ -27,7 +27,7 @@ public class Test1Provider implements ServiceEndpointProvider {
 
       @Override
       public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
-        return null;
+        return Future.succeededFuture("{ }");
       }
     };
   }

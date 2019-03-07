@@ -16,14 +16,13 @@ import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
@@ -35,6 +34,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
 import java.time.YearMonth;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -45,8 +45,12 @@ import org.folio.rest.jaxrs.model.CounterReports;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
+import org.folio.rest.jaxrs.model.Platform;
 import org.folio.rest.jaxrs.model.Report;
+import org.folio.rest.jaxrs.model.SushiConfig;
+import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.folio.rest.jaxrs.model.Vendor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -83,12 +87,9 @@ public class WorkerVerticleTest {
           + "}";
 
   private static Vertx vertx;
-  private String okapiUrl;
-  private String tenantsPath;
   private String reportsPath;
   private String providerPath;
   private String aggregatorPath;
-  private String moduleId;
 
   @BeforeClass
   public static void beforeClass(TestContext context) {
@@ -112,12 +113,9 @@ public class WorkerVerticleTest {
         new DeploymentOptions().setConfig(cfg),
         context.asyncAssertSuccess(
             h -> {
-              okapiUrl = harvester.config().getString("okapiUrl");
-              tenantsPath = harvester.config().getString("tenantsPath");
               reportsPath = harvester.config().getString("reportsPath");
               providerPath = harvester.config().getString("providerPath");
               aggregatorPath = harvester.config().getString("aggregatorPath");
-              moduleId = harvester.config().getString("moduleId");
             }));
   }
 
@@ -189,8 +187,7 @@ public class WorkerVerticleTest {
   }
 
   @Test
-  public void getAggregatorSettingsBodyValid(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void getAggregatorSettingsBodyValid(TestContext context) throws IOException {
     final UsageDataProvider provider =
         new ObjectMapper()
             .readValue(
@@ -214,8 +211,7 @@ public class WorkerVerticleTest {
   }
 
   @Test
-  public void getAggregatorSettingsBodyValidNoAggregator(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void getAggregatorSettingsBodyValidNoAggregator(TestContext context) throws IOException {
     final UsageDataProvider provider1 =
         new ObjectMapper()
             .readValue(
@@ -255,8 +251,7 @@ public class WorkerVerticleTest {
   }
 
   @Test
-  public void getAggregatorSettingsBodyInvalid(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void getAggregatorSettingsBodyInvalid(TestContext context) throws IOException {
     final UsageDataProvider provider =
         new ObjectMapper()
             .readValue(
@@ -281,8 +276,7 @@ public class WorkerVerticleTest {
   }
 
   @Test
-  public void getAggregatorSettingsResponseInvalid(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void getAggregatorSettingsResponseInvalid(TestContext context) throws IOException {
     final UsageDataProvider provider =
         new ObjectMapper()
             .readValue(
@@ -308,8 +302,7 @@ public class WorkerVerticleTest {
   }
 
   @Test
-  public void getAggregatorSettingsNoService(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void getAggregatorSettingsNoService(TestContext context) throws IOException {
     final UsageDataProvider provider =
         new ObjectMapper()
             .readValue(
@@ -329,8 +322,7 @@ public class WorkerVerticleTest {
   }
 
   @Test
-  public void createReportJsonObject()
-      throws JsonParseException, JsonMappingException, IOException {
+  public void createReportJsonObject() throws IOException {
     final UsageDataProvider provider =
         new ObjectMapper()
             .readValue(
@@ -340,13 +332,13 @@ public class WorkerVerticleTest {
 
     final String reportName = "JR1";
     final String reportData = new JsonObject().put("data", "testreport").toString();
-    final YearMonth yearMonth = YearMonth.of(2018, 01);
+    final YearMonth yearMonth = YearMonth.of(2018, 1);
 
     CounterReport result =
         harvester.createCounterReport(reportData, reportName, provider, yearMonth);
-    assertTrue(result != null);
+    assertNotNull(result);
     assertEquals(reportName, result.getReportName());
-    assertEquals(reportData, Json.encode(result.getReport()).toString());
+    assertEquals(reportData, Json.encode(result.getReport()));
     assertEquals(yearMonth.toString(), result.getYearMonth());
     assertEquals(provider.getPlatform().getId(), result.getPlatformId());
     assertEquals(provider.getSushiCredentials().getCustomerId(), result.getCustomerId());
@@ -398,8 +390,7 @@ public class WorkerVerticleTest {
   }
 
   @Test
-  public void testGetServiceEndpoint(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void testGetServiceEndpoint(TestContext context) throws IOException {
     final UsageDataProvider provider =
         new ObjectMapper()
             .readValue(
@@ -422,8 +413,7 @@ public class WorkerVerticleTest {
   }
 
   @Test
-  public void testGetServiceEndpointNoImplementation(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void testGetServiceEndpointNoImplementation(TestContext context) throws IOException {
     final UsageDataProvider provider =
         new ObjectMapper()
             .readValue(
@@ -605,16 +595,8 @@ public class WorkerVerticleTest {
 
   @Test
   public void testGetFetchList(TestContext context) {
-    String uuid = "97329ea7-f351-458a-a460-71aa6db75e35";
-    UsageDataProvider provider =
-        new UsageDataProvider()
-            .withId(uuid)
-            .withHarvestingConfig(
-                new HarvestingConfig()
-                    .withHarvestingStatus(HarvestingStatus.ACTIVE)
-                    .withHarvestingStart("2017-12")
-                    .withHarvestingEnd("2018-03")
-                    .withRequestedReports(Arrays.asList("JR1", "JR2", "JR3")));
+    UsageDataProvider provider = createSampleUsageDataProvider();
+    provider.getHarvestingConfig().setHarvestingEnd("2018-03");
 
     stubFor(
         get(urlPathEqualTo("/counter-reports"))
@@ -642,5 +624,72 @@ public class WorkerVerticleTest {
                 context.fail(ar.cause());
               }
             });
+  }
+
+  @Test
+  public void testFetchAndPostReports(TestContext context) {
+    UsageDataProvider provider = createSampleUsageDataProvider();
+
+    stubFor(
+        get(urlPathEqualTo("/counter-reports"))
+            .willReturn(
+                aResponse()
+                    .withStatus(200)
+                    .withBody(Json.encodePrettily(createCounterSampleReports()))));
+    stubFor(
+        get(urlEqualTo(
+                "/counter-reports?query=%28providerId%3D97329ea7-f351-458a-a460-71aa6db75e35%20"
+                    + "AND%20yearMonth%3D2018-03%20AND%20reportName%3DJR1%29&tiny=true"))
+            .willReturn(
+                aResponse()
+                    .withStatus(200)
+                    .withBody(
+                        Json.encodePrettily(
+                            new CounterReports()
+                                .withCounterReports(
+                                    Collections.singletonList(new CounterReport()))))));
+    stubFor(
+        get(urlEqualTo(
+                "/counter-reports?query=%28providerId%3D97329ea7-f351-458a-a460-71aa6db75e35%20"
+                    + "AND%20yearMonth%3D2018-03%20AND%20reportName%3DJR2%29&tiny=true"))
+            .willReturn(
+                aResponse().withStatus(200).withBody(Json.encodePrettily(new CounterReports()))));
+    stubFor(post(urlPathEqualTo("/counter-reports")).willReturn(aResponse().withStatus(201)));
+    stubFor(put(urlPathMatching("/counter-reports/.*")).willReturn(aResponse().withStatus(204)));
+
+    Async async = context.async();
+    harvester
+        .fetchAndPostReports(provider)
+        .compose(CompositeFuture::join)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                verify(9, getRequestedFor(urlPathEqualTo("/counter-reports")));
+                verify(1, postRequestedFor(urlPathEqualTo("/counter-reports")));
+                verify(1, putRequestedFor(urlPathMatching("/counter-reports/.*")));
+                async.complete();
+              } else {
+                context.fail(ar.cause());
+              }
+            });
+  }
+
+  private UsageDataProvider createSampleUsageDataProvider() {
+    String uuid = "97329ea7-f351-458a-a460-71aa6db75e35";
+    return new UsageDataProvider()
+        .withId(uuid)
+        .withLabel("TestProvider")
+        .withVendor(new Vendor().withId("91a11966-548c-4a68-bc02-dc5417635a16"))
+        .withPlatform(new Platform().withId("e34430b6-5d13-4c76-99c4-d17ba7c5b5a4"))
+        .withSushiCredentials(new SushiCredentials().withCustomerId("Customer123"))
+        .withHarvestingConfig(
+            new HarvestingConfig()
+                .withHarvestingStatus(HarvestingStatus.ACTIVE)
+                .withHarvestVia(HarvestVia.SUSHI)
+                .withSushiConfig(new SushiConfig().withServiceType("test1"))
+                .withReportRelease(4)
+                .withHarvestingStart("2017-12")
+                .withHarvestingEnd("2018-04")
+                .withRequestedReports(Arrays.asList("JR1", "JR2", "JR3")));
   }
 }
