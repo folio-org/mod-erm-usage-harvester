@@ -6,6 +6,15 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import com.github.tomakehurst.wiremock.http.Fault;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -17,14 +26,6 @@ import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.github.tomakehurst.wiremock.http.Fault;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class OkapiClientTest {
@@ -192,6 +193,25 @@ public class OkapiClientTest {
             ar -> {
               context.assertTrue(ar.failed());
               context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
+              async.complete();
+            });
+  }
+
+  @Test
+  public void hasEnabledModule404(TestContext context) {
+    stubFor(
+        get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
+            .willReturn(aResponse().withStatus(404)));
+
+    Async async = context.async();
+    okapiClient
+        .hasEnabledUsageModules(tenantId)
+        .setHandler(
+            ar -> {
+              assertThat(ar.failed());
+              assertThat(ar.cause())
+                  .hasMessageContaining("failed retrieving")
+                  .hasMessageContaining("status code");
               async.complete();
             });
   }
