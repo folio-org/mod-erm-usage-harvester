@@ -58,13 +58,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @RunWith(VertxUnitRunner.class)
 public class WorkerVerticleTest {
-
-  private static final Logger LOG = LoggerFactory.getLogger(WorkerVerticleTest.class);
 
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
   @Rule public Timeout timeoutRule = Timeout.seconds(5);
@@ -135,8 +131,8 @@ public class WorkerVerticleTest {
         .getActiveProviders()
         .setHandler(
             ar -> {
-              context.assertTrue(ar.succeeded());
-              context.assertEquals(3, ar.result().getTotalRecords());
+              assertThat(ar.succeeded()).isTrue();
+              assertThat(ar.result().getTotalRecords()).isEqualTo(3);
               async.complete();
             });
   }
@@ -150,8 +146,8 @@ public class WorkerVerticleTest {
         .getActiveProviders()
         .setHandler(
             ar -> {
-              context.assertTrue(ar.failed());
-              context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
+              assertThat(ar.failed()).isTrue();
+              assertThat(ar.cause().getMessage()).contains("Error decoding");
               async.complete();
             });
   }
@@ -165,8 +161,8 @@ public class WorkerVerticleTest {
         .getActiveProviders()
         .setHandler(
             ar -> {
-              context.assertTrue(ar.failed());
-              context.assertTrue(ar.cause().getMessage().contains("404"));
+              assertThat(ar.failed()).isTrue();
+              assertThat(ar.cause().getMessage()).contains("404");
               async.complete();
             });
   }
@@ -180,8 +176,7 @@ public class WorkerVerticleTest {
         .getActiveProviders()
         .setHandler(
             ar -> {
-              context.assertTrue(ar.failed());
-              LOG.error(ar.cause().getMessage(), ar.cause());
+              assertThat(ar.failed()).isTrue();
               async.complete();
             });
   }
@@ -204,8 +199,8 @@ public class WorkerVerticleTest {
         .getAggregatorSetting(provider)
         .setHandler(
             ar -> {
-              context.assertTrue(ar.succeeded());
-              context.assertTrue("Nationaler Statistikserver".equals(ar.result().getLabel()));
+              assertThat(ar.succeeded()).isTrue();
+              assertThat(ar.result().getLabel()).isEqualTo("Nationaler Statistikserver");
               async.complete();
             });
   }
@@ -231,9 +226,9 @@ public class WorkerVerticleTest {
         .getAggregatorSetting(provider1)
         .setHandler(
             ar -> {
-              context.assertTrue(ar.failed());
-              context.assertTrue(ar.result() == null);
-              context.assertTrue(ar.cause().getMessage().contains("no aggregator found"));
+              assertThat(ar.failed()).isTrue();
+              assertThat(ar.result()).isNull();
+              assertThat(ar.cause().getMessage()).contains("no aggregator found");
               async.complete();
             });
 
@@ -243,9 +238,9 @@ public class WorkerVerticleTest {
         .getAggregatorSetting(provider2)
         .setHandler(
             ar -> {
-              context.assertTrue(ar.failed());
-              context.assertTrue(ar.result() == null);
-              context.assertTrue(ar.cause().getMessage().contains("no aggregator found"));
+              assertThat(ar.failed()).isTrue();
+              assertThat(ar.result()).isNull();
+              assertThat(ar.cause().getMessage()).contains("no aggregator found");
               async2.complete();
             });
   }
@@ -268,9 +263,9 @@ public class WorkerVerticleTest {
         .getAggregatorSetting(provider)
         .setHandler(
             ar -> {
-              context.assertTrue(ar.failed());
-              context.assertTrue(ar.result() == null);
-              context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
+              assertThat(ar.failed()).isTrue();
+              assertThat(ar.result()).isNull();
+              assertThat(ar.cause().getMessage()).contains("Error decoding");
               async.complete();
             });
   }
@@ -294,9 +289,9 @@ public class WorkerVerticleTest {
         .getAggregatorSetting(provider)
         .setHandler(
             ar -> {
-              context.assertTrue(ar.failed());
-              context.assertTrue(ar.result() == null);
-              context.assertTrue(ar.cause().getMessage().contains("404"));
+              assertThat(ar.failed()).isTrue();
+              assertThat(ar.result()).isNull();
+              assertThat(ar.cause().getMessage()).contains("404");
               async.complete();
             });
   }
@@ -316,7 +311,7 @@ public class WorkerVerticleTest {
         .getAggregatorSetting(provider)
         .setHandler(
             ar -> {
-              context.assertTrue(ar.failed());
+              assertThat(ar.failed()).isTrue();
               async.complete();
             });
   }
@@ -358,7 +353,7 @@ public class WorkerVerticleTest {
         .setHandler(
             ar -> {
               if (ar.succeeded()) {
-                wireMockRule.verify(postRequestedFor(urlEqualTo(url)));
+                verify(postRequestedFor(urlEqualTo(url)));
                 async.complete();
               } else {
                 context.fail(ar.cause());
@@ -381,7 +376,7 @@ public class WorkerVerticleTest {
         .setHandler(
             ar -> {
               if (ar.succeeded()) {
-                wireMockRule.verify(putRequestedFor(urlEqualTo(urlId)));
+                verify(putRequestedFor(urlEqualTo(urlId)));
                 async.complete();
               } else {
                 context.fail(ar.cause());
@@ -403,12 +398,9 @@ public class WorkerVerticleTest {
         .getServiceEndpoint(provider)
         .setHandler(
             ar -> {
-              if (ar.succeeded()) {
-                context.assertTrue(ar.result() != null);
-                async.complete();
-              } else {
-                context.fail(ar.cause());
-              }
+              assertThat(ar.succeeded()).isTrue();
+              assertThat(ar.result()).isNotNull();
+              async.complete();
             });
   }
 
@@ -427,12 +419,9 @@ public class WorkerVerticleTest {
         .getServiceEndpoint(provider)
         .setHandler(
             ar -> {
-              if (ar.succeeded()) {
-                context.fail();
-              } else {
-                assertThat(ar.cause().getMessage()).contains("No service implementation");
-                async.complete();
-              }
+              assertThat(ar.failed()).isTrue();
+              assertThat(ar.cause().getMessage()).contains("No service implementation");
+              async.complete();
             });
   }
 
@@ -456,12 +445,9 @@ public class WorkerVerticleTest {
         .getServiceEndpoint(provider)
         .setHandler(
             ar -> {
-              if (ar.succeeded()) {
-                assertThat(ar.result()).isNotNull();
-                async.complete();
-              } else {
-                context.fail(ar.cause());
-              }
+              assertThat(ar.succeeded()).isTrue();
+              assertThat(ar.result()).isNotNull();
+              async.complete();
             });
   }
 
@@ -481,12 +467,9 @@ public class WorkerVerticleTest {
         .getServiceEndpoint(provider)
         .setHandler(
             ar -> {
-              if (ar.succeeded()) {
-                assertThat(ar.result()).isNotNull();
-                async.complete();
-              } else {
-                context.fail(ar.cause());
-              }
+              assertThat(ar.succeeded()).isTrue();
+              assertThat(ar.result()).isNotNull();
+              async.complete();
             });
   }
 
@@ -506,12 +489,9 @@ public class WorkerVerticleTest {
         .getServiceEndpoint(provider)
         .setHandler(
             ar -> {
-              if (ar.succeeded()) {
-                assertThat(ar.result()).isNotNull();
-                async.complete();
-              } else {
-                context.fail(ar.cause());
-              }
+              assertThat(ar.succeeded()).isTrue();
+              assertThat(ar.result()).isNotNull();
+              async.complete();
             });
   }
 
@@ -542,15 +522,12 @@ public class WorkerVerticleTest {
         .getValidMonths("providerId", "JR1", YearMonth.of(2017, 12), YearMonth.of(2018, 2))
         .setHandler(
             ar -> {
-              if (ar.succeeded()) {
-                assertThat(ar.result())
-                    .isEqualTo(
-                        Arrays.asList(
-                            YearMonth.of(2017, 12), YearMonth.of(2018, 1), YearMonth.of(2018, 2)));
-                async.complete();
-              } else {
-                context.fail(ar.cause());
-              }
+              assertThat(ar.succeeded()).isTrue();
+              assertThat(ar.result())
+                  .isEqualTo(
+                      Arrays.asList(
+                          YearMonth.of(2017, 12), YearMonth.of(2018, 1), YearMonth.of(2018, 2)));
+              async.complete();
             });
   }
 
@@ -563,12 +540,9 @@ public class WorkerVerticleTest {
         .getValidMonths("providerId", "JR1", YearMonth.of(2017, 12), YearMonth.of(2018, 2))
         .setHandler(
             ar -> {
-              if (ar.succeeded()) {
-                context.fail(ar.cause());
-              } else {
-                assertThat(ar.cause().getMessage()).contains("Received status code", "500");
-                async.complete();
-              }
+              assertThat(ar.failed()).isTrue();
+              assertThat(ar.cause().getMessage()).contains("Received status code", "500");
+              async.complete();
             });
   }
 
@@ -584,12 +558,9 @@ public class WorkerVerticleTest {
         .getFetchList(provider)
         .setHandler(
             ar -> {
-              if (ar.succeeded()) {
-                context.fail();
-              } else {
-                assertThat(ar.cause()).hasMessageContaining("not active");
-                async.complete();
-              }
+              assertThat(ar.failed()).isTrue();
+              assertThat(ar.cause()).hasMessageContaining("not active");
+              async.complete();
             });
   }
 
@@ -610,19 +581,15 @@ public class WorkerVerticleTest {
         .getFetchList(provider)
         .setHandler(
             ar -> {
-              if (ar.succeeded()) {
-                System.out.println(ar.result());
-                assertThat(ar.result().size()).isEqualTo(3);
-                final String begin = "2018-03-01";
-                final String end = "2018-03-31";
-                assertThat(ar.result().contains(new FetchItem("JR1", begin, end))).isTrue();
-                assertThat(ar.result().contains(new FetchItem("JR2", begin, end))).isTrue();
-                assertThat(ar.result().contains(new FetchItem("JR3", begin, end))).isTrue();
-                verify(exactly(3), getRequestedFor(urlPathEqualTo("/counter-reports")));
-                async.complete();
-              } else {
-                context.fail(ar.cause());
-              }
+              assertThat(ar.succeeded()).isTrue();
+              assertThat(ar.result().size()).isEqualTo(3);
+              final String begin = "2018-03-01";
+              final String end = "2018-03-31";
+              assertThat(ar.result().contains(new FetchItem("JR1", begin, end))).isTrue();
+              assertThat(ar.result().contains(new FetchItem("JR2", begin, end))).isTrue();
+              assertThat(ar.result().contains(new FetchItem("JR3", begin, end))).isTrue();
+              verify(exactly(3), getRequestedFor(urlPathEqualTo("/counter-reports")));
+              async.complete();
             });
   }
 
@@ -663,14 +630,11 @@ public class WorkerVerticleTest {
         .compose(CompositeFuture::join)
         .setHandler(
             ar -> {
-              if (ar.succeeded()) {
-                verify(9, getRequestedFor(urlPathEqualTo("/counter-reports")));
-                verify(1, postRequestedFor(urlPathEqualTo("/counter-reports")));
-                verify(1, putRequestedFor(urlPathMatching("/counter-reports/.*")));
-                async.complete();
-              } else {
-                context.fail(ar.cause());
-              }
+              assertThat(ar.succeeded()).isTrue();
+              verify(9, getRequestedFor(urlPathEqualTo("/counter-reports")));
+              verify(1, postRequestedFor(urlPathEqualTo("/counter-reports")));
+              verify(1, putRequestedFor(urlPathMatching("/counter-reports/.*")));
+              async.complete();
             });
   }
 
