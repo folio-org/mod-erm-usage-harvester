@@ -9,5 +9,10 @@ ENV VERTICLE_HOME /usr/verticles
 COPY mod-erm-usage-harvester-bundle/target/${VERTICLE_FILE} ${VERTICLE_HOME}/${VERTICLE_FILE}
 COPY mod-erm-usage-harvester-bundle/target/${CONF_FILE} ${VERTICLE_HOME}/${CONF_FILE}
 
+# replace run-java.sh with proxy functions 
+COPY docker/run-java.sh ${VERTICLE_HOME}/run-java.sh
+# USER root
+# RUN chmod 755 run-java.sh
+
 # Expose this port locally in the container.
 EXPOSE 8081
