@@ -3,6 +3,9 @@ package org.olf.erm.usage.harvester.endpoints;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.xml.datatype.DatatypeConfigurationException;
@@ -10,6 +13,9 @@ import javax.xml.datatype.DatatypeFactory;
 import javax.xml.namespace.QName;
 import javax.xml.ws.BindingProvider;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.cxf.endpoint.Client;
+import org.apache.cxf.frontend.ClientProxy;
+import org.apache.cxf.transport.http.HTTPConduit;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.CustomerReference;
@@ -67,12 +73,25 @@ public class CS41Impl implements ServiceEndpoint {
     SushiService service = new SushiService();
     QName next = service.getPorts().next();
     port = service.getPort(next, SushiServiceInterface.class);
+
+    String serviceUrl = provider.getHarvestingConfig().getSushiConfig().getServiceUrl();
+
+    try {
+      getProxy(new URI(serviceUrl))
+          .ifPresent(
+              p -> {
+                InetSocketAddress addr = (InetSocketAddress) p.address();
+                Client client = ClientProxy.getClient(port);
+                HTTPConduit http = (HTTPConduit) client.getConduit();
+                http.getClient().setProxyServer(addr.getHostString());
+                http.getClient().setProxyServerPort(addr.getPort());
+              });
+    } catch (URISyntaxException e) {
+      LOG.error("Error getting proxy: {}", e.getMessage());
+    }
+
     BindingProvider bindingProvider = (BindingProvider) port;
-    bindingProvider
-        .getRequestContext()
-        .put(
-            BindingProvider.ENDPOINT_ADDRESS_PROPERTY,
-            provider.getHarvestingConfig().getSushiConfig().getServiceUrl());
+    bindingProvider.getRequestContext().put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, serviceUrl);
   }
 
   @Override
