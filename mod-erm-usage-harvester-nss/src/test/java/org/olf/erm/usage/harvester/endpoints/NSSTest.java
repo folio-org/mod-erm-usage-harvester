@@ -6,6 +6,15 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.google.common.io.Resources;
+import io.vertx.core.Future;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.File;
 import java.io.IOException;
 import javax.xml.bind.JAXB;
@@ -21,16 +30,6 @@ import org.niso.schemas.sushi.counter.CounterReportResponse;
 import org.olf.erm.usage.counter41.Counter4Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.google.common.io.Resources;
-import io.vertx.core.Future;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class NSSTest {
@@ -48,8 +47,7 @@ public class NSSTest {
   private static final String beginDate = "2016-03-01";
 
   @Before
-  public void setup(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void setup() throws IOException {
     provider =
         new ObjectMapper()
             .readValue(
@@ -65,8 +63,7 @@ public class NSSTest {
   }
 
   @Test
-  public void fetchSingleReportWithAggregatorValidReport(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void fetchSingleReportWithAggregatorValidReport(TestContext context) {
 
     final ServiceEndpoint sep = ServiceEndpoint.create(provider, aggregator);
     final String url = ((NSS) sep).buildURL(reportType, beginDate, endDate);
@@ -101,8 +98,7 @@ public class NSSTest {
   }
 
   @Test
-  public void fetchSingleReportWithAggregatorInvalidReport(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void fetchSingleReportWithAggregatorInvalidReport(TestContext context) {
     final ServiceEndpoint sep = ServiceEndpoint.create(provider, aggregator);
     final String url = ((NSS) sep).buildURL(reportType, beginDate, endDate);
 
@@ -127,8 +123,7 @@ public class NSSTest {
   }
 
   @Test
-  public void fetchSingleReportWithAggregatorInvalidResponse(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void fetchSingleReportWithAggregatorInvalidResponse(TestContext context) {
     final ServiceEndpoint sep = ServiceEndpoint.create(provider, aggregator);
     final String url = ((NSS) sep).buildURL(reportType, beginDate, endDate);
 
@@ -152,8 +147,7 @@ public class NSSTest {
   }
 
   @Test
-  public void fetchSingleReportWithAggregatorNoService(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void fetchSingleReportWithAggregatorNoService(TestContext context) {
     final ServiceEndpoint sep = ServiceEndpoint.create(provider, aggregator);
 
     wireMockRule.stop();
