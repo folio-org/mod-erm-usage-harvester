@@ -1,10 +1,12 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.namespace.QName;
 import javax.xml.ws.BindingProvider;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.CustomerReference;
@@ -76,12 +78,22 @@ public class CS41Impl implements ServiceEndpoint {
   public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
     Future<String> future = Future.future();
 
-    // TODO: blocking
     Vertx.currentContext()
         .executeBlocking(
             block -> {
-              ReportRequest reportRequest = createReportRequest(report, beginDate, endDate);
-              CounterReportResponse counterReportResponse = port.getReport(reportRequest);
+              CounterReportResponse counterReportResponse;
+              try {
+                ReportRequest reportRequest = createReportRequest(report, beginDate, endDate);
+                counterReportResponse = port.getReport(reportRequest);
+              } catch (java.lang.Exception e) {
+                String messages =
+                    ExceptionUtils.getThrowableList(e)
+                        .stream()
+                        .map(Throwable::getMessage)
+                        .collect(Collectors.joining(", "));
+                block.fail("Error getting report: " + messages);
+                return;
+              }
 
               List<Exception> exceptions = Counter4Utils.getExceptions(counterReportResponse);
               if (exceptions.isEmpty()
@@ -93,11 +105,7 @@ public class CS41Impl implements ServiceEndpoint {
                 block.fail("Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
               }
             },
-            handler -> {
-              if (handler.succeeded()) {
-                future.complete(handler.result().toString());
-              }
-            });
+            future.completer());
 
     return future;
   }
