@@ -2,15 +2,17 @@ package org.olf.erm.usage.harvester;
 
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OkapiClient {
 
@@ -22,7 +24,8 @@ public class OkapiClient {
   private final Vertx vertx;
 
   public OkapiClient(Vertx vertx, JsonObject cfg) {
-    // TODO: check for null values
+    Objects.requireNonNull(vertx);
+    Objects.requireNonNull(cfg);
     this.okapiUrl = cfg.getString("okapiUrl");
     this.tenantsPath = cfg.getString("tenantsPath");
     this.moduleIds =
@@ -46,11 +49,10 @@ public class OkapiClient {
                   try {
                     jsonArray = ar.result().bodyAsJsonArray();
                     List<String> tenants =
-                        jsonArray
-                            .stream()
+                        jsonArray.stream()
                             .map(o -> ((JsonObject) o).getString("id"))
                             .collect(Collectors.toList());
-                    LOG.info("Found tenants: " + tenants);
+                    LOG.info("Found tenants: {}", tenants);
                     future.complete(tenants);
                   } catch (Exception e) {
                     future.fail(String.format(ERR_MSG_DECODE, url, e.getMessage()));
@@ -83,9 +85,7 @@ public class OkapiClient {
                 if (ar.result().statusCode() == 200) {
                   try {
                     List<String> modules =
-                        ar.result()
-                            .bodyAsJsonArray()
-                            .stream()
+                        ar.result().bodyAsJsonArray().stream()
                             .map(o -> ((JsonObject) o).getString("id"))
                             .collect(Collectors.toList());
                     if (modules.containsAll(moduleIds)) {

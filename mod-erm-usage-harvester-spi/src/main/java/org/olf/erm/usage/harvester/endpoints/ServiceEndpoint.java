@@ -17,24 +17,28 @@ public interface ServiceEndpoint {
 
   Future<String> fetchSingleReport(String report, String beginDate, String endDate);
 
-  public static List<ServiceEndpointProvider> getAvailableProviders() {
+  static List<ServiceEndpointProvider> getAvailableProviders() {
     ServiceLoader<ServiceEndpointProvider> loader =
         ServiceLoader.load(ServiceEndpointProvider.class);
     return Lists.newArrayList(loader.iterator());
   }
 
-  public static ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
+  static ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
     Objects.requireNonNull(provider);
 
     final Logger LOG = LoggerFactory.getLogger(ServiceEndpoint.class);
 
-    String serviceType =
-        (aggregator == null)
-            ? (provider.getHarvestingConfig() != null
-                    && provider.getHarvestingConfig().getSushiConfig() != null)
-                ? provider.getHarvestingConfig().getSushiConfig().getServiceType()
-                : null
-            : aggregator.getServiceType();
+    String serviceType;
+    if (Objects.isNull(aggregator)) {
+      if (Objects.nonNull(provider.getHarvestingConfig())
+          && Objects.nonNull(provider.getHarvestingConfig().getSushiConfig())) {
+        serviceType = provider.getHarvestingConfig().getSushiConfig().getServiceType();
+      } else {
+        serviceType = null;
+      }
+    } else {
+      serviceType = aggregator.getServiceType();
+    }
 
     if (Strings.isNullOrEmpty(serviceType)) {
       LOG.error("ServiceType is null or empty for providerId {}", provider.getId());
@@ -49,7 +53,7 @@ public interface ServiceEndpoint {
       }
     }
 
-    LOG.error("No implementation found for serviceType '" + serviceType + "'");
+    LOG.error("No implementation found for serviceType '{}'", serviceType);
     return null;
   }
 }
