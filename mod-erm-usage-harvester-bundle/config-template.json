@@ -7,7 +7,5 @@
   "moduleIds": [
     "mod-erm-usage-${erm.usage.version}",
     "mod-erm-usage-harvester-${project.version}"
-  ],
-  "loginPath": "/bl-users/login",
-  "requiredPerm": "ermusage.all"
+  ]
 }

@@ -19,9 +19,10 @@
   <modules>
     <module>mod-erm-usage-counter41</module>
     <module>mod-erm-usage-harvester-spi</module>
+    <module>mod-erm-usage-harvester-core</module>
     <module>mod-erm-usage-harvester-nss</module>
     <module>mod-erm-usage-harvester-cs41</module>
-    <module>mod-erm-usage-harvester-core</module>
+    <module>mod-erm-usage-harvester-bundle</module>
   </modules>
 
   <properties>

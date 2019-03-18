@@ -1,5 +1,8 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.xml.datatype.DatatypeConfigurationException;
@@ -18,8 +21,8 @@ import org.niso.schemas.sushi.ReportRequest;
 import org.niso.schemas.sushi.Requestor;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
 import org.olf.erm.usage.counter41.Counter4Utils;
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import sushiservice.SushiService;
 import sushiservice.SushiServiceInterface;
 
@@ -27,12 +30,11 @@ public class CS41Impl implements ServiceEndpoint {
 
   private UsageDataProvider provider;
   private SushiServiceInterface port;
+  private static final Logger LOG = LoggerFactory.getLogger(CS41Impl.class);
 
-  public ReportRequest createReportRequest(String report, String beginDate, String endDate) {
+  private ReportRequest createReportRequest(String report, String beginDate, String endDate) {
     Requestor requestor = new Requestor();
     requestor.setID(provider.getSushiCredentials().getRequestorId());
-    // requestor.setName(provider.getRequestorName());
-    // requestor.setEmail(provider.getRequestorMail());
 
     CustomerReference ref = new CustomerReference();
     ref.setID(provider.getSushiCredentials().getCustomerId());
@@ -46,8 +48,7 @@ public class CS41Impl implements ServiceEndpoint {
       range.setBegin(DatatypeFactory.newInstance().newXMLGregorianCalendar(beginDate));
       range.setEnd(DatatypeFactory.newInstance().newXMLGregorianCalendar(endDate));
     } catch (DatatypeConfigurationException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+      LOG.error(e.getMessage(), e);
     }
     filter.setUsageDateRange(range);
     rep.setFilters(filter);
@@ -60,7 +61,7 @@ public class CS41Impl implements ServiceEndpoint {
     return request;
   }
 
-  public CS41Impl(UsageDataProvider provider) {
+  CS41Impl(UsageDataProvider provider) {
     this.provider = provider;
 
     SushiService service = new SushiService();
@@ -78,41 +79,41 @@ public class CS41Impl implements ServiceEndpoint {
   public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
     Future<String> future = Future.future();
 
-    Vertx.currentContext()
-        .executeBlocking(
-            block -> {
-              CounterReportResponse counterReportResponse;
-              try {
-                ReportRequest reportRequest = createReportRequest(report, beginDate, endDate);
-                counterReportResponse = port.getReport(reportRequest);
-              } catch (java.lang.Exception e) {
-                String messages =
-                    ExceptionUtils.getThrowableList(e)
-                        .stream()
-                        .map(Throwable::getMessage)
-                        .collect(Collectors.joining(", "));
-                block.fail("Error getting report: " + messages);
-                return;
-              }
+    Context context = Vertx.currentContext();
+    if (context == null) context = Vertx.vertx().getOrCreateContext();
 
-              List<Exception> exceptions = Counter4Utils.getExceptions(counterReportResponse);
-              if (exceptions.isEmpty()
-                  && counterReportResponse.getReport() != null
-                  && !counterReportResponse.getReport().getReport().isEmpty()) {
-                Report reportResult = counterReportResponse.getReport().getReport().get(0);
-                block.complete(Counter4Utils.toJSON(reportResult));
-              } else {
-                block.fail("Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
-              }
-            },
-            future.completer());
+    context.executeBlocking(
+        block -> {
+          CounterReportResponse counterReportResponse;
+          try {
+            ReportRequest reportRequest = createReportRequest(report, beginDate, endDate);
+            counterReportResponse = port.getReport(reportRequest);
+          } catch (java.lang.Exception e) {
+            String messages =
+                ExceptionUtils.getThrowableList(e).stream()
+                    .map(Throwable::getMessage)
+                    .collect(Collectors.joining(", "));
+            block.fail("Error getting report: " + messages);
+            return;
+          }
+
+          List<Exception> exceptions = Counter4Utils.getExceptions(counterReportResponse);
+          if (exceptions.isEmpty()
+              && counterReportResponse.getReport() != null
+              && !counterReportResponse.getReport().getReport().isEmpty()) {
+            Report reportResult = counterReportResponse.getReport().getReport().get(0);
+            block.complete(Counter4Utils.toJSON(reportResult));
+          } else {
+            block.fail("Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
+          }
+        },
+        future.completer());
 
     return future;
   }
 
   @Override
   public boolean isValidReport(String report) {
-    // TODO Auto-generated method stub
     return false;
   }
 }

@@ -1,59 +1,70 @@
 package org.olf.erm.usage.harvester.endpoints;
 
-import java.io.File;
-import java.io.IOException;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
-import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.io.Resources;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import static org.assertj.core.api.Assertions.assertThat;
 
-@RunWith(VertxUnitRunner.class)
+import java.util.List;
+import org.folio.rest.jaxrs.model.AggregatorSetting;
+import org.folio.rest.jaxrs.model.HarvestingConfig;
+import org.folio.rest.jaxrs.model.SushiConfig;
+import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.junit.Test;
+
 public class ServiceEndpointTest {
 
-  @Rule public RunTestOnContext ctx = new RunTestOnContext();
-
-  private static UsageDataProvider provider;
-  private static AggregatorSetting aggregator;
-
-  @BeforeClass
-  public static void setup(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
-    provider =
-        new ObjectMapper()
-            .readValue(
-                new File(Resources.getResource("__files/usage-data-provider.json").getFile()),
-                UsageDataProvider.class);
-    aggregator =
-        new ObjectMapper()
-            .readValue(
-                new File(Resources.getResource("__files/aggregator-setting.json").getFile()),
-                AggregatorSetting.class);
-  }
-
-  // @Test
-  // public void createNSS(TestContext context) {
-  // ServiceEndpoint sep = ServiceEndpoint.create(provider, aggregator.withServiceType("NSS"));
-  // context.assertTrue(sep instanceof NSS);
-  //
-  // ServiceEndpoint sep2 = ServiceEndpoint.create(provider.withServiceType("NSS"), null);
-  // context.assertTrue(sep2 instanceof NSS);
-  // }
+  private static UsageDataProvider provider =
+      new UsageDataProvider()
+          .withHarvestingConfig(
+              new HarvestingConfig()
+                  .withSushiConfig(new SushiConfig().withServiceType("TestProviderType")));
 
   @Test
-  public void createNoImpl(TestContext context) {
-    ServiceEndpoint sep = ServiceEndpoint.create(provider, aggregator.withServiceType(""));
-    context.assertTrue(sep == null);
+  public void testGetAvailableProviders() {
+    List<ServiceEndpointProvider> list = ServiceEndpoint.getAvailableProviders();
+    assertThat(list.size()).isEqualTo(1);
+    assertThat(list.get(0).getServiceName()).isEqualTo("TestProviderName");
+    assertThat(list.get(0).getServiceType()).isEqualTo("TestProviderType");
+  }
 
-    // ServiceEndpoint sep2 = ServiceEndpoint.create(provider.withServiceType(""), null);
-    // context.assertTrue(sep2 == null);
+  @Test
+  public void testCreateNoImplGiven() {
+    ServiceEndpoint sep =
+        ServiceEndpoint.create(provider, new AggregatorSetting().withServiceType(""));
+    assertThat(sep).isNull();
+  }
+
+  @Test
+  public void testCreateNoImplFound() {
+    ServiceEndpoint sep =
+        ServiceEndpoint.create(
+            provider, new AggregatorSetting().withServiceType("TestProviderType2"));
+    assertThat(sep).isNull();
+  }
+
+  @Test
+  public void testCreateOk() {
+    ServiceEndpoint sep =
+        ServiceEndpoint.create(
+            provider, new AggregatorSetting().withServiceType("TestProviderType"));
+    assertThat(sep).isInstanceOf(TestProviderImpl.class);
+  }
+
+  @Test
+  public void testCreateOkNoAggregator() {
+    ServiceEndpoint sep = ServiceEndpoint.create(provider, null);
+    assertThat(sep).isInstanceOf(TestProviderImpl.class);
+  }
+
+  @Test
+  public void testCreateNoHarvesterConfig() {
+    ServiceEndpoint sep = ServiceEndpoint.create(new UsageDataProvider(), null);
+    assertThat(sep).isNull();
+  }
+
+  @Test
+  public void testCreateNoSushiConfig() {
+    ServiceEndpoint sep =
+        ServiceEndpoint.create(
+            new UsageDataProvider().withHarvestingConfig(new HarvestingConfig()), null);
+    assertThat(sep).isNull();
   }
 }

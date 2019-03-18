@@ -1,15 +1,21 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "title": "Harvester Setting Schema",
+  "description": "Global settings for harvester (not used yet)",
   "type": "object",
   "properties": {
     "username": {
+      "description": "username",
       "type": "string"
     },
     "password": {
+      "description": "password",
       "type": "string"
     }
   },
-  "required": ["username", "password"],
+  "required": [
+    "username",
+    "password"
+  ],
   "additionalProperties": true
 }

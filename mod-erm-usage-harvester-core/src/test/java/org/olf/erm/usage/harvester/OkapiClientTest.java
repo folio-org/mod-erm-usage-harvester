@@ -6,16 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
-import org.junit.runner.RunWith;
+
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.Vertx;
@@ -24,11 +15,22 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.Timeout;
+import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RunWith(VertxUnitRunner.class)
 public class OkapiClientTest {
 
-  private static final Logger LOG = Logger.getLogger(OkapiClientTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(OkapiClientTest.class);
 
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
   @Rule public Timeout timeoutRule = Timeout.seconds(5);
@@ -140,7 +142,7 @@ public class OkapiClientTest {
         .setHandler(
             ar -> {
               context.assertTrue(ar.failed());
-              LOG.error(ar.cause());
+              LOG.error(ar.cause().getMessage(), ar.cause());
               async.complete();
             });
   }
@@ -191,6 +193,25 @@ public class OkapiClientTest {
             ar -> {
               context.assertTrue(ar.failed());
               context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
+              async.complete();
+            });
+  }
+
+  @Test
+  public void hasEnabledModule404(TestContext context) {
+    stubFor(
+        get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
+            .willReturn(aResponse().withStatus(404)));
+
+    Async async = context.async();
+    okapiClient
+        .hasEnabledUsageModules(tenantId)
+        .setHandler(
+            ar -> {
+              assertThat(ar.failed());
+              assertThat(ar.cause())
+                  .hasMessageContaining("failed retrieving")
+                  .hasMessageContaining("status code");
               async.complete();
             });
   }

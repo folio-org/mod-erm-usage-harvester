@@ -1,7 +1,7 @@
 {
   "id": "54e8d70e-6ffe-4f1b-a3b0-534e95287680",
   "label": "Nationaler Statistikserver",
-  "serviceType": "NSS",
+  "serviceType": "test1",
   "serviceUrl": "https://stats.redi-bw.de/prod/Sushiservice/GetReport",
   "aggregatorConfig": {
     "apiKey": "abc",

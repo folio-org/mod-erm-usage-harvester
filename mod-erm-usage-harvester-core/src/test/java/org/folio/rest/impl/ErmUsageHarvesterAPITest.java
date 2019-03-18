@@ -45,9 +45,7 @@ public class ErmUsageHarvesterAPITest {
           + "  \"moduleIds\": [\n"
           + "    \"mod-erm-usage-0.2.0-SNAPSHOT\",\n"
           + "    \"mod-erm-usage-harvester-0.2.0-SNAPSHOT\"\n"
-          + "  ],\n"
-          + "  \"loginPath\": \"/bl-users/login\",\n"
-          + "  \"requiredPerm\": \"ermusage.all\"\n"
+          + "  ]\n"
           + "}\n"
           + "";
 
@@ -153,7 +151,7 @@ public class ErmUsageHarvesterAPITest {
         .then()
         .statusCode(200)
         .body("implementations.size()", greaterThanOrEqualTo(2))
-        .body("implementations.type", hasItems("cs41", "NSS"));
+        .body("implementations.type", hasItems("test1", "test2"));
   }
 
   @Test
@@ -165,7 +163,7 @@ public class ErmUsageHarvesterAPITest {
         .then()
         .statusCode(200)
         .body("implementations.size()", greaterThanOrEqualTo(1))
-        .body("implementations.type", hasItem("NSS"))
+        .body("implementations.type", hasItem("test2"))
         .body("implementations.isAggregator", everyItem(is(true)));
   }
 
@@ -178,7 +176,7 @@ public class ErmUsageHarvesterAPITest {
         .then()
         .statusCode(200)
         .body("implementations.size()", greaterThanOrEqualTo(1))
-        .body("implementations.type", hasItem("cs41"))
+        .body("implementations.type", hasItem("test1"))
         .body("implementations.isAggregator", everyItem(is(false)));
   }
 }

@@ -11,7 +11,7 @@
     "harvestingStatus": "active",
     "harvestVia": "sushi",
     "sushiConfig": {
-      "serviceType": "cs41",
+      "serviceType": "test1",
       "serviceUrl": "http://myvendor.com"
     },
     "aggregator": {

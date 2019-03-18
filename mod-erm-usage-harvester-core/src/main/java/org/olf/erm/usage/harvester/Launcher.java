@@ -72,14 +72,7 @@ public class Launcher extends io.vertx.core.Launcher {
     // check configuration and abort if something is missing
     String[] configParams =
         new String[] {
-          "okapiUrl",
-          "tenantsPath",
-          "reportsPath",
-          "providerPath",
-          "aggregatorPath",
-          "moduleIds",
-          "loginPath",
-          "requiredPerm"
+          "okapiUrl", "tenantsPath", "reportsPath", "providerPath", "aggregatorPath", "moduleIds"
         };
     System.out.println("Using configuration:\n" + deploymentOptions.getConfig().encodePrettily());
 

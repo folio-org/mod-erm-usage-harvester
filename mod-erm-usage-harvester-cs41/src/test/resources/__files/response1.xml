@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope
+  xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+  <soapenv:Body>
+    <sc:ReportResponse
+      xmlns:s="http://www.niso.org/schemas/sushi"
+      xmlns:c="http://www.niso.org/schemas/counter"
+      xmlns:sc="http://www.niso.org/schemas/sushi/counter">
+      <s:Requestor>
+        <s:ID>reqId1</s:ID>
+        <s:Name/>
+        <s:Email>?</s:Email>
+      </s:Requestor>
+      <s:CustomerReference>
+        <s:ID>custId1</s:ID>
+        <s:Name/>
+      </s:CustomerReference>
+      <s:ReportDefinition Name="JR1" Release="4">
+        <s:Filters>
+          <s:UsageDateRange>
+            <s:Begin>2018-01-01</s:Begin>
+            <s:End>2018-01-31</s:End>
+          </s:UsageDateRange>
+        </s:Filters>
+      </s:ReportDefinition>
+      <sc:Report>
+        <c:Report Created="2019-03-13T12:42:16.260Z" ID="1552480936260" Version="4"
+          Name="Journal Report 1 (R4)" Title="JR1:4">
+          <c:Vendor>
+            <c:Name>Semantico Ltd.</c:Name>
+            <c:ID>SEM001</c:ID>
+            <c:Contact>
+              <c:Contact>tbc</c:Contact>
+              <c:E-mail>info@semantico.com</c:E-mail>
+            </c:Contact>
+            <c:WebSiteUrl>http://www.semantico.com</c:WebSiteUrl>
+            <c:LogoUrl>http://www.semantico.com/wp-content/themes/semantico/images/logo-new.png
+            </c:LogoUrl>
+          </c:Vendor>
+          <c:Customer>
+            <c:ID>custId1</c:ID>
+            <c:ReportItems>
+              <c:ItemIdentifier>
+                <c:Type>Online_ISSN</c:Type>
+                <c:Value>1533-8606</c:Value>
+              </c:ItemIdentifier>
+              <c:ItemIdentifier>
+                <c:Type>Print_ISSN</c:Type>
+                <c:Value>0148-2076</c:Value>
+              </c:ItemIdentifier>
+              <c:ItemPlatform>Ithaka</c:ItemPlatform>
+              <c:ItemPublisher>University of California Press</c:ItemPublisher>
+              <c:ItemName>19th-Century Music</c:ItemName>
+              <c:ItemDataType>Journal</c:ItemDataType>
+              <c:ItemPerformance>
+                <c:Period>
+                  <c:Begin>2018-01-01</c:Begin>
+                  <c:End>2018-01-31</c:End>
+                </c:Period>
+                <c:Category>Requests</c:Category>
+                <c:Instance>
+                  <c:MetricType>ft_html</c:MetricType>
+                  <c:Count>2</c:Count>
+                </c:Instance>
+                <c:Instance>
+                  <c:MetricType>ft_pdf</c:MetricType>
+                  <c:Count>6</c:Count>
+                </c:Instance>
+                <c:Instance>
+                  <c:MetricType>ft_total</c:MetricType>
+                  <c:Count>8</c:Count>
+                </c:Instance>
+              </c:ItemPerformance>
+            </c:ReportItems>
+          </c:Customer>
+        </c:Report>
+      </sc:Report>
+    </sc:ReportResponse>
+  </soapenv:Body>
+</soapenv:Envelope>
