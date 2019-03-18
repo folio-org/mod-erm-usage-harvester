@@ -16,7 +16,6 @@ public class ServiceEndpointTest {
           .withHarvestingConfig(
               new HarvestingConfig()
                   .withSushiConfig(new SushiConfig().withServiceType("TestProviderType")));
-  private static AggregatorSetting aggregator = new AggregatorSetting();
 
   @Test
   public void testGetAvailableProviders() {
@@ -28,7 +27,8 @@ public class ServiceEndpointTest {
 
   @Test
   public void testCreateNoImplGiven() {
-    ServiceEndpoint sep = ServiceEndpoint.create(provider, aggregator.withServiceType(""));
+    ServiceEndpoint sep =
+        ServiceEndpoint.create(provider, new AggregatorSetting().withServiceType(""));
     assertThat(sep).isNull();
   }
 
@@ -52,5 +52,19 @@ public class ServiceEndpointTest {
   public void testCreateOkNoAggregator() {
     ServiceEndpoint sep = ServiceEndpoint.create(provider, null);
     assertThat(sep).isInstanceOf(TestProviderImpl.class);
+  }
+
+  @Test
+  public void testCreateNoHarvesterConfig() {
+    ServiceEndpoint sep = ServiceEndpoint.create(new UsageDataProvider(), null);
+    assertThat(sep).isNull();
+  }
+
+  @Test
+  public void testCreateNoSushiConfig() {
+    ServiceEndpoint sep =
+        ServiceEndpoint.create(
+            new UsageDataProvider().withHarvestingConfig(new HarvestingConfig()), null);
+    assertThat(sep).isNull();
   }
 }
