@@ -1,24 +1,10 @@
 package org.folio.rest.impl;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-import java.util.stream.Stream;
-import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.rest.tools.utils.NetworkUtils;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.restassured.RestAssured;
 import io.restassured.filter.log.RequestLoggingFilter;
@@ -28,8 +14,17 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.stream.Stream;
+import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.tools.utils.NetworkUtils;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class StartAPITest {
@@ -81,7 +76,7 @@ public class StartAPITest {
   }
 
   @Test
-  public void testThatAllTenantsAreStarted() {
+  public void testThatAllTenantsAreStarted(TestContext context) {
     JsonArray enabled =
         new JsonArray()
             .add(new JsonObject().put("id", "mod-erm-usage-0.2.0-SNAPSHOT"))
@@ -120,6 +115,11 @@ public class StartAPITest {
         .then()
         .statusCode(200)
         .body(containsString("Processing"), containsString("requested"));
+
+    // wait for requests to be made
+    Async async = context.async();
+    vertx.setTimer(2500, ar -> async.complete());
+    async.awaitSuccess();
 
     verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants")));
     verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants/tenant1/modules")));
