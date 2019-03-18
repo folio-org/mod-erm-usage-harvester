@@ -386,13 +386,7 @@ public class WorkerVerticle extends AbstractVerticle {
         .setHandler(
             h -> {
               if (h.failed()) {
-                LOG.error(
-                    TENANT
-                        + token.getTenantId()
-                        + ", Provider: "
-                        + provider.getLabel()
-                        + ", "
-                        + h.cause());
+                LOG.error(logprefix, "Provider: " + provider.getLabel() + ", " + h.cause());
                 future.complete(Collections.emptyList());
               }
             });
@@ -441,12 +435,12 @@ public class WorkerVerticle extends AbstractVerticle {
             ar -> {
               if (ar.succeeded()) {
                 LOG.info(
-                    logprefix
-                        + String.format(
-                            ERR_MSG_STATUS,
-                            ar.result().statusCode(),
-                            ar.result().statusMessage(),
-                            url));
+                    logprefix,
+                    String.format(
+                        ERR_MSG_STATUS,
+                        ar.result().statusCode(),
+                        ar.result().statusMessage(),
+                        url));
                 future.complete(ar.result());
               } else {
                 LOG.error(ar.cause().getMessage(), ar.cause());
@@ -521,8 +515,8 @@ public class WorkerVerticle extends AbstractVerticle {
         .setHandler(
             h -> {
               if (h.failed()) {
-                LOG.error(h.cause().getMessage());
-                LOG.error("Verticle has failed, id: {}", this.deploymentID());
+                LOG.error(
+                    "Verticle has failed, id: {}, {}", this.deploymentID(), h.cause().getMessage());
                 vertx.undeploy(this.deploymentID());
               }
             });
