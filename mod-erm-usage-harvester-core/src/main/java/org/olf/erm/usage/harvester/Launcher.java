@@ -43,8 +43,7 @@ public class Launcher extends io.vertx.core.Launcher {
       }
     }
 
-    // override with environment variable
-    // TODO: add OKAPI_URL here
+    // override with environment variables
     String envConfig = System.getenv("CONFIG");
     if (envConfig != null) {
       try {
@@ -56,6 +55,19 @@ public class Launcher extends io.vertx.core.Launcher {
             e.getMessage());
       } catch (Exception e) {
         LOG.error("Error processing environment variable 'CONFIG': {}", e.getMessage(), e);
+      }
+    }
+    String envOkapi = System.getenv("OKAPI_URL");
+    if (!Strings.isNullOrEmpty(envOkapi)) {
+      try {
+        deploymentOptions.setConfig(
+            deploymentOptions.getConfig().mergeIn(new JsonObject().put("okapiUrl", envOkapi)));
+      } catch (DecodeException e) {
+        LOG.error(
+            "Error decoding JSON configuration from environment variable 'OKAPI_URL': {}",
+            e.getMessage());
+      } catch (Exception e) {
+        LOG.error("Error processing environment variable 'OKAPI_URL': {}", e.getMessage(), e);
       }
     }
 
