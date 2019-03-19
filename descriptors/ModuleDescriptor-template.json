@@ -7,7 +7,9 @@
       "version": "1.1",
       "handlers": [
         {
-          "methods": ["GET"],
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/erm-usage-harvester/start",
           "modulePermissions": [
             "usagedataproviders.collection.get",
@@ -22,7 +24,9 @@
           ]
         },
         {
-          "methods": ["GET"],
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/erm-usage-harvester/start/{id}",
           "modulePermissions": [
             "usagedataproviders.collection.get",
@@ -37,11 +41,17 @@
           ]
         },
         {
-          "methods": ["GET"],
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/erm-usage-harvester/impl"
         },
         {
-          "methods": ["GET", "POST", "DELETE"],
+          "methods": [
+            "GET",
+            "POST",
+            "DELETE"
+          ],
           "pathPattern": "/erm-usage-harvester/settings"
         }
       ]
@@ -52,7 +62,9 @@
       "interfaceType": "system",
       "handlers": [
         {
-          "methods": ["GET"],
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/_/start"
         }
       ]
@@ -63,7 +75,10 @@
       "interfaceType": "system",
       "handlers": [
         {
-          "methods": ["POST", "DELETE"],
+          "methods": [
+            "POST",
+            "DELETE"
+          ],
           "pathPattern": "/_/tenant"
         }
       ]
@@ -76,11 +91,11 @@
     },
     {
       "id": "aggregator-settings",
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "id": "counter-reports",
-      "version": "1.0"
+      "version": "1.1"
     }
   ],
   "launchDescriptor": {
