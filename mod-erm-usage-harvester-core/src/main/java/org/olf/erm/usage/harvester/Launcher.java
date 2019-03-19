@@ -1,16 +1,22 @@
 package org.olf.erm.usage.harvester;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import org.apache.commons.io.FileUtils;
 import com.google.common.base.Strings;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
+import java.io.File;
+import java.io.IOException;
+import java.net.ProxySelector;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.Charset;
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Launcher extends io.vertx.core.Launcher {
+
+  private static final Logger LOG = LoggerFactory.getLogger(Launcher.class);
 
   public static void main(String[] args) {
     new Launcher().dispatch(args);
@@ -31,32 +37,30 @@ public class Launcher extends io.vertx.core.Launcher {
             FileUtils.readFileToString(new File("config.json"), Charset.defaultCharset());
         deploymentOptions.setConfig(new JsonObject(config));
       } catch (DecodeException e) {
-        System.err.println("Error decoding JSON configuration from default config.json");
-        System.err.println(e.getMessage());
-      } catch (FileNotFoundException e) {
-        // ignore
+        LOG.error("Error decoding JSON configuration from default config.json: {}", e.getMessage());
       } catch (IOException e) {
-        e.printStackTrace();
+        // ignore
       }
     }
 
     // override with environment variable
+    // TODO: add OKAPI_URL here
     String envConfig = System.getenv("CONFIG");
     if (envConfig != null) {
       try {
         deploymentOptions.setConfig(
             deploymentOptions.getConfig().mergeIn(new JsonObject(envConfig)));
       } catch (DecodeException e) {
-        System.err.println("Error decoding JSON configuration from environment variable 'CONFIG'");
-        System.err.println(e.getMessage());
+        LOG.error(
+            "Error decoding JSON configuration from environment variable 'CONFIG': {}",
+            e.getMessage());
       } catch (Exception e) {
-        e.printStackTrace();
+        LOG.error("Error processing environment variable 'CONFIG': {}", e.getMessage(), e);
       }
     }
 
     // override port from command line
-    getProcessArguments()
-        .stream()
+    getProcessArguments().stream()
         .filter(arg -> arg.startsWith("-Dhttp.port="))
         .findFirst()
         .ifPresent(
@@ -74,13 +78,24 @@ public class Launcher extends io.vertx.core.Launcher {
         new String[] {
           "okapiUrl", "tenantsPath", "reportsPath", "providerPath", "aggregatorPath", "moduleIds"
         };
-    System.out.println("Using configuration:\n" + deploymentOptions.getConfig().encodePrettily());
+    LOG.info("Using configuration:\n{}", deploymentOptions.getConfig().encodePrettily());
+
+    try {
+      ProxySelector.getDefault().select(new URI("http://google.com")).stream()
+          .findFirst()
+          .ifPresent(p -> LOG.info("HTTP Proxy found: {}", p.address()));
+      ProxySelector.getDefault().select(new URI("https://google.com")).stream()
+          .findFirst()
+          .ifPresent(p -> LOG.info("HTTPS Proxy found: {}", p.address()));
+    } catch (URISyntaxException e) {
+      LOG.error(e.getMessage(), e);
+    }
 
     boolean exit = false;
     for (String param : configParams) {
       Object o = deploymentOptions.getConfig().getValue(param);
       if ((o instanceof String && Strings.isNullOrEmpty((String) o)) || o == null) {
-        System.err.println("Parameter '" + param + "' missing in configuration.");
+        LOG.error("Parameter '{}' missing in configuration.", param);
         exit = true;
       }
     }
