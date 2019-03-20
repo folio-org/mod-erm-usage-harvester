@@ -35,7 +35,7 @@
     <okapi.version>2.19.0</okapi.version>
     <vertx.version>3.5.1</vertx.version>
     <erm.usage.version>2.0.0-SNAPSHOT</erm.usage.version>
-
+    <erm.usage.counter.version>1.0.0</erm.usage.counter.version>
     <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
   </properties>
 
@@ -49,6 +49,11 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.olf</groupId>
+        <artifactId>mod-erm-usage-counter41</artifactId>
+        <version>${erm.usage.counter.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
@@ -193,7 +198,8 @@
   <scm>
     <url>https://github.com/folio-org/${project.artifactId}</url>
     <connection>scm:git:git://github.com/folio-org/${project.artifactId}.git</connection>
-    <developerConnection>scm:git:git@github.com:folio-org/${project.artifactId}.git</developerConnection>
+    <developerConnection>scm:git:git@github.com:folio-org/${project.artifactId}.git
+    </developerConnection>
     <tag>HEAD</tag>
   </scm>
 
