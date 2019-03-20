@@ -1,43 +1,52 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.any;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
-import java.io.File;
-import java.io.IOException;
-import javax.xml.bind.JAXB;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
-import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
-import org.junit.runner.RunWith;
-import org.niso.schemas.counter.Report;
-import org.niso.schemas.sushi.counter.CounterReportResponse;
-import org.olf.erm.usage.counter41.Counter4Utils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.io.Resources;
 import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
+import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.Proxy.Type;
+import java.net.ProxySelector;
+import java.net.SocketAddress;
+import java.net.URI;
+import java.util.Collections;
+import java.util.List;
+import javax.xml.bind.JAXB;
+import org.folio.rest.jaxrs.model.AggregatorSetting;
+import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.niso.schemas.counter.Report;
+import org.niso.schemas.sushi.counter.CounterReportResponse;
+import org.olf.erm.usage.counter41.Counter4Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import sun.net.spi.DefaultProxySelector;
 
 @RunWith(VertxUnitRunner.class)
 public class NSSTest {
 
   @Rule public Timeout timeoutRule = Timeout.seconds(5);
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
-  @Rule public RunTestOnContext ctx = new RunTestOnContext();
+  @Rule public WireMockRule wireMockProxyRule = new WireMockRule(wireMockConfig().dynamicPort());
 
   private static final Logger LOG = LoggerFactory.getLogger(NSSTest.class);
   private UsageDataProvider provider;
@@ -48,8 +57,7 @@ public class NSSTest {
   private static final String beginDate = "2016-03-01";
 
   @Before
-  public void setup(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
+  public void setup() throws IOException {
     provider =
         new ObjectMapper()
             .readValue(
@@ -62,17 +70,16 @@ public class NSSTest {
                 AggregatorSetting.class)
             .withServiceUrl(wireMockRule.url("mockedAPI"));
     LOG.info("Setting Aggregator URL to: " + aggregator.getServiceUrl());
+    ProxySelector.setDefault(new DefaultProxySelector());
   }
 
   @Test
-  public void fetchSingleReportWithAggregatorValidReport(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
-
-    final ServiceEndpoint sep = ServiceEndpoint.create(provider, aggregator);
-    final String url = ((NSS) sep).buildURL(reportType, beginDate, endDate);
+  public void fetchSingleReportWithAggregatorValidReport(TestContext context) {
+    final NSS sep = new NSS(provider, aggregator);
+    final String url = sep.buildURL(reportType, beginDate, endDate);
 
     LOG.info("Creating stub for: " + url);
-    stubFor(
+    wireMockRule.stubFor(
         get(urlEqualTo(url.replaceAll(wireMockRule.url(""), "/")))
             .willReturn(aResponse().withBodyFile("nss-report-2016-03.xml")));
 
@@ -101,13 +108,12 @@ public class NSSTest {
   }
 
   @Test
-  public void fetchSingleReportWithAggregatorInvalidReport(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
-    final ServiceEndpoint sep = ServiceEndpoint.create(provider, aggregator);
-    final String url = ((NSS) sep).buildURL(reportType, beginDate, endDate);
+  public void fetchSingleReportWithAggregatorInvalidReport(TestContext context) {
+    final NSS sep = new NSS(provider, aggregator);
+    final String url = sep.buildURL(reportType, beginDate, endDate);
 
     LOG.info("Creating stub for: " + url);
-    stubFor(
+    wireMockRule.stubFor(
         get(urlEqualTo(url.replaceAll(wireMockRule.url(""), "/")))
             .willReturn(aResponse().withBodyFile("nss-report-2018-03-fail.xml")));
 
@@ -127,13 +133,12 @@ public class NSSTest {
   }
 
   @Test
-  public void fetchSingleReportWithAggregatorInvalidResponse(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
-    final ServiceEndpoint sep = ServiceEndpoint.create(provider, aggregator);
-    final String url = ((NSS) sep).buildURL(reportType, beginDate, endDate);
+  public void fetchSingleReportWithAggregatorInvalidResponse(TestContext context) {
+    final NSS sep = new NSS(provider, aggregator);
+    final String url = sep.buildURL(reportType, beginDate, endDate);
 
     LOG.info("Creating stub for: " + url);
-    stubFor(
+    wireMockRule.stubFor(
         get(urlEqualTo(url.replaceAll(wireMockRule.url(""), "/")))
             .willReturn(aResponse().withStatus(404)));
 
@@ -152,9 +157,8 @@ public class NSSTest {
   }
 
   @Test
-  public void fetchSingleReportWithAggregatorNoService(TestContext context)
-      throws JsonParseException, JsonMappingException, IOException {
-    final ServiceEndpoint sep = ServiceEndpoint.create(provider, aggregator);
+  public void fetchSingleReportWithAggregatorNoService(TestContext context) {
+    final NSS sep = new NSS(provider, aggregator);
 
     wireMockRule.stop();
 
@@ -182,5 +186,33 @@ public class NSSTest {
             CounterReportResponse.class);
     assertThat(Counter4Utils.getExceptions(reportValid)).isEmpty();
     assertThat(Counter4Utils.getExceptions(reportInvalid)).isNotEmpty();
+  }
+
+  @Test
+  public void testProxy(TestContext context) {
+    ProxySelector.setDefault(
+        new ProxySelector() {
+          @Override
+          public List<Proxy> select(URI uri) {
+            return Collections.singletonList(
+                new Proxy(Type.HTTP, new InetSocketAddress("localhost", wireMockProxyRule.port())));
+          }
+
+          @Override
+          public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {}
+        });
+
+    final NSS sep = new NSS(provider, aggregator);
+
+    wireMockRule.stubFor(any(anyUrl()).willReturn(aResponse().withStatus(404)));
+    wireMockProxyRule.stubFor(any(anyUrl()).willReturn(aResponse().withStatus(404)));
+
+    Async async = context.async();
+    sep.fetchSingleReport(reportType, beginDate, endDate).setHandler(ar -> async.complete());
+
+    async.await(2000);
+
+    wireMockRule.verify(0, getRequestedFor(anyUrl()));
+    wireMockProxyRule.verify(1, getRequestedFor(anyUrl()));
   }
 }

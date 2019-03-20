@@ -69,21 +69,25 @@ Configuration is done via JSON file
   ]
 }
 ```
-A [default configuration](mod-erm-usage-harvester-core/config-template.json) is read from `config.json` in the execution directory. It can be overridden by using the `-conf` parameter or setting the `CONFIG` environment variable.
+A [default configuration](mod-erm-usage-harvester-bundle/config-template.json) is read from `config.json` in the execution directory. It can be overwritten by using the `-conf` parameter or setting the `CONFIG` environment variable.
 
 The default listening port is `8081` and can be set by using `-Dhttp.port` parameter.
 
 ### Pass configuration to docker container
-
 pass as JSON string
 ```
 $ docker run -e 'CONFIG={"okapiUrl": "http://172.17.0.1:9130"}' mod-erm-usage-harvester
 ```
-
 or from file
 ```
 $ docker run -e "CONFIG=$(<config.json)" mod-erm-usage-harvester
 ```
+### Proxy configuration
+Proxy settings can be configured via JVM system properties.
+* `http.proxyHost`, `http.proxyPort`, `https.proxyHost`, `https.proxyPort`, `http.nonProxyHosts`
+
+If running the Docker container use environment variables. These get translated into system properties by `run-java.sh`.
+* `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`
 
 ## Additional information
 

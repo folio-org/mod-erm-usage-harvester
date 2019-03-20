@@ -1,6 +1,14 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.net.ProxyOptions;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.WebClientOptions;
 import java.io.StringReader;
+import java.net.InetSocketAddress;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import javax.xml.bind.JAXB;
@@ -10,16 +18,15 @@ import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.Exception;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
 import org.olf.erm.usage.counter41.Counter4Utils;
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.ext.web.client.WebClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NSS implements ServiceEndpoint {
 
   private Vertx vertx;
   private UsageDataProvider provider;
   private AggregatorSetting aggregator;
+  private static final Logger LOG = LoggerFactory.getLogger(NSS.class);
 
   public NSS(UsageDataProvider provider, AggregatorSetting aggregator) {
     if (Vertx.currentContext() == null) this.vertx = Vertx.vertx();
@@ -62,7 +69,21 @@ public class NSS implements ServiceEndpoint {
     final String url = buildURL(report, beginDate, endDate);
 
     Future<String> future = Future.future();
-    WebClient client = WebClient.create(vertx);
+
+    WebClientOptions options = new WebClientOptions();
+    try {
+      getProxy(new URI(url))
+          .ifPresent(
+              p -> {
+                InetSocketAddress addr = (InetSocketAddress) p.address();
+                options.setProxyOptions(
+                    new ProxyOptions().setHost(addr.getHostString()).setPort(addr.getPort()));
+              });
+    } catch (java.lang.Exception e) {
+      LOG.error("Error getting proxy: {}", e.getMessage());
+    }
+
+    WebClient client = WebClient.create(vertx, options);
     client
         .requestAbs(HttpMethod.GET, url)
         .send(

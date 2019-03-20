@@ -3,8 +3,12 @@ package org.olf.erm.usage.harvester.endpoints;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import io.vertx.core.Future;
+import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.URI;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -55,5 +59,11 @@ public interface ServiceEndpoint {
 
     LOG.error("No implementation found for serviceType '{}'", serviceType);
     return null;
+  }
+
+  default Optional<Proxy> getProxy(URI uri) {
+    return ProxySelector.getDefault().select(uri).stream()
+        .filter(p -> p.address() != null)
+        .findFirst();
   }
 }
