@@ -94,9 +94,11 @@ public class Launcher extends io.vertx.core.Launcher {
 
     try {
       ProxySelector.getDefault().select(new URI("http://google.com")).stream()
+          .filter(p -> p.address() != null)
           .findFirst()
           .ifPresent(p -> LOG.info("HTTP Proxy found: {}", p.address()));
       ProxySelector.getDefault().select(new URI("https://google.com")).stream()
+          .filter(p -> p.address() != null)
           .findFirst()
           .ifPresent(p -> LOG.info("HTTPS Proxy found: {}", p.address()));
     } catch (URISyntaxException e) {
