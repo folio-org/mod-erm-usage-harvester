@@ -5,6 +5,11 @@ Copyright (C) 2018-2019 The Open Library Foundation
 This software is distributed under the terms of the Apache License,
 Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 
+## Introduction
+Module for harvesting counter reports.
+
+## Requirements
+Module needs to know about the Okapi URL ([see here](#setting-the-okapi-url)).
 
 ## Installation
 
@@ -14,44 +19,32 @@ $ cd mod-erm-usage-harvester
 $ mvn clean install
 ```
 
-## Run plain jar
-
+### Run plain jar
 ```
 $ cd mod-erm-usage-harvester-bundle
 $ java -jar target/mod-erm-usage-harvester-bundle-fat.jar -conf target/config.json
 ```
 
-## Run via Docker
+### Run via Docker
 
-### Build docker image
+#### Build docker image
 ```
 $ docker build -t mod-erm-usage-harvester .
 ```
 
-### Run docker image
+#### Run docker image
 ```
 $ docker run -p 8081:8081 mod-erm-usage-harvester .
 ```
 
-### Register ModuleDescriptor
-
+#### Pass configuration to docker container
+as JSON string
 ```
-$ cd target
-$ curl -w '\n' -X POST -D - -H "Content-type: application/json" -d @ModuleDescriptor.json http://localhost:9130/_/proxy/modules
+$ docker run -e 'CONFIG={"okapiUrl": "http://172.17.0.1:9130"}' mod-erm-usage-harvester
 ```
-
-### Activate module for tenant (do this before registering DeploymentDescriptor)
-
+or from file
 ```
-$ curl -w '\n' -X POST -D - -H "Content-type: application/json" -d '{ "id": "mod-erm-usage-harvester-1.0.0"}' http://localhost:9130/_/proxy/tenants/diku/modules
-```
-
-### Register DeploymentDescriptor
-
-Change _nodeId_ in _DockerDeploymentDescriptor.json_ to e.g. your hosts IP address (e.g. 10.0.2.15). Then execute:
-
-```
-$ curl -w '\n' -X POST -D - -H "Content-type: application/json" -d @DockerDeploymentDescriptor.json http://localhost:9130/_/discovery/modules
+$ docker run -e "CONFIG=$(<config.json)" mod-erm-usage-harvester
 ```
 
 ## Configuration
@@ -73,17 +66,11 @@ A [default configuration](mod-erm-usage-harvester-bundle/config-template.json) i
 
 The default listening port is `8081` and can be set by using `-Dhttp.port` parameter.
 
-### Pass configuration to docker container
-pass as JSON string
-```
-$ docker run -e 'CONFIG={"okapiUrl": "http://172.17.0.1:9130"}' mod-erm-usage-harvester
-```
-or from file
-```
-$ docker run -e "CONFIG=$(<config.json)" mod-erm-usage-harvester
-```
+### Setting the Okapi URL
+..is done either by configuration file like above, or by environment variable named `OKAPI_URL`.
+
 ### Proxy configuration
-Proxy settings can be configured via JVM system properties.
+Proxy settings are configured via JVM system properties.
 * `http.proxyHost`, `http.proxyPort`, `https.proxyHost`, `https.proxyPort`, `http.nonProxyHosts`
 
 If running the Docker container use environment variables. These get translated into system properties by `run-java.sh`.
