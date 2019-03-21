@@ -37,6 +37,7 @@ import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.helpers.MessageFormatter;
 
 public class WorkerVerticle extends AbstractVerticle {
 
@@ -64,6 +65,10 @@ public class WorkerVerticle extends AbstractVerticle {
               h.cause());
         }
       };
+
+  private String format(String pattern, Object... args) {
+    return MessageFormatter.arrayFormat(pattern, args).getMessage();
+  }
 
   // TODO: handle limits > 30
   public Future<UsageDataProviders> getActiveProviders() {
@@ -95,19 +100,21 @@ public class WorkerVerticle extends AbstractVerticle {
                     LOG.info(logprefix, "total providers: " + entity.getTotalRecords());
                     future.complete(entity);
                   } catch (Exception e) {
-                    future.fail(logprefix + String.format(ERR_MSG_DECODE, url, e.getMessage()));
+                    future.fail(
+                        format(logprefix, String.format(ERR_MSG_DECODE, url, e.getMessage())));
                   }
                 } else {
                   future.fail(
-                      logprefix
-                          + String.format(
+                      format(
+                          logprefix,
+                          String.format(
                               ERR_MSG_STATUS,
                               ar.result().statusCode(),
                               ar.result().statusMessage(),
-                              url));
+                              url)));
                 }
               } else {
-                future.fail(logprefix + "error: " + ar.cause().getMessage());
+                future.fail(format(logprefix, "error: " + ar.cause().getMessage()));
               }
             });
     return future;
@@ -120,7 +127,7 @@ public class WorkerVerticle extends AbstractVerticle {
     Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
     if (aggregator == null || aggregator.getId() == null) {
       return Future.failedFuture(
-          logprefix + "no aggregator found for provider " + provider.getLabel());
+          format(logprefix, "no aggregator found for provider " + provider.getLabel()));
     }
 
     final String aggrUrl = okapiUrl + aggregatorPath + "/" + aggregator.getId();
@@ -140,24 +147,27 @@ public class WorkerVerticle extends AbstractVerticle {
                     LOG.info(logprefix, "got AggregatorSetting for id: " + aggregator.getId());
                     future.complete(setting);
                   } catch (Exception e) {
-                    future.fail(logprefix + String.format(ERR_MSG_DECODE, aggrUrl, e.getMessage()));
+                    future.fail(
+                        format(logprefix, String.format(ERR_MSG_DECODE, aggrUrl, e.getMessage())));
                   }
                 } else {
                   future.fail(
-                      logprefix
-                          + String.format(
+                      format(
+                          logprefix,
+                          String.format(
                               ERR_MSG_STATUS,
                               ar.result().statusCode(),
                               ar.result().statusMessage(),
-                              aggrUrl));
+                              aggrUrl)));
                 }
               } else {
                 future.fail(
-                    logprefix
-                        + "failed getting AggregatorSetting for id: "
-                        + aggregator.getId()
-                        + ", "
-                        + ar.cause().getMessage());
+                    format(
+                        logprefix,
+                        "failed getting AggregatorSetting for id: "
+                            + aggregator.getId()
+                            + ", "
+                            + ar.cause().getMessage()));
               }
             });
     return future;
