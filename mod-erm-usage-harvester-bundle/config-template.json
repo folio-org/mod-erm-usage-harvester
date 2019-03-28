@@ -3,9 +3,5 @@
   "tenantsPath": "/_/proxy/tenants",
   "reportsPath": "/counter-reports",
   "providerPath": "/usage-data-providers",
-  "aggregatorPath": "/aggregator-settings",
-  "moduleIds": [
-    "mod-erm-usage-${erm.usage.version}",
-    "mod-erm-usage-harvester-${project.version}"
-  ]
+  "aggregatorPath": "/aggregator-settings"
 }

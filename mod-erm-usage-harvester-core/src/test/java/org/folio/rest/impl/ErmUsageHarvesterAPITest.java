@@ -10,14 +10,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
-import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.tools.utils.NetworkUtils;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.olf.erm.usage.harvester.Token;
+
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
 import io.restassured.parsing.Parser;
@@ -26,6 +19,14 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.tools.utils.NetworkUtils;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.olf.erm.usage.harvester.Token;
 
 @RunWith(VertxUnitRunner.class)
 public class ErmUsageHarvesterAPITest {
@@ -41,11 +42,7 @@ public class ErmUsageHarvesterAPITest {
           + "  \"tenantsPath\": \"/_/proxy/tenants\",\n"
           + "  \"reportsPath\": \"/counter-reports\",\n"
           + "  \"providerPath\": \"/usage-data-providers\",\n"
-          + "  \"aggregatorPath\": \"/aggregator-settings\",\n"
-          + "  \"moduleIds\": [\n"
-          + "    \"mod-erm-usage-0.2.0-SNAPSHOT\",\n"
-          + "    \"mod-erm-usage-harvester-0.2.0-SNAPSHOT\"\n"
-          + "  ]\n"
+          + "  \"aggregatorPath\": \"/aggregator-settings\"\n"
           + "}\n"
           + "";
 

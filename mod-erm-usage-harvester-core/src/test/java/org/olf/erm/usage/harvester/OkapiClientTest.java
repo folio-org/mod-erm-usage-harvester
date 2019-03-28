@@ -15,8 +15,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -43,24 +41,20 @@ public class OkapiClientTest {
           + "  \"tenantsPath\": \"/_/proxy/tenants\",\n"
           + "  \"reportsPath\": \"/counter-reports\",\n"
           + "  \"providerPath\": \"/usage-data-providers\",\n"
-          + "  \"aggregatorPath\": \"/aggregator-settings\",\n"
-          + "  \"moduleIds\": [\"mod-erm-usage-0.0.1\"] \n"
+          + "  \"aggregatorPath\": \"/aggregator-settings\"\n"
           + "}";
 
   private static Vertx vertx;
   private String tenantsPath;
-  private List<String> moduleIds;
   private OkapiClient okapiClient;
 
   @Before
-  public void setup(TestContext context) {
+  public void setup() {
     vertx = Vertx.vertx();
     JsonObject cfg = new JsonObject(deployCfg);
     cfg.put("okapiUrl", StringUtils.removeEnd(wireMockRule.url(""), "/"));
     cfg.put("testing", true);
     this.tenantsPath = cfg.getString("tenantsPath");
-    this.moduleIds =
-        cfg.getJsonArray("moduleIds").stream().map(Object::toString).collect(Collectors.toList());
     okapiClient = new OkapiClient(vertx, cfg);
   }
 
@@ -166,16 +160,16 @@ public class OkapiClientTest {
   @Test
   public void hasEnabledModuleNo(TestContext context) {
     stubFor(
-        get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
+        get(urlEqualTo(tenantsPath + "/" + tenantId + "/interfaces"))
             .willReturn(aResponse().withBody("[]")));
 
     Async async = context.async();
     okapiClient
-        .hasEnabledUsageModules(tenantId)
+        .hasHarvesterInterface(tenantId)
         .setHandler(
             ar -> {
               assertThat(ar.succeeded()).isFalse();
-              assertThat(ar.cause()).hasMessageContaining("not enabled");
+              assertThat(ar.cause()).hasMessageContaining("not found");
               async.complete();
             });
   }
@@ -183,12 +177,12 @@ public class OkapiClientTest {
   @Test
   public void hasEnabledModuleResponseInvalid(TestContext context) {
     stubFor(
-        get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
+        get(urlEqualTo(tenantsPath + "/" + tenantId + "/interfaces"))
             .willReturn(aResponse().withBody("{}")));
 
     Async async = context.async();
     okapiClient
-        .hasEnabledUsageModules(tenantId)
+        .hasHarvesterInterface(tenantId)
         .setHandler(
             ar -> {
               context.assertTrue(ar.failed());
@@ -200,15 +194,15 @@ public class OkapiClientTest {
   @Test
   public void hasEnabledModule404(TestContext context) {
     stubFor(
-        get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
+        get(urlEqualTo(tenantsPath + "/" + tenantId + "/interfaces"))
             .willReturn(aResponse().withStatus(404)));
 
     Async async = context.async();
     okapiClient
-        .hasEnabledUsageModules(tenantId)
+        .hasHarvesterInterface(tenantId)
         .setHandler(
             ar -> {
-              assertThat(ar.failed());
+              assertThat(ar.failed()).isTrue();
               assertThat(ar.cause())
                   .hasMessageContaining("failed retrieving")
                   .hasMessageContaining("status code");
@@ -222,10 +216,10 @@ public class OkapiClientTest {
 
     Async async = context.async();
     okapiClient
-        .hasEnabledUsageModules(tenantId)
+        .hasHarvesterInterface(tenantId)
         .setHandler(
             ar -> {
-              assertThat(ar.failed());
+              assertThat(ar.failed()).isTrue();
               assertThat(ar.cause()).hasMessageContaining("failed retrieving");
               async.complete();
             });
@@ -234,15 +228,18 @@ public class OkapiClientTest {
   @Test
   public void hasEnabledModuleYes(TestContext context) {
     JsonArray response = new JsonArray();
-    moduleIds.forEach(s -> response.add(new JsonObject().put("id", s)));
+    response.add(
+        new JsonObject()
+            .put("id", OkapiClient.INTERFACE_NAME)
+            .put("version", OkapiClient.INTERFACE_VER));
 
     stubFor(
-        get(urlEqualTo(tenantsPath + "/" + tenantId + "/modules"))
+        get(urlEqualTo(tenantsPath + "/" + tenantId + "/interfaces"))
             .willReturn(aResponse().withBody(response.toString())));
 
     Async async = context.async();
     okapiClient
-        .hasEnabledUsageModules(tenantId)
+        .hasHarvesterInterface(tenantId)
         .setHandler(
             ar -> {
               context.assertTrue(ar.succeeded());
