@@ -1,3 +1,6 @@
+# 1.1.1
+* Update mod-erm-usage version
+
 # 1.1.0
 * Evaluate `OKAPI_URL` environment variable
 * Support harvesting via HTTP proxy
