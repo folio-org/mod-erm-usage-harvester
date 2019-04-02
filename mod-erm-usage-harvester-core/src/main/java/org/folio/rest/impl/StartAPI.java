@@ -32,7 +32,7 @@ public class StartAPI implements Start {
               tenantList.forEach(
                   tenantId ->
                       okapiClient
-                          .hasEnabledUsageModules(tenantId)
+                          .hasHarvesterInterface(tenantId)
                           .compose(
                               v -> {
                                 // call /start endpoint for each tenant

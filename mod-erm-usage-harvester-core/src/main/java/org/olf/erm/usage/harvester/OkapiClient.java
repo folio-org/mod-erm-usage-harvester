@@ -17,10 +17,11 @@ import org.slf4j.LoggerFactory;
 public class OkapiClient {
 
   private static final Logger LOG = LoggerFactory.getLogger(OkapiClient.class);
+  public static final String INTERFACE_NAME = "erm-usage-harvester";
+  public static final String INTERFACE_VER = "1.1";
 
   private final String okapiUrl;
   private final String tenantsPath;
-  private final List<String> moduleIds;
   private final Vertx vertx;
 
   public OkapiClient(Vertx vertx, JsonObject cfg) {
@@ -28,8 +29,6 @@ public class OkapiClient {
     Objects.requireNonNull(cfg);
     this.okapiUrl = cfg.getString("okapiUrl");
     this.tenantsPath = cfg.getString("tenantsPath");
-    this.moduleIds =
-        cfg.getJsonArray("moduleIds").stream().map(Object::toString).collect(Collectors.toList());
     this.vertx = vertx;
   }
 
@@ -72,49 +71,59 @@ public class OkapiClient {
     return future;
   }
 
-  public Future<Void> hasEnabledUsageModules(String tenantId) {
-    final String modulesUrl = okapiUrl + tenantsPath + "/" + tenantId + "/modules";
+  public Future<Void> hasHarvesterInterface(String tenantId) {
+    final String interfacesUrl = okapiUrl + tenantsPath + "/" + tenantId + "/interfaces";
 
     Future<Void> future = Future.future();
     WebClient client = WebClient.create(vertx);
     client
-        .getAbs(modulesUrl)
+        .getAbs(interfacesUrl)
         .send(
             ar -> {
               if (ar.succeeded()) {
                 if (ar.result().statusCode() == 200) {
                   try {
-                    List<String> modules =
+                    List<JsonObject> interfaces =
                         ar.result().bodyAsJsonArray().stream()
-                            .map(o -> ((JsonObject) o).getString("id"))
+                            .map(o -> (JsonObject) o)
                             .collect(Collectors.toList());
-                    if (modules.containsAll(moduleIds)) {
+
+                    long count =
+                        interfaces.stream()
+                            .filter(
+                                i ->
+                                    i.getString("id", "").equals(INTERFACE_NAME)
+                                        && i.getString("version", "").equals(INTERFACE_VER))
+                            .count();
+
+                    if (count == 1) {
                       future.complete();
                     } else {
                       future.fail(
-                          String.format("Tenant: %s, required module not enabled", tenantId));
+                          String.format("Tenant: %s, required interface not found", tenantId));
                     }
                   } catch (Exception e) {
                     future.fail(
                         String.format(
                             "Tenant: %s, %s",
-                            tenantId, String.format(ERR_MSG_DECODE, modulesUrl, e.getMessage())));
+                            tenantId,
+                            String.format(ERR_MSG_DECODE, interfacesUrl, e.getMessage())));
                   }
                 } else {
                   future.fail(
                       String.format(
-                          "Tenant: %s, failed retrieving enabled modules: %s",
+                          "Tenant: %s, failed retrieving interfaces: %s",
                           tenantId,
                           String.format(
                               ERR_MSG_STATUS,
                               ar.result().statusCode(),
                               ar.result().statusMessage(),
-                              modulesUrl)));
+                              interfacesUrl)));
                 }
               } else {
                 future.fail(
                     String.format(
-                        "Tenant: %s, failed retrieving enabled modules: %s",
+                        "Tenant: %s, failed retrieving interfaces: %s",
                         tenantId, ar.cause().getMessage()));
               }
             });

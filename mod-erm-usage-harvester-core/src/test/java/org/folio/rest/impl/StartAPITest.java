@@ -1,6 +1,13 @@
 package org.folio.rest.impl;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
@@ -25,6 +32,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.olf.erm.usage.harvester.OkapiClient;
 
 @RunWith(VertxUnitRunner.class)
 public class StartAPITest {
@@ -40,11 +48,7 @@ public class StartAPITest {
           + "  \"tenantsPath\": \"/_/proxy/tenants\",\n"
           + "  \"reportsPath\": \"/counter-reports\",\n"
           + "  \"providerPath\": \"/usage-data-providers\",\n"
-          + "  \"aggregatorPath\": \"/aggregator-settings\",\n"
-          + "  \"moduleIds\": [\n"
-          + "    \"mod-erm-usage-0.2.0-SNAPSHOT\",\n"
-          + "    \"mod-erm-usage-harvester-0.2.0-SNAPSHOT\"\n"
-          + "  ]\n"
+          + "  \"aggregatorPath\": \"/aggregator-settings\"\n"
           + "}\n"
           + "";
 
@@ -79,15 +83,17 @@ public class StartAPITest {
   public void testThatAllTenantsAreStarted(TestContext context) {
     JsonArray enabled =
         new JsonArray()
-            .add(new JsonObject().put("id", "mod-erm-usage-0.2.0-SNAPSHOT"))
-            .add(new JsonObject().put("id", "mod-erm-usage-harvester-0.2.0-SNAPSHOT"));
+            .add(
+                new JsonObject()
+                    .put("id", OkapiClient.INTERFACE_NAME)
+                    .put("version", OkapiClient.INTERFACE_VER));
     JsonArray jsonArray =
         Stream.iterate(1, i -> ++i)
             .limit(3)
             .map(
                 i -> {
                   stubFor(
-                      get("/okapiMock/_/proxy/tenants/tenant" + i + "/modules")
+                      get("/okapiMock/_/proxy/tenants/tenant" + i + "/interfaces")
                           .willReturn(
                               aResponse()
                                   .withStatus(200)
@@ -122,9 +128,9 @@ public class StartAPITest {
     async.awaitSuccess();
 
     verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants")));
-    verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants/tenant1/modules")));
-    verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants/tenant2/modules")));
-    verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants/tenant3/modules")));
+    verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants/tenant1/interfaces")));
+    verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants/tenant2/interfaces")));
+    verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants/tenant3/interfaces")));
 
     verify(
         getRequestedFor(urlMatching("/okapiMock/erm-usage-harvester/start"))
