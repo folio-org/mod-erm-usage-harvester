@@ -2,18 +2,24 @@
 .classpath
 .project
 .settings/
- 
+
 # Intellij
 .idea/
 *.iml
 *.iws
- 
+
 # Mac
 .DS_Store
- 
+
 # Maven
 log/
 target/
 
 # Vertx
 .vertx/
+
+# Maven home
+/.maven
+
+# Backend-Modules
+/backend-modules
