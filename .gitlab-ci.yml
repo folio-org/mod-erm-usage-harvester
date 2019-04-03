@@ -148,7 +148,8 @@ deploy_alpha:
       --set-string proxy.http_proxy=http://proxy.uni-leipzig.de:3128 \
       --set-string proxy.https_proxy=http://proxy.uni-leipzig.de:3128 \
       --set-string "proxy.no_proxy=localhost\,127.0.0.1\,.uni-leipzig.de" \
-      --set-string okapi.host=okapi-app-service-alpha.folio-base-alpha.svc.cluster.local
+      --set-string okapi.host=okapi-app-service-alpha.folio-base-alpha \
+      --set-string namespace=${K8S_ALPHA_CLUSTER_NAMESPACE}
   tags:
   - docker
   only:
@@ -199,7 +200,8 @@ deploy_staging:
       --set-string proxy.http_proxy=http://proxy.uni-leipzig.de:3128 \
       --set-string proxy.https_proxy=http://proxy.uni-leipzig.de:3128 \
       --set-string "proxy.no_proxy=localhost\,127.0.0.1\,.uni-leipzig.de" \
-      --set-string okapi.host=okapi-app-service-staging.folio-base-staging.svc.cluster.local
+      --set-string okapi.host=okapi-app-service-staging.folio-base-staging \
+      --set-string namespace=${K8S_STAGING_CLUSTER_NAMESPACE}
   tags:
   - docker
   only:
