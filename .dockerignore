@@ -1,6 +1,7 @@
 *
-!Dockerfile
-!docker*
-!mod-erm-usage-harvester-bundle/target/*.jar
-!mod-erm-usage-harvester-bundle/target/config.json
-!run-java.sh
+!/Dockerfile
+!/docker*
+!/mod-erm-usage-harvester-bundle/target/*.jar
+!/mod-erm-usage-harvester-bundle/target/config.json
+!/backend-modules/assets/docker-entrypoint
+!/target/ModuleDescriptor.json

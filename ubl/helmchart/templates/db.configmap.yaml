@@ -1,0 +1,9 @@
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-db-env-{{ .Release.Name }}
+data:
+  {{- with .Values.db.environment }}
+{{ toYaml . | indent 2 }}
+  {{- end }}
