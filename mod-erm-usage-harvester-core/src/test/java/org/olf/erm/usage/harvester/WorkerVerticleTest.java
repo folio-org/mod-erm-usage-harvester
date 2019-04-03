@@ -78,8 +78,7 @@ public class WorkerVerticleTest {
           + "  \"tenantsPath\": \"/_/proxy/tenants\",\n"
           + "  \"reportsPath\": \"/counter-reports\",\n"
           + "  \"providerPath\": \"/usage-data-providers\",\n"
-          + "  \"aggregatorPath\": \"/aggregator-settings\",\n"
-          + "  \"moduleId\": \"mod-erm-usage-0.0.1\"\n"
+          + "  \"aggregatorPath\": \"/aggregator-settings\"\n"
           + "}";
 
   private static Vertx vertx;

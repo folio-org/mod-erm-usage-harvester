@@ -1,5 +1,14 @@
 package org.folio.rest.impl;
 
+import com.google.common.base.Strings;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -19,15 +28,6 @@ import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.common.base.Strings;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 
 public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
@@ -39,7 +39,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
   public void depoyWorkerVerticle(Vertx vertx, Token token, String providerId) {
     new OkapiClient(vertx, vertx.getOrCreateContext().config())
-        .hasEnabledUsageModules(token.getTenantId())
+        .hasHarvesterInterface(token.getTenantId())
         .compose(
             v -> {
               Future<String> deploy = Future.future();
@@ -214,8 +214,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Context vertxContext) {
 
     List<JsonObject> collect =
-        ServiceEndpoint.getAvailableProviders()
-            .stream()
+        ServiceEndpoint.getAvailableProviders().stream()
             .filter(
                 provider ->
                     Strings.isNullOrEmpty(aggregator)

@@ -55,11 +55,7 @@ Configuration is done via JSON file
   "tenantsPath": "/_/proxy/tenants",
   "reportsPath": "/counter-reports",
   "providerPath": "/usage-data-providers",
-  "aggregatorPath": "/aggregator-settings",
-  "moduleIds": [
-    "mod-erm-usage-1.0.0",
-    "mod-erm-usage-harvester-1.0.0"
-  ]
+  "aggregatorPath": "/aggregator-settings"
 }
 ```
 A [default configuration](mod-erm-usage-harvester-bundle/config-template.json) is read from `config.json` in the execution directory. It can be overwritten by using the `-conf` parameter or setting the `CONFIG` environment variable.
