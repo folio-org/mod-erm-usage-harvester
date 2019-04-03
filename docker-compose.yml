@@ -51,7 +51,7 @@ services:
     command:
     - echo "deployer:x:1000:1000::/home/deployer:/bin/bash">/etc/passwd;
       chown deployer /home/deployer -R;
-      su deployer -c "helm --tiller-namespace=folio-alpha --namespace=folio-alpha install --name issue-add-gitlab-ci --debug --dry-run --set-string app.image.repository=services.ub.uni-leipzig.de:10443/bdd_dev/folio/mod-erm-usage-harvester --set-string app.image.tag=add-gitlab-ci --set-string dockerconfigjson=$$(echo $$(cat /home/deployer/.docker/config.json|base64)|tr -d ' ') --set-string okapi.host=okapi-app-service-alpha-base  --set-string app.environment.DEBUG=true --set-string proxy.http_proxy=http://proxy.uni-leipzig.de:3128 --set-string proxy.https_proxy=http://proxy.uni-leipzig.de:3128 --set-string \"proxy.no_proxy=localhost\,127.0.0.1\,.uni-leipzig.de\" /app/ubl/helmchart"
+      su deployer -c "helm --tiller-namespace=folio-mod-erm-usage-harvester-alpha --namespace=folio-mod-erm-usage-harvester-alpha install --name test --debug --dry-run --set-string namespace=folio-mod-erm-usage-harvester-alpha --set-string app.image.repository=services.ub.uni-leipzig.de:10443/bdd_dev/folio/mod-erm-usage-harvester --set-string app.image.tag=add-gitlab-ci --set-string dockerconfigjson=$$(echo $$(cat /home/deployer/.docker/config.json|base64)|tr -d ' ') --set-string okapi.host=okapi-app-service-alpha-base  --set-string app.environment.DEBUG=true --set-string proxy.http_proxy=http://proxy.uni-leipzig.de:3128 --set-string proxy.https_proxy=http://proxy.uni-leipzig.de:3128 --set-string \"proxy.no_proxy=localhost\,127.0.0.1\,.uni-leipzig.de\" /app/ubl/helmchart"
 
   deploy:
     image: ubleipzig/deployer:1.4.7
@@ -65,7 +65,7 @@ services:
     command:
     - echo "deployer:x:1000:1000::/home/deployer:/bin/bash">/etc/passwd;
       chown deployer /home/deployer -R;
-      su deployer -c "helm --tiller-namespace=folio-alpha --namespace=folio-alpha install --name issue-add-gitlab-ci --set-string app.image.repository=services.ub.uni-leipzig.de:10443/bdd_dev/folio/mod-erm-usage-harvester --set-string app.image.tag=add-gitlab-ci --set-string dockerconfigjson=$$(echo $$(cat /home/deployer/.docker/config.json|base64)|tr -d ' ') --set-string okapi.host=okapi-app-service-alpha-base --set-string app.environment.DEBUG=true --set-string proxy.http_proxy=http://proxy.uni-leipzig.de:3128 --set-string proxy.https_proxy=http://proxy.uni-leipzig.de:3128 --set-string \"proxy.no_proxy=localhost\,127.0.0.1\,.uni-leipzig.de\" /app/ubl/helmchart"
+      su deployer -c "helm --tiller-namespace=folio-mod-erm-usage-harvester-alpha --namespace=folio-mod-erm-usage-harvester-alpha install --name issue-add-gitlab-ci --set-string namespace=folio-mod-erm-usage-harvester-alpha --set-string app.image.repository=services.ub.uni-leipzig.de:10443/bdd_dev/folio/mod-erm-usage-harvester --set-string app.image.tag=add-gitlab-ci --set-string dockerconfigjson=$$(echo $$(cat /home/deployer/.docker/config.json|base64)|tr -d ' ') --set-string okapi.host=okapi-app-service-alpha-base --set-string app.environment.DEBUG=true --set-string proxy.http_proxy=http://proxy.uni-leipzig.de:3128 --set-string proxy.https_proxy=http://proxy.uni-leipzig.de:3128 --set-string \"proxy.no_proxy=localhost\,127.0.0.1\,.uni-leipzig.de\" /app/ubl/helmchart"
 
   undeploy:
     image: ubleipzig/deployer:1.4.7

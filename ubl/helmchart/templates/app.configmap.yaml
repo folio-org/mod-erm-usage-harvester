@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: {{ .Chart.Name }}-app-env-{{ .Release.Name }}
 data:
-  SERVICE_URL: http://{{ .Chart.Name }}-service-{{ .Release.Name }}:{{ .Values.app.service.port }}
+  SERVICE_URL: http://{{ .Chart.Name }}-service-{{ .Release.Name }}{{ with .Values.namespace }}.{{ . }}{{ end }}:{{ .Values.app.service.port }}
   OKAPI_URL: {{ .Values.okapi.schema }}://{{ .Values.okapi.host }}{{ with .Values.okapi.port }}:{{ . }}{{ end }}{{ .Values.okapi.path }}
   SELF_DEPLOY: "true"
   DB_HOST: {{ if .Values.db.enabled }}{{ .Chart.Name }}-db-service-{{ .Release.Name }}{{ else }}{{ .Values.app.database.host }}{{ end }}
