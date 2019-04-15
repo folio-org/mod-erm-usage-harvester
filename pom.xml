@@ -21,6 +21,7 @@
     <module>mod-erm-usage-harvester-core</module>
     <module>mod-erm-usage-harvester-nss</module>
     <module>mod-erm-usage-harvester-cs41</module>
+    <module>mod-erm-usage-harvester-cs50</module>
     <module>mod-erm-usage-harvester-bundle</module>
   </modules>
 
@@ -52,6 +53,11 @@
       <dependency>
         <groupId>org.olf</groupId>
         <artifactId>mod-erm-usage-counter41</artifactId>
+        <version>${erm.usage.counter.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.olf</groupId>
+        <artifactId>mod-erm-usage-counter50</artifactId>
         <version>${erm.usage.counter.version}</version>
       </dependency>
       <dependency>
