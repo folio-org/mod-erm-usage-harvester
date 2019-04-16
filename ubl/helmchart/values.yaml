@@ -81,7 +81,9 @@ app:
     user: okapi
     password: changeMe
     db: okapi
+
 # persistentVolumeClaim: okapi-db
+# namespace: folio
 
 proxy: {}
 
