@@ -87,7 +87,7 @@
   "requires": [
     {
       "id": "usage-data-providers",
-      "version": "2.0"
+      "version": "2.1"
     },
     {
       "id": "aggregator-settings",

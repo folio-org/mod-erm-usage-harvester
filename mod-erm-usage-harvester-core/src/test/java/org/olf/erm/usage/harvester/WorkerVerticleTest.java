@@ -534,7 +534,6 @@ public class WorkerVerticleTest {
   public void testGetValidMonthsFail(TestContext context) {
     stubFor(get(urlPathEqualTo("/counter-reports")).willReturn(aResponse().withStatus(500)));
     Async async = context.async();
-    async.complete();
     harvester
         .getValidMonths("providerId", "JR1", YearMonth.of(2017, 12), YearMonth.of(2018, 2))
         .setHandler(

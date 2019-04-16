@@ -1,0 +1,8 @@
+[
+  {
+    "Code": "2020",
+    "Data": "The service being called requires a valid api_key to access usage data and the key provided was not valid or not authorized for the data being requested",
+    "Message": "api_key Invalid",
+    "Severity": "Error"
+  }
+]
