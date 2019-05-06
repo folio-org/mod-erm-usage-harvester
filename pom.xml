@@ -35,8 +35,8 @@
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <okapi.version>2.19.0</okapi.version>
     <vertx.version>3.5.1</vertx.version>
-    <erm.usage.version>2.2.0-SNAPSHOT</erm.usage.version>
-    <erm.usage.counter.version>1.1.0-SNAPSHOT</erm.usage.counter.version>
+    <erm.usage.version>2.2.0</erm.usage.version>
+    <erm.usage.counter.version>1.1.0</erm.usage.counter.version>
     <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
   </properties>
 
