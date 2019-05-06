@@ -1,3 +1,6 @@
+# 1.2.0
+* Add COUNTER 5 implementation
+
 # 1.1.0
 * Evaluate `OKAPI_URL` environment variable
 * Support harvesting via HTTP proxy
