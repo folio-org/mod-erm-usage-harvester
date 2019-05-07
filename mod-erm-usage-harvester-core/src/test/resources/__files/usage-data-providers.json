@@ -5,7 +5,7 @@
       "label": "Data provider with both",
       "vendor": {
         "id": "uuid-123456789"
-       },
+      },
       "platform": {
         "id": "uuid-123456789"
       },
@@ -42,7 +42,7 @@
       "label": "Data provider without aggregator",
       "vendor": {
         "id": "uuid-123456789"
-       },
+      },
       "platform": {
         "id": "uuid-123456789"
       },
@@ -74,11 +74,11 @@
       "id": "bf6c9ddc-ff82-40c4-be64-dd2414bdcd73",
       "label": "Data provider with aggregator",
       "vendor": {
-          "id": "uuid-123456789"
-         },
-        "platform": {
-          "id": "uuid-123456789"
-        },
+        "id": "uuid-123456789"
+      },
+      "platform": {
+        "id": "uuid-123456789"
+      },
       "harvestingConfig": {
         "harvestingStatus": "active",
         "harvestVia": "aggregator",
@@ -96,13 +96,6 @@
           "TR1"
         ],
         "harvestingStart": "2018-01"
-      },
-      "sushiCredentials": {
-        "customerId": "12345def",
-        "requestorId": "1234abcd",
-        "apiKey": "678iuoi",
-        "requestorName": "Karla Kolumna",
-        "requestorMail": "kolumna@ub.uni-leipzig.de"
       },
       "notes": "This is a note!"
     }
