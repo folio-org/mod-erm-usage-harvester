@@ -179,14 +179,10 @@ public class WorkerVerticle extends AbstractVerticle {
     cr.setId(UUID.randomUUID().toString());
     cr.setYearMonth(yearMonth.toString());
     cr.setReportName(reportName);
-    cr.setPlatformId(provider.getPlatform().getId());
-    cr.setCustomerId(provider.getSushiCredentials().getCustomerId());
     cr.setRelease(provider.getHarvestingConfig().getReportRelease().toString());
     cr.setProviderId(provider.getId());
-    cr.setDownloadTime(Date.from(Instant.now())); // FIXME
-    cr.setVendorId(provider.getVendor().getId());
+    cr.setDownloadTime(Date.from(Instant.now()));
     if (reportData != null) {
-      cr.setFormat("???"); // FIXME
       cr.setReport(Json.decodeValue(reportData, Report.class));
     } else {
       cr.setFailedAttempts(1);

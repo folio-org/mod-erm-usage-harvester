@@ -5,10 +5,7 @@
   "release": 4,
   "reportName": "JR1",
   "yearMonth": "2016-03",
-  "customerId": "12345def",
-  "vendorId": "uuid-123456789",
-  "platformId": "uuid-123456789",
-  "format": "???",
+  "providerId": "725edd4e-f498-428c-8fa0-bcaedcdb2f43",
   "report": {
     "data": "xxx"
   }

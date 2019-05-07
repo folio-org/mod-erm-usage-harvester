@@ -334,8 +334,6 @@ public class WorkerVerticleTest {
     assertEquals(reportName, result.getReportName());
     assertEquals(reportData, Json.encode(result.getReport()));
     assertEquals(yearMonth.toString(), result.getYearMonth());
-    assertEquals(provider.getPlatform().getId(), result.getPlatformId());
-    assertEquals(provider.getSushiCredentials().getCustomerId(), result.getCustomerId());
   }
 
   @Test
