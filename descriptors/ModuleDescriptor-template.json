@@ -87,7 +87,7 @@
   "requires": [
     {
       "id": "usage-data-providers",
-      "version": "2.1"
+      "version": "2.2"
     },
     {
       "id": "aggregator-settings",
@@ -95,7 +95,7 @@
     },
     {
       "id": "counter-reports",
-      "version": "1.1"
+      "version": "1.2"
     }
   ],
   "launchDescriptor": {
