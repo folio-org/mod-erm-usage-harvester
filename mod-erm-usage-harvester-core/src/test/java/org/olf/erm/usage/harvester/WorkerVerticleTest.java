@@ -45,12 +45,10 @@ import org.folio.rest.jaxrs.model.CounterReports;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
-import org.folio.rest.jaxrs.model.Platform;
 import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.folio.rest.jaxrs.model.Vendor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -639,8 +637,6 @@ public class WorkerVerticleTest {
     return new UsageDataProvider()
         .withId(uuid)
         .withLabel("TestProvider")
-        .withVendor(new Vendor().withId("91a11966-548c-4a68-bc02-dc5417635a16"))
-        .withPlatform(new Platform().withId("e34430b6-5d13-4c76-99c4-d17ba7c5b5a4"))
         .withSushiCredentials(new SushiCredentials().withCustomerId("Customer123"))
         .withHarvestingConfig(
             new HarvestingConfig()
