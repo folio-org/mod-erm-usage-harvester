@@ -3,12 +3,6 @@
     {
       "id": "bf6c9ddc-ff82-40c4-be64-dd2414bdcd71",
       "label": "Data provider with both",
-      "vendor": {
-        "id": "uuid-123456789"
-      },
-      "platform": {
-        "id": "uuid-123456789"
-      },
       "harvestingConfig": {
         "harvestingStatus": "active",
         "harvestVia": "sushi",
@@ -40,12 +34,6 @@
     {
       "id": "bf6c9ddc-ff82-40c4-be64-dd2414bdcd72",
       "label": "Data provider without aggregator",
-      "vendor": {
-        "id": "uuid-123456789"
-      },
-      "platform": {
-        "id": "uuid-123456789"
-      },
       "harvestingConfig": {
         "harvestingStatus": "active",
         "harvestVia": "sushi",
@@ -73,12 +61,6 @@
     {
       "id": "bf6c9ddc-ff82-40c4-be64-dd2414bdcd73",
       "label": "Data provider with aggregator",
-      "vendor": {
-        "id": "uuid-123456789"
-      },
-      "platform": {
-        "id": "uuid-123456789"
-      },
       "harvestingConfig": {
         "harvestingStatus": "active",
         "harvestVia": "aggregator",

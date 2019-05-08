@@ -1,12 +1,6 @@
 {
   "id": "bf6c9ddc-ff82-40c4-be64-dd2414bdcd72",
   "label": "ACM Digital Library2",
-  "vendor": {
-    "id": "uuid-123456789"
-   },
-  "platform": {
-    "id": "uuid-123456789"
-  },
   "harvestingConfig": {
     "harvestingStatus": "active",
     "harvestVia": "sushi",

@@ -1,12 +1,6 @@
 {
   "id": "bbbf6186-7028-4c7a-b101-27769079d75a",
   "label": "ACM Digital Library2",
-  "vendor": {
-    "id": "uuid-123456789"
-  },
-  "platform": {
-    "id": "uuid-123456789"
-  },
   "harvestingConfig": {
     "harvestingStatus": "active",
     "harvestVia": "aggregator",
@@ -26,6 +20,7 @@
     "apiKey": "678iuoi",
     "requestorName": "Karla Kolumna",
     "requestorMail": "kolumna@ub.uni-leipzig.de",
-    "updatedDate": "2018-07-25T08:52:24.231+0000"}
+    "updatedDate": "2018-07-25T08:52:24.231+0000"
   }
+}
 }
