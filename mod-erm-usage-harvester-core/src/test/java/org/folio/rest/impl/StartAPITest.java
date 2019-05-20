@@ -52,8 +52,6 @@ public class StartAPITest {
           + "}\n"
           + "";
 
-  private static String okapiMockUrl = "";
-
   @BeforeClass
   public static void setup(TestContext context) {
     vertx = Vertx.vertx();
@@ -62,7 +60,7 @@ public class StartAPITest {
     JsonObject cfg = new JsonObject(deployCfg);
     cfg.put("testing", true);
     cfg.put("http.port", port);
-    okapiMockUrl = "http://localhost:" + wireMockRule.port() + "/okapiMock";
+    String okapiMockUrl = "http://localhost:" + wireMockRule.port() + "/okapiMock";
     cfg.put("okapiUrl", okapiMockUrl);
     RestAssured.port = port;
     RestAssured.defaultParser = Parser.JSON;

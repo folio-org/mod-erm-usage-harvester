@@ -195,12 +195,11 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     }
 
     Token token = new Token(tokenStr);
-    String providerId = id;
     String msg =
         String.format(
-            "Processing of ProviderId: %s, Tenant: %s requested.", providerId, token.getTenantId());
+            "Processing of ProviderId: %s, Tenant: %s requested.", id, token.getTenantId());
     LOG.info(msg);
-    depoyWorkerVerticle(vertxContext.owner(), token, providerId);
+    depoyWorkerVerticle(vertxContext.owner(), token, id);
     String result = new JsonObject().put("message", msg).toString();
     asyncResultHandler.handle(
         Future.succeededFuture(Response.ok(result, MediaType.APPLICATION_JSON_TYPE).build()));
@@ -218,8 +217,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
             .filter(
                 provider ->
                     Strings.isNullOrEmpty(aggregator)
-                        || (aggregator != null
-                            && provider.isAggregator().equals(Boolean.valueOf(aggregator))))
+                        || provider.isAggregator().equals(Boolean.valueOf(aggregator)))
             .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))
             .map(ServiceEndpointProvider::toJson)
             .collect(Collectors.toList());
