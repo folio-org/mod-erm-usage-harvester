@@ -104,6 +104,9 @@ public class WorkerVerticleTest {
     JsonObject cfg = new JsonObject(deployCfg);
     cfg.put("okapiUrl", StringUtils.removeEnd(wireMockRule.url(""), "/"));
     cfg.put("testing", true);
+    stubFor(
+        get(urlPathEqualTo("/configurations/entries"))
+            .willReturn(aResponse().withStatus(404).withFault(Fault.EMPTY_RESPONSE)));
     vertx.deployVerticle(
         harvester,
         new DeploymentOptions().setConfig(cfg),

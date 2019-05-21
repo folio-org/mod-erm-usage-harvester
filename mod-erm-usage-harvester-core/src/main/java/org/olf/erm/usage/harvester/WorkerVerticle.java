@@ -45,6 +45,9 @@ public class WorkerVerticle extends AbstractVerticle {
   private static final Logger LOG = LoggerFactory.getLogger(WorkerVerticle.class);
   private static final String TENANT = "Tenant: ";
   private static final String QUERY_PARAM = "query";
+  private static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
+  private static final String CONFIG_CODE = "maxFailedAttempts";
+  private static final String CONFIG_PATH = "/configurations/entries";
 
   private String okapiUrl;
   private String reportsPath;
@@ -52,6 +55,7 @@ public class WorkerVerticle extends AbstractVerticle {
   private String aggregatorPath;
   private Token token;
   private String providerId = null;
+  private int maxFailedAttempts = 5;
 
   private Handler<AsyncResult<CompositeFuture>> processingCompleteHandler =
       h -> {
@@ -222,16 +226,26 @@ public class WorkerVerticle extends AbstractVerticle {
     return sepFuture;
   }
 
+  /**
+   * Returns List of months that that dont need fetching.
+   *
+   * @param providerId providerId
+   * @param reportName reportType
+   * @param start start month
+   * @param end end month
+   * @return
+   */
   public Future<List<YearMonth>> getValidMonths(
       String providerId, String reportName, YearMonth start, YearMonth end) {
     Future<List<YearMonth>> future = Future.future();
     WebClient client = WebClient.create(vertx);
 
-    // TODO: report="" or NOT failedAttempts=""
     String queryStr =
         String.format(
-            "(providerId=%s AND report=\"\" AND reportName=%s AND yearMonth>=%s AND yearMonth<=%s)",
-            providerId, reportName, start.toString(), end.toString());
+            "(providerId=%s AND "
+                + "((cql.allRecords=1 NOT failedAttempts=\"\") OR (failedAttempts>=%s)) AND "
+                + "reportName=%s AND yearMonth>=%s AND yearMonth<=%s)",
+            providerId, maxFailedAttempts, reportName, start.toString(), end.toString());
     client
         .getAbs(okapiUrl + reportsPath)
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
@@ -239,23 +253,17 @@ public class WorkerVerticle extends AbstractVerticle {
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
         .setQueryParam(QUERY_PARAM, queryStr)
         .setQueryParam("tiny", "true")
+        .setQueryParam("offset", "0")
+        .setQueryParam("limit", String.valueOf(Integer.MAX_VALUE))
         .send(
             ar -> {
               if (ar.succeeded()) {
-                // TODO: catch decode exception
                 if (ar.result().statusCode() == 200) {
                   CounterReports result = ar.result().bodyAsJson(CounterReports.class);
                   List<YearMonth> availableMonths = new ArrayList<>();
                   result
                       .getCounterReports()
-                      .forEach(
-                          r -> {
-                            // TODO: catch parse exception
-                            // TODO: check r.getDownloadTime() and value of r.getFailedAttempts()
-                            if (r.getFailedAttempts() == null) {
-                              availableMonths.add(YearMonth.parse(r.getYearMonth()));
-                            }
-                          });
+                      .forEach(r -> availableMonths.add(YearMonth.parse(r.getYearMonth())));
                   future.complete(availableMonths);
                 } else {
                   future.fail(
@@ -273,6 +281,12 @@ public class WorkerVerticle extends AbstractVerticle {
     return future;
   }
 
+  /**
+   * Returns a List of FetchItems/Months that need fetching.
+   *
+   * @param provider UsageDataProvider
+   * @return
+   */
   public Future<List<FetchItem>> getFetchList(UsageDataProvider provider) {
     final String logprefix = TENANT + token.getTenantId() + ", {}";
 
@@ -590,17 +604,29 @@ public class WorkerVerticle extends AbstractVerticle {
     aggregatorPath = config().getString("aggregatorPath");
 
     LOG.info("Tenant: {}, deployed WorkerVericle", token.getTenantId());
-    if (!config().getBoolean("testing", false)) {
-      if (providerId == null) run();
-      else runSingleProvider();
-    } else {
-      LOG.info("TEST ENV");
-    }
+
+    Future<String> limit = getModConfigurationValue(CONFIG_MODULE, CONFIG_CODE, "5");
+
+    limit.setHandler(
+        ar -> {
+          if (ar.succeeded()) {
+            maxFailedAttempts = Integer.valueOf(ar.result());
+          }
+          LOG.info(
+              "Tenant: {}, using maxFailedAttempts={}", token.getTenantId(), maxFailedAttempts);
+
+          if (!config().getBoolean("testing", false)) {
+            if (providerId == null) run();
+            else runSingleProvider();
+          } else {
+            LOG.info("TEST ENV");
+          }
+        });
   }
 
   public Future<String> getModConfigurationValue(String module, String code, String defaultValue) {
     Future<String> future = Future.future();
-    final String path = "/configurations/entries";
+    final String path = CONFIG_PATH;
     final String cql = String.format("?query=(module = %s and code = %s)", module, code);
     WebClient client = WebClient.create(vertx);
     client
@@ -612,10 +638,17 @@ public class WorkerVerticle extends AbstractVerticle {
         .send(
             ar -> {
               if (ar.succeeded()) {
-                JsonArray configs =
-                    ar.result().bodyAsJsonObject().getJsonArray("configs", new JsonArray());
-                if (configs.size() == 1) {
-                  future.complete(configs.getJsonObject(0).getString("value"));
+                if (ar.result().statusCode() == 200) {
+                  JsonArray configs =
+                      ar.result().bodyAsJsonObject().getJsonArray("configs", new JsonArray());
+                  if (configs.size() == 1) {
+                    future.complete(configs.getJsonObject(0).getString("value"));
+                  }
+                } else {
+                  LOG.info(
+                      "Received status code {} {} from configuration module",
+                      ar.result().statusCode(),
+                      ar.result().statusMessage());
                 }
               }
               if (!future.isComplete()) {
