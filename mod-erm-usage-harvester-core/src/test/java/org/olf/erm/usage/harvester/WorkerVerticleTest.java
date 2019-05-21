@@ -1,6 +1,7 @@
 package org.olf.erm.usage.harvester;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
@@ -19,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
@@ -27,9 +29,11 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
 import java.time.YearMonth;
@@ -54,7 +58,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
@@ -647,5 +650,69 @@ public class WorkerVerticleTest {
                 .withHarvestingStart("2017-12")
                 .withHarvestingEnd("2018-04")
                 .withRequestedReports(Arrays.asList("JR1", "JR2", "JR3")));
+  }
+
+  @Test
+  public void testGetModConfigurationValue(TestContext context) {
+    JsonObject response =
+        new JsonObject()
+            .put(
+                "configs",
+                new JsonArray()
+                    .add(
+                        new JsonObject()
+                            .put("module", "testmodule")
+                            .put("code", "testing")
+                            .put("value", "5")));
+    stubFor(
+        get(urlPathEqualTo("/configurations/entries"))
+            .withQueryParam("query", equalTo("(module = testmodule and code = ok)"))
+            .willReturn(aResponse().withStatus(200).withBody(response.encodePrettily())));
+
+    stubFor(
+        get(urlPathEqualTo("/configurations/entries"))
+            .withQueryParam("query", equalTo("(module = testmodule and code = empty)"))
+            .willReturn(aResponse().withStatus(200).withFault(Fault.EMPTY_RESPONSE)));
+
+    Async async = context.async(2);
+    harvester
+        .getModConfigurationValue("testmodule", "ok", "3")
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                assertThat(ar.result()).isEqualTo("5");
+                async.countDown();
+              } else {
+                context.fail(ar.cause());
+              }
+            });
+
+    harvester
+        .getModConfigurationValue("testmodule", "empty", "3")
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                assertThat(ar.result()).isEqualTo("3");
+                async.countDown();
+              } else {
+                context.fail();
+              }
+            });
+
+    async.await();
+    wireMockRule.stop();
+
+    Async async2 = context.async();
+    harvester
+        .getModConfigurationValue("testmodule", "something", "2")
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                assertThat(ar.result()).isEqualTo("2");
+                async2.complete();
+              } else {
+                context.fail();
+              }
+            });
   }
 }

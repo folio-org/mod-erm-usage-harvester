@@ -13,6 +13,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
@@ -595,5 +596,32 @@ public class WorkerVerticle extends AbstractVerticle {
     } else {
       LOG.info("TEST ENV");
     }
+  }
+
+  public Future<String> getModConfigurationValue(String module, String code, String defaultValue) {
+    Future<String> future = Future.future();
+    final String path = "/configurations/entries";
+    final String cql = String.format("?query=(module = %s and code = %s)", module, code);
+    WebClient client = WebClient.create(vertx);
+    client
+        .getAbs(okapiUrl + path + cql)
+        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
+        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
+        .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
+        .timeout(5000)
+        .send(
+            ar -> {
+              if (ar.succeeded()) {
+                JsonArray configs =
+                    ar.result().bodyAsJsonObject().getJsonArray("configs", new JsonArray());
+                if (configs.size() == 1) {
+                  future.complete(configs.getJsonObject(0).getString("value"));
+                }
+              }
+              if (!future.isComplete()) {
+                future.complete(defaultValue);
+              }
+            });
+    return future;
   }
 }
