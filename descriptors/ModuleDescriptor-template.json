@@ -20,7 +20,8 @@
             "counterreports.item.get",
             "counterreports.item.post",
             "counterreports.item.put",
-            "counterreports.item.delete"
+            "counterreports.item.delete",
+            "configuration.entries.collection.get"
           ]
         },
         {
@@ -37,7 +38,8 @@
             "counterreports.item.get",
             "counterreports.item.post",
             "counterreports.item.put",
-            "counterreports.item.delete"
+            "counterreports.item.delete",
+            "configuration.entries.collection.get"
           ]
         },
         {
@@ -65,7 +67,19 @@
           "methods": [
             "GET"
           ],
-          "pathPattern": "/_/start"
+          "pathPattern": "/_/start",
+          "modulePermissions": [
+            "usagedataproviders.collection.get",
+            "usagedataproviders.item.get",
+            "aggregatorsettings.collection.get",
+            "aggregatorsettings.item.get",
+            "counterreports.collection.get",
+            "counterreports.item.get",
+            "counterreports.item.post",
+            "counterreports.item.put",
+            "counterreports.item.delete",
+            "configuration.entries.collection.get"
+          ]
         }
       ]
     },
