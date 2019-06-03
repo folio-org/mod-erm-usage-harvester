@@ -71,6 +71,15 @@ public class WorkerVerticle extends AbstractVerticle {
         }
       };
 
+  public WorkerVerticle(Token token) {
+    this.token = token;
+  }
+
+  public WorkerVerticle(Token token, String providerId) {
+    this.token = token;
+    this.providerId = providerId;
+  }
+
   private String format(String pattern, Object... args) {
     return MessageFormatter.arrayFormat(pattern, args).getMessage();
   }
@@ -326,12 +335,21 @@ public class WorkerVerticle extends AbstractVerticle {
                                       provider.getHarvestingConfig().getHarvestingEnd());
                               arrayList.removeAll(list);
                               arrayList.forEach(
-                                  li ->
-                                      fetchList.add(
-                                          new FetchItem(
-                                              reportName,
-                                              li.atDay(1).toString(),
-                                              li.atEndOfMonth().toString())));
+                                  li -> {
+                                    FetchItem fetchItem =
+                                        new FetchItem(
+                                            reportName,
+                                            li.atDay(1).toString(),
+                                            li.atEndOfMonth().toString());
+                                    LOG.info(
+                                        "Created FetchItem: "
+                                            + fetchItem.reportType
+                                            + " "
+                                            + fetchItem.begin
+                                            + " "
+                                            + fetchItem.end);
+                                    fetchList.add(fetchItem);
+                                  });
                               return Future.succeededFuture();
                             })));
 
@@ -577,15 +595,6 @@ public class WorkerVerticle extends AbstractVerticle {
                 vertx.undeploy(this.deploymentID());
               }
             });
-  }
-
-  public WorkerVerticle(Token token) {
-    this.token = token;
-  }
-
-  public WorkerVerticle(Token token, String providerId) {
-    this.token = token;
-    this.providerId = providerId;
   }
 
   @Override
