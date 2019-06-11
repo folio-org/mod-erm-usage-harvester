@@ -1,3 +1,8 @@
+# 1.3.0
+* Use mod-configuration for maxFailedAttempts setting
+* Fix jackson-databind vulnerability
+* Update models & test data
+
 # 1.2.0
 * Add COUNTER 5 implementation
 
