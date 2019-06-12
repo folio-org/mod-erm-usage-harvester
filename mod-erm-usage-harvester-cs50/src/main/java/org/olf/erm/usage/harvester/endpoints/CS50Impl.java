@@ -14,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.ResponseBody;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.openapitools.client.ApiClient;
-import org.openapitools.client.api.DefaultApi;
 import org.openapitools.client.model.SUSHIErrorModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
