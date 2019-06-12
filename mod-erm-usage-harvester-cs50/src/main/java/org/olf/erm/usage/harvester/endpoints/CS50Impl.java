@@ -11,12 +11,15 @@ import java.net.URI;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.olf.erm.usage.counter50.Counter5Utils;
 import org.openapitools.client.ApiClient;
 import org.openapitools.client.model.SUSHIErrorModel;
+import org.openapitools.client.model.SUSHIReportHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.HttpException;
@@ -115,7 +118,23 @@ public class CS50Impl implements ServiceEndpoint {
     try {
       ((Observable<?>) method.invoke(client, customerId, beginDate, endDate, platform))
           .subscribeOn(Schedulers.io())
-          .subscribe(r -> future.complete(gson.toJson(r)), e -> future.fail(getSushiError(e)));
+          .subscribe(
+              r -> {
+                String content = gson.toJson(r);
+                SUSHIReportHeader reportHeader = Counter5Utils.getReportHeader(content);
+                if (reportHeader == null) {
+                  future.fail("Unkown Error - 200 Response is missing reportHeader");
+                } else if (reportHeader.getExceptions() != null
+                    && !reportHeader.getExceptions().isEmpty()) {
+                  future.fail(
+                      reportHeader.getExceptions().stream()
+                          .map(SUSHIErrorModel::toString)
+                          .collect(Collectors.joining(", ")));
+                } else {
+                  future.complete(content);
+                }
+              },
+              e -> future.fail(getSushiError(e)));
     } catch (Exception e) {
       future.fail(e);
     }

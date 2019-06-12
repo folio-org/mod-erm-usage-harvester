@@ -37,6 +37,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.openapitools.client.model.COUNTERTitleReport;
+import org.openapitools.client.model.SUSHIReportHeader;
 import retrofit2.adapter.rxjava2.HttpException;
 import sun.net.spi.DefaultProxySelector;
 
@@ -49,12 +50,18 @@ public class CS50ImplTest {
   private static final String REPORT_PATH = "/sushi/reports/tr_j1";
   private static final String CUSTOMER_ID = "CustomerId123";
   private static final String REQUESTOR_ID = "RequestorId123";
+  private static final COUNTERTitleReport emptyReport;
   private static UsageDataProvider provider;
   private static Gson gson = new Gson();
 
   @Rule public WireMockRule wmRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
   @Rule public WireMockRule proxyRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
   @Rule public Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
+
+  static {
+    emptyReport = new COUNTERTitleReport();
+    emptyReport.setReportHeader(new SUSHIReportHeader());
+  }
 
   @Before
   public void before() {
@@ -104,7 +111,7 @@ public class CS50ImplTest {
           public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {}
         });
 
-    String cr = gson.toJson(new COUNTERTitleReport());
+    String cr = gson.toJson(emptyReport);
     proxyRule.stubFor(
         get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(200).withBody(cr)));
 
@@ -122,8 +129,25 @@ public class CS50ImplTest {
   }
 
   @Test
-  public void testFetchSingleReport(TestContext context) {
+  public void testFetchSingleReportNoHeader(TestContext context) {
     String cr = gson.toJson(new COUNTERTitleReport());
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(200).withBody(cr)));
+
+    Async async = context.async();
+    new CS50Impl(provider)
+        .fetchSingleReport(REPORT, BEGIN_DATE, END_DATE)
+        .setHandler(
+            ar -> {
+              assertThat(ar.failed()).isTrue();
+              verifyApiCall();
+              async.complete();
+            });
+  }
+
+  @Test
+  public void testFetchSingleReportOk(TestContext context) {
+    String cr = gson.toJson(emptyReport);
     wmRule.stubFor(
         get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(200).withBody(cr)));
 
