@@ -11,6 +11,8 @@ import java.net.URI;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import okhttp3.Request;
+import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.openapitools.client.ApiClient;
@@ -50,6 +52,19 @@ public class CS50Impl implements ServiceEndpoint {
     apiClient.getAdapterBuilder().baseUrl(baseUrl);
     apiClient.getOkBuilder().readTimeout(60, TimeUnit.SECONDS);
     // apiClient.getOkBuilder().addInterceptor(new HttpLoggingInterceptor().setLevel(Level.BODY));
+
+    // workaround: route 201-299 codes to 400 (error)
+    apiClient
+        .getOkBuilder()
+        .addInterceptor(
+            chain -> {
+              Request request = chain.request();
+              Response response = chain.proceed(request);
+              if (response.code() > 200 && response.code() < 300) {
+                return response.newBuilder().code(400).build();
+              }
+              return response;
+            });
 
     try {
       Optional<Proxy> proxy = getProxy(new URI(baseUrl));
