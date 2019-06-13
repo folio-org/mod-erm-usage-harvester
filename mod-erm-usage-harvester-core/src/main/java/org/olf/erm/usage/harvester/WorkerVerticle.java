@@ -589,6 +589,16 @@ public class WorkerVerticle extends AbstractVerticle {
                             + ", HarvestingStatus not ACTIVE");
                     vertx.undeploy(this.deploymentID());
                   }
+                } else {
+                  LOG.error(
+                      "{}{}, Provider: {}, {} returned response {} {}",
+                      TENANT,
+                      token.getTenantId(),
+                      providerId,
+                      providerPath,
+                      h.result().statusCode(),
+                      h.result().statusMessage());
+                  vertx.undeploy(this.deploymentID());
                 }
               } else {
                 LOG.error(h.cause().getMessage(), h.cause());
