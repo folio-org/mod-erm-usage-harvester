@@ -253,7 +253,7 @@ public class WorkerVerticle extends AbstractVerticle {
         String.format(
             "(providerId=%s AND "
                 + "((cql.allRecords=1 NOT failedAttempts=\"\") OR (failedAttempts>=%s)) AND "
-                + "reportName=%s AND yearMonth>=%s AND yearMonth<=%s)",
+                + "reportName==%s AND yearMonth>=%s AND yearMonth<=%s)",
             providerId, maxFailedAttempts, reportName, start.toString(), end.toString());
     client
         .getAbs(okapiUrl + reportsPath)
@@ -497,7 +497,7 @@ public class WorkerVerticle extends AbstractVerticle {
     Future<CounterReport> future = Future.future();
     String queryStr =
         String.format(
-            "(providerId=%s AND yearMonth=%s AND reportName=%s)", providerId, month, reportName);
+            "(providerId=%s AND yearMonth=%s AND reportName==%s)", providerId, month, reportName);
     client
         .getAbs(okapiUrl + reportsPath)
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
