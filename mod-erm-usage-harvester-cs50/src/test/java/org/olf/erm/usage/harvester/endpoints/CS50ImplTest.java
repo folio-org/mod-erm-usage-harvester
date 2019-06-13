@@ -194,7 +194,7 @@ public class CS50ImplTest {
         .setHandler(
             ar -> {
               assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause()).hasMessageContaining("BEGIN_ARRAY");
+              assertThat(ar.cause()).hasMessageContaining("api_key Invalid");
               verifyApiCall();
               async.complete();
             });

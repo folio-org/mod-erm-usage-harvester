@@ -11,7 +11,6 @@ import java.net.URI;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
@@ -79,6 +78,15 @@ public class CS50Impl implements ServiceEndpoint {
     client = apiClient.createService(DefaultApi.class);
   }
 
+  private String toJsonOrString(String s) {
+    try {
+      SUSHIErrorModel sushiErrorModel = gson.fromJson(s, SUSHIErrorModel.class);
+      return gson.toJson(sushiErrorModel);
+    } catch (Exception e) {
+      return s;
+    }
+  }
+
   private Throwable getSushiError(Throwable e) {
     if (e instanceof HttpException) {
       HttpException ex = (HttpException) e;
@@ -86,7 +94,7 @@ public class CS50Impl implements ServiceEndpoint {
         ResponseBody responseBody = ex.response().errorBody();
         String errorBody = Objects.requireNonNull(responseBody).string();
         if (!Strings.isNullOrEmpty(errorBody)) {
-          return new Throwable(gson.fromJson(errorBody, SUSHIErrorModel.class).toString(), ex);
+          return new Throwable(toJsonOrString(errorBody), ex);
         }
       } catch (Exception exc) {
         return new Throwable("Error parsing error response: " + exc.getMessage(), ex);
@@ -126,10 +134,7 @@ public class CS50Impl implements ServiceEndpoint {
                   future.fail("Unkown Error - 200 Response is missing reportHeader");
                 } else if (reportHeader.getExceptions() != null
                     && !reportHeader.getExceptions().isEmpty()) {
-                  future.fail(
-                      reportHeader.getExceptions().stream()
-                          .map(SUSHIErrorModel::toString)
-                          .collect(Collectors.joining(", ")));
+                  future.fail(gson.toJson(reportHeader.getExceptions()));
                 } else {
                   future.complete(content);
                 }
