@@ -665,16 +665,16 @@ public class WorkerVerticleTest {
                     .add(
                         new JsonObject()
                             .put("module", "testmodule")
-                            .put("code", "testing")
+                            .put("confiName", "testing")
                             .put("value", "5")));
     stubFor(
         get(urlPathEqualTo("/configurations/entries"))
-            .withQueryParam("query", equalTo("(module = testmodule and code = ok)"))
+            .withQueryParam("query", equalTo("(module = testmodule and configName = ok)"))
             .willReturn(aResponse().withStatus(200).withBody(response.encodePrettily())));
 
     stubFor(
         get(urlPathEqualTo("/configurations/entries"))
-            .withQueryParam("query", equalTo("(module = testmodule and code = empty)"))
+            .withQueryParam("query", equalTo("(module = testmodule and configName = empty)"))
             .willReturn(aResponse().withStatus(200).withFault(Fault.EMPTY_RESPONSE)));
 
     Async async = context.async(2);

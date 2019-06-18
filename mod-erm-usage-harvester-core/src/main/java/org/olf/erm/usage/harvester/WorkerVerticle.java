@@ -646,7 +646,7 @@ public class WorkerVerticle extends AbstractVerticle {
   public Future<String> getModConfigurationValue(String module, String code, String defaultValue) {
     Future<String> future = Future.future();
     final String path = CONFIG_PATH;
-    final String cql = String.format("?query=(module = %s and code = %s)", module, code);
+    final String cql = String.format("?query=(module = %s and configName = %s)", module, code);
     WebClient client = WebClient.create(vertx);
     client
         .getAbs(okapiUrl + path + cql)
