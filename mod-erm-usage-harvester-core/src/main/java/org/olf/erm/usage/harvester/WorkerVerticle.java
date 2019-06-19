@@ -253,7 +253,7 @@ public class WorkerVerticle extends AbstractVerticle {
         String.format(
             "(providerId=%s AND "
                 + "((cql.allRecords=1 NOT failedAttempts=\"\") OR (failedAttempts>=%s)) AND "
-                + "reportName=%s AND yearMonth>=%s AND yearMonth<=%s)",
+                + "reportName==%s AND yearMonth>=%s AND yearMonth<=%s)",
             providerId, maxFailedAttempts, reportName, start.toString(), end.toString());
     client
         .getAbs(okapiUrl + reportsPath)
@@ -497,7 +497,7 @@ public class WorkerVerticle extends AbstractVerticle {
     Future<CounterReport> future = Future.future();
     String queryStr =
         String.format(
-            "(providerId=%s AND yearMonth=%s AND reportName=%s)", providerId, month, reportName);
+            "(providerId=%s AND yearMonth=%s AND reportName==%s)", providerId, month, reportName);
     client
         .getAbs(okapiUrl + reportsPath)
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
@@ -589,6 +589,16 @@ public class WorkerVerticle extends AbstractVerticle {
                             + ", HarvestingStatus not ACTIVE");
                     vertx.undeploy(this.deploymentID());
                   }
+                } else {
+                  LOG.error(
+                      "{}{}, Provider: {}, {} returned response {} {}",
+                      TENANT,
+                      token.getTenantId(),
+                      providerId,
+                      providerPath,
+                      h.result().statusCode(),
+                      h.result().statusMessage());
+                  vertx.undeploy(this.deploymentID());
                 }
               } else {
                 LOG.error(h.cause().getMessage(), h.cause());
@@ -636,7 +646,7 @@ public class WorkerVerticle extends AbstractVerticle {
   public Future<String> getModConfigurationValue(String module, String code, String defaultValue) {
     Future<String> future = Future.future();
     final String path = CONFIG_PATH;
-    final String cql = String.format("?query=(module = %s and code = %s)", module, code);
+    final String cql = String.format("?query=(module = %s and configName = %s)", module, code);
     WebClient client = WebClient.create(vertx);
     client
         .getAbs(okapiUrl + path + cql)

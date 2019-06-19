@@ -606,7 +606,7 @@ public class WorkerVerticleTest {
     stubFor(
         get(urlEqualTo(
                 "/counter-reports?query=%28providerId%3D97329ea7-f351-458a-a460-71aa6db75e35%20"
-                    + "AND%20yearMonth%3D2018-03%20AND%20reportName%3DJR1%29&tiny=true"))
+                    + "AND%20yearMonth%3D2018-03%20AND%20reportName%3D%3DJR1%29&tiny=true"))
             .willReturn(
                 aResponse()
                     .withStatus(200)
@@ -618,7 +618,7 @@ public class WorkerVerticleTest {
     stubFor(
         get(urlEqualTo(
                 "/counter-reports?query=%28providerId%3D97329ea7-f351-458a-a460-71aa6db75e35%20"
-                    + "AND%20yearMonth%3D2018-03%20AND%20reportName%3DJR2%29&tiny=true"))
+                    + "AND%20yearMonth%3D2018-03%20AND%20reportName%3D%3DJR2%29&tiny=true"))
             .willReturn(
                 aResponse().withStatus(200).withBody(Json.encodePrettily(new CounterReports()))));
     stubFor(post(urlPathEqualTo("/counter-reports")).willReturn(aResponse().withStatus(201)));
@@ -665,16 +665,16 @@ public class WorkerVerticleTest {
                     .add(
                         new JsonObject()
                             .put("module", "testmodule")
-                            .put("code", "testing")
+                            .put("confiName", "testing")
                             .put("value", "5")));
     stubFor(
         get(urlPathEqualTo("/configurations/entries"))
-            .withQueryParam("query", equalTo("(module = testmodule and code = ok)"))
+            .withQueryParam("query", equalTo("(module = testmodule and configName = ok)"))
             .willReturn(aResponse().withStatus(200).withBody(response.encodePrettily())));
 
     stubFor(
         get(urlPathEqualTo("/configurations/entries"))
-            .withQueryParam("query", equalTo("(module = testmodule and code = empty)"))
+            .withQueryParam("query", equalTo("(module = testmodule and configName = empty)"))
             .willReturn(aResponse().withStatus(200).withFault(Fault.EMPTY_RESPONSE)));
 
     Async async = context.async(2);

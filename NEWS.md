@@ -1,3 +1,13 @@
+# 1.3.1
+* core: Fix CQL for configuration module: Use `configName` instead of `code`
+* cs41: Bump erm-usage-counter to 1.2.1 with NPE fix for missing error messages (UIEUS-75)
+* core: Undeploy WorkerVerticle if providerId invalid
+* core: Fix CQL strings
+* cs50: Prettify error messages
+* cs50: Dont store reports without reportHeader or with exceptions
+* cs50: Fix handling of 201-299 status codes
+* cs50: Fix Master Reports not getting pulled (UIEUS-84)
+
 # 1.3.0
 * Use mod-configuration for maxFailedAttempts setting
 * Fix jackson-databind vulnerability

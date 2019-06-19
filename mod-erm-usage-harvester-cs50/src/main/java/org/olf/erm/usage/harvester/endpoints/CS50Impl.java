@@ -11,11 +11,14 @@ import java.net.URI;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import okhttp3.Request;
+import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.olf.erm.usage.counter50.Counter5Utils;
 import org.openapitools.client.ApiClient;
-import org.openapitools.client.api.DefaultApi;
 import org.openapitools.client.model.SUSHIErrorModel;
+import org.openapitools.client.model.SUSHIReportHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.HttpException;
@@ -52,6 +55,19 @@ public class CS50Impl implements ServiceEndpoint {
     apiClient.getOkBuilder().readTimeout(60, TimeUnit.SECONDS);
     // apiClient.getOkBuilder().addInterceptor(new HttpLoggingInterceptor().setLevel(Level.BODY));
 
+    // workaround: route 201-299 codes to 400 (error)
+    apiClient
+        .getOkBuilder()
+        .addInterceptor(
+            chain -> {
+              Request request = chain.request();
+              Response response = chain.proceed(request);
+              if (response.code() > 200 && response.code() < 300) {
+                return response.newBuilder().code(400).build();
+              }
+              return response;
+            });
+
     try {
       Optional<Proxy> proxy = getProxy(new URI(baseUrl));
       if (proxy.isPresent()) apiClient.getOkBuilder().proxy(proxy.get());
@@ -62,6 +78,15 @@ public class CS50Impl implements ServiceEndpoint {
     client = apiClient.createService(DefaultApi.class);
   }
 
+  private String toJsonOrString(String s) {
+    try {
+      SUSHIErrorModel sushiErrorModel = gson.fromJson(s, SUSHIErrorModel.class);
+      return gson.toJson(sushiErrorModel);
+    } catch (Exception e) {
+      return s;
+    }
+  }
+
   private Throwable getSushiError(Throwable e) {
     if (e instanceof HttpException) {
       HttpException ex = (HttpException) e;
@@ -69,7 +94,7 @@ public class CS50Impl implements ServiceEndpoint {
         ResponseBody responseBody = ex.response().errorBody();
         String errorBody = Objects.requireNonNull(responseBody).string();
         if (!Strings.isNullOrEmpty(errorBody)) {
-          return new Throwable(gson.fromJson(errorBody, SUSHIErrorModel.class).toString(), ex);
+          return new Throwable(toJsonOrString(errorBody), ex);
         }
       } catch (Exception exc) {
         return new Throwable("Error parsing error response: " + exc.getMessage(), ex);
@@ -101,7 +126,20 @@ public class CS50Impl implements ServiceEndpoint {
     try {
       ((Observable<?>) method.invoke(client, customerId, beginDate, endDate, platform))
           .subscribeOn(Schedulers.io())
-          .subscribe(r -> future.complete(gson.toJson(r)), e -> future.fail(getSushiError(e)));
+          .subscribe(
+              r -> {
+                String content = gson.toJson(r);
+                SUSHIReportHeader reportHeader = Counter5Utils.getReportHeader(content);
+                if (reportHeader == null) {
+                  future.fail("Unkown Error - 200 Response is missing reportHeader");
+                } else if (reportHeader.getExceptions() != null
+                    && !reportHeader.getExceptions().isEmpty()) {
+                  future.fail(gson.toJson(reportHeader.getExceptions()));
+                } else {
+                  future.complete(content);
+                }
+              },
+              e -> future.fail(getSushiError(e)));
     } catch (Exception e) {
       future.fail(e);
     }
