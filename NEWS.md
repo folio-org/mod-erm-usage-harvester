@@ -1,3 +1,6 @@
+# 1.3.2
+* Update jackson-databind to 2.9.9.1 CVE-2019-12814
+
 # 1.3.1
 * core: Fix CQL for configuration module: Use `configName` instead of `code`
 * cs41: Bump erm-usage-counter to 1.2.1 with NPE fix for missing error messages (UIEUS-75)
