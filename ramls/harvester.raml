@@ -8,7 +8,6 @@ documentation:
     content: This documents the API calls that can be made to query and manage aggregator settings
 
 types:
-  harvesterSetting: !include schemas/harvesterSetting.json
   errors: !include raml-util/schemas/errors.schema
 
 traits:
@@ -23,21 +22,6 @@ resourceTypes:
   collection-item: !include ./raml-util/rtypes/item-collection.raml
 
 /erm-usage-harvester:
-  /settings:
-    get:
-      description: Get settings for tenant
-      responses:
-        200:
-          body:
-            application/json:
-              type: harvesterSetting
-    post:
-      description: Set settings for tenant
-      body:
-        application/json:
-          type: harvesterSetting
-    delete:
-      description: Delete settings for tenant
   /start:
     get:
       description: Start harvesting for tenant - process all defined usage data providers
