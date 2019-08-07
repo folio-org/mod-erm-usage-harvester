@@ -37,7 +37,7 @@ import org.olf.erm.usage.harvester.OkapiClient;
 @RunWith(VertxUnitRunner.class)
 public class StartAPITest {
 
-  private static Vertx vertx = Vertx.vertx();
+  private static Vertx vertx;
 
   @ClassRule
   public static WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
