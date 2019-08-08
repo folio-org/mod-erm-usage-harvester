@@ -8,6 +8,7 @@ documentation:
     content: This documents the API calls that can be made to query and manage aggregator settings
 
 types:
+  periodicConfig: !include schemas/periodicConfig.json
   errors: !include raml-util/schemas/errors.schema
 
 traits:
@@ -31,9 +32,21 @@ resourceTypes:
   /impl:
     get:
       description: Get available service implementations
-      queryParameters: 
+      queryParameters:
         aggregator:
           description: Filter by 'isAggregator' property (true or false)
           type: string
           required: false
-
+  /periodic:
+    description: Manage periodic harvesting configuration
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: periodicConfig
+    post:
+      body:
+        application/json:
+          type: periodicConfig
+    delete:

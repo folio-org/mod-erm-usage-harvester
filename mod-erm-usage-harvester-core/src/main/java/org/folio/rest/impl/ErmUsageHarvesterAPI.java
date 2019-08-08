@@ -17,18 +17,20 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.jaxrs.resource.ErmUsageHarvester;
 import org.olf.erm.usage.harvester.OkapiClient;
 import org.olf.erm.usage.harvester.Token;
 import org.olf.erm.usage.harvester.WorkerVerticle;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
+import org.olf.erm.usage.harvester.periodic.PeriodicConfigPgUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ErmUsageHarvesterAPI.class);
+  private static final Logger log = LoggerFactory.getLogger(ErmUsageHarvesterAPI.class);
   public static final Error ERR_NO_TOKEN =
       new Error().withType("Error").withMessage("No Okapi Token provided");
 
@@ -51,7 +53,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
         .setHandler(
             ar -> {
               if (ar.failed()) {
-                LOG.error(
+                log.error(
                     String.format(
                         "Tenant: %s, failed deploying WorkerVerticle: %s",
                         token.getTenantId(), ar.cause().getMessage()),
@@ -75,7 +77,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
     Token token = new Token(tokenStr);
     String msg = String.format("Processing of tenant: %s requested.", token.getTenantId());
-    LOG.info(msg);
+    log.info(msg);
     depoyWorkerVerticle(vertxContext.owner(), token, null);
     String result = new JsonObject().put("message", msg).toString();
     asyncResultHandler.handle(
@@ -100,7 +102,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     String msg =
         String.format(
             "Processing of ProviderId: %s, Tenant: %s requested.", id, token.getTenantId());
-    LOG.info(msg);
+    log.info(msg);
     depoyWorkerVerticle(vertxContext.owner(), token, id);
     String result = new JsonObject().put("message", msg).toString();
     asyncResultHandler.handle(
@@ -126,5 +128,57 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     String result = new JsonObject().put("implementations", new JsonArray(collect)).toString();
     asyncResultHandler.handle(
         Future.succeededFuture(Response.ok(result, MediaType.APPLICATION_JSON_TYPE).build()));
+  }
+
+  @Override
+  public void getErmUsageHarvesterPeriodic(
+      Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+
+    PeriodicConfigPgUtil.get(vertxContext, okapiHeaders)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                asyncResultHandler.handle(Future.succeededFuture(Response.ok(ar.result()).build()));
+              } else {
+                asyncResultHandler.handle(Future.succeededFuture(Response.serverError().build()));
+              }
+            });
+  }
+
+  @Override
+  public void postErmUsageHarvesterPeriodic(
+      PeriodicConfig entity,
+      Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+
+    PeriodicConfigPgUtil.upsert(vertxContext, okapiHeaders, entity)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                asyncResultHandler.handle(Future.succeededFuture(Response.status(201).build()));
+              } else {
+                asyncResultHandler.handle(Future.succeededFuture(Response.serverError().build()));
+              }
+            });
+  }
+
+  @Override
+  public void deleteErmUsageHarvesterPeriodic(
+      Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+
+    PeriodicConfigPgUtil.delete(vertxContext, okapiHeaders)
+        .setHandler(
+            ar -> {
+              if (ar.succeeded()) {
+                asyncResultHandler.handle(Future.succeededFuture(Response.noContent().build()));
+              } else {
+                asyncResultHandler.handle(Future.succeededFuture(Response.serverError().build()));
+              }
+            });
   }
 }

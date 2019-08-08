@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "PeriodicConfig Schema",
+  "description": "Settings for periodic harvesting",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "startAt": {
+      "description": "the date periodic harvesting should run for the first time",
+      "type": "string",
+      "format": "date-time"
+    },
+    "lastTriggeredAt": {
+      "description": "the date periodic harvesting was last triggered at",
+      "type": "string",
+      "format": "date-time"
+    },
+    "periodicInterval": {
+      "description": "period between harvesting attempts",
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly"
+      ]
+    }
+  },
+  "required": [
+    "startAt",
+    "interval"
+  ],
+  "additionalProperties": true
+}

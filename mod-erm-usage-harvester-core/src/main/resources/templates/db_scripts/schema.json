@@ -1,0 +1,20 @@
+{
+  "scripts": [
+    {
+      "run": "after",
+      "snippet": "ALTER TABLE periodic ALTER id SET DEFAULT '8bf5fe33-5ec8-420c-a86d-6320c55ba554';"
+    },
+    {
+      "run": "after",
+      "snippet": "ALTER TABLE periodic ADD CONSTRAINT check_uuid CHECK (id='8bf5fe33-5ec8-420c-a86d-6320c55ba554');"
+    }
+  ],
+  "tables": [
+    {
+      "tableName": "periodic",
+      "fromModuleVersion": "1.0",
+      "uniqueIndex": []
+    }
+  ],
+  "views": []
+}
