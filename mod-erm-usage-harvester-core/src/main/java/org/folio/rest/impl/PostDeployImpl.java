@@ -14,7 +14,7 @@ import org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval;
 import org.folio.rest.resource.interfaces.PostDeployVerticle;
 import org.olf.erm.usage.harvester.OkapiClient;
 import org.olf.erm.usage.harvester.periodic.PeriodicConfigPgUtil;
-import org.olf.erm.usage.harvester.periodic.PeriodicUtil;
+import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.impl.StdSchedulerFactory;
@@ -33,7 +33,7 @@ public class PostDeployImpl implements PostDeployVerticle {
                     ar -> {
                       if (ar.succeeded()) {
                         PeriodicConfig periodicConfig = ar.result();
-                        PeriodicUtil.createOrUpdateJob(periodicConfig, tenant);
+                        SchedulingUtil.createOrUpdateJob(periodicConfig, tenant);
                       } else {
                         log.error(
                             "Tenant: {}, failed getting PeriodicConfig: {}",

@@ -17,9 +17,9 @@ import org.quartz.impl.StdSchedulerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PeriodicUtil {
+public class SchedulingUtil {
 
-  private static final Logger log = LoggerFactory.getLogger(PeriodicUtil.class);
+  private static final Logger log = LoggerFactory.getLogger(SchedulingUtil.class);
 
   public static void createOrUpdateJob(PeriodicConfig config, String tenantId) {
     try {
