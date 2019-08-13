@@ -18,8 +18,12 @@ public class HarvestTenantJob implements Job {
     Context vertxContext;
     try {
       vertxContext = (Context) context.getScheduler().getContext().get("vertxContext");
+      if (vertxContext == null) {
+        log.error("Tenant: {}, vert.x context is null", tenantId);
+        return;
+      }
     } catch (Exception e) {
-      log.error("Tenant: " + tenantId + ", Error getting vert.x context: " + e.getMessage(), e);
+      log.error("Tenant: {}, error getting vert.x context: ", e.getMessage(), e);
       return;
     }
 
@@ -32,14 +36,20 @@ public class HarvestTenantJob implements Job {
               if (ar.succeeded()) {
                 if (ar.result().statusCode() != 200) {
                   log.error(
-                      "Tenant: {}, Received {} {}",
+                      "Tenant: {}, error starting job, received {} {} from start interface: {}",
                       tenantId,
                       ar.result().statusCode(),
-                      ar.result().statusMessage());
+                      ar.result().statusMessage(),
+                      ar.result().bodyAsString());
+                } else {
+                  log.info("Tenant: {}, job started", tenantId);
                 }
-                log.info(ar.result().bodyAsString());
               } else {
-                log.error(ar.cause().getMessage(), ar.cause());
+                log.error(
+                    "Tenant: {}, error connecting to start interface: {}",
+                    tenantId,
+                    ar.cause().getMessage(),
+                    ar.cause());
               }
             });
   }
