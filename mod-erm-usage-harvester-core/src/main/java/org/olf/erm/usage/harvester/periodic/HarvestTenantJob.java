@@ -1,7 +1,9 @@
 package org.olf.erm.usage.harvester.periodic;
 
 import io.vertx.core.Context;
+import io.vertx.core.Future;
 import io.vertx.ext.web.client.WebClient;
+import java.util.Date;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -12,6 +14,14 @@ public class HarvestTenantJob implements Job {
 
   private static final Logger log = LoggerFactory.getLogger(HarvestTenantJob.class);
   private String tenantId;
+
+  private Future<String> updateLastTriggeredAt(Context vertxContext, Date fireTime) {
+    return PeriodicConfigPgUtil.get(vertxContext, tenantId)
+        .compose(
+            pc ->
+                PeriodicConfigPgUtil.upsert(
+                    vertxContext, tenantId, pc.withLastTriggeredAt(fireTime)));
+  }
 
   @Override
   public void execute(JobExecutionContext context) {
@@ -51,6 +61,17 @@ public class HarvestTenantJob implements Job {
                     ar.cause().getMessage(),
                     ar.cause());
               }
+
+              updateLastTriggeredAt(vertxContext, context.getFireTime())
+                  .setHandler(
+                      ar2 -> {
+                        if (ar2.failed()) {
+                          log.error(
+                              "Tenant: {}, failed updating lastTriggeredAt: {}",
+                              tenantId,
+                              ar2.cause().getMessage());
+                        }
+                      });
             });
   }
 
