@@ -14,8 +14,9 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
-import java.sql.Date;
-import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import org.folio.okapi.common.XOkapiHeaders;
@@ -29,6 +30,11 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.quartz.JobKey;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.TriggerKey;
+import org.quartz.impl.StdSchedulerFactory;
 
 @RunWith(VertxUnitRunner.class)
 public class ErmUsageHarvesterPeriodicAPIIT {
@@ -73,7 +79,7 @@ public class ErmUsageHarvesterPeriodicAPIIT {
   }
 
   @Test
-  public void testThatWeCanPostGetUpdateAndDelete() {
+  public void testThatWeCanPostGetUpdateAndDelete() throws SchedulerException {
     RequestSpecification baseReq =
         new RequestSpecBuilder()
             .addHeader(XOkapiHeaders.TENANT, TENANT)
@@ -81,8 +87,20 @@ public class ErmUsageHarvesterPeriodicAPIIT {
             .build();
     PeriodicConfig periodicConfig =
         new PeriodicConfig()
-            .withStartAt(Date.from(Instant.now()))
+            .withStartAt(
+                Date.from(
+                    LocalDateTime.of(2019, 1, 1, 8, 0).atZone(ZoneId.systemDefault()).toInstant()))
             .withPeriodicInterval(PeriodicInterval.DAILY);
+    PeriodicConfig periodicConfig2 =
+        new PeriodicConfig()
+            .withStartAt(
+                Date.from(
+                    LocalDateTime.of(2019, 1, 1, 8, 5).atZone(ZoneId.systemDefault()).toInstant()))
+            .withPeriodicInterval(PeriodicInterval.DAILY);
+
+    Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
+    JobKey jobKey = new JobKey(TENANT);
+    TriggerKey triggerKey = new TriggerKey(TENANT);
 
     given().spec(baseReq).get().then().statusCode(404);
     given().spec(baseReq).delete().then().statusCode(404);
@@ -100,13 +118,13 @@ public class ErmUsageHarvesterPeriodicAPIIT {
                 .withId(null))
         .isEqualToComparingFieldByFieldRecursively(periodicConfig);
 
+    assertThat(scheduler.checkExists(jobKey)).isTrue();
+    assertThat(scheduler.checkExists(triggerKey)).isTrue();
+    assertThat(scheduler.getTrigger(triggerKey).getStartTime())
+        .isEqualTo(periodicConfig.getStartAt());
+
     // UPDATE
-    given()
-        .spec(baseReq)
-        .body(periodicConfig.withPeriodicInterval(PeriodicInterval.WEEKLY))
-        .post()
-        .then()
-        .statusCode(201);
+    given().spec(baseReq).body(periodicConfig2).post().then().statusCode(201);
     assertThat(
             given()
                 .spec(baseReq)
@@ -116,12 +134,19 @@ public class ErmUsageHarvesterPeriodicAPIIT {
                 .extract()
                 .as(PeriodicConfig.class)
                 .withId(null))
-        .isEqualToComparingFieldByFieldRecursively(
-            periodicConfig.withPeriodicInterval(PeriodicInterval.WEEKLY));
+        .isEqualToComparingFieldByFieldRecursively(periodicConfig2);
+
+    assertThat(scheduler.checkExists(jobKey)).isTrue();
+    assertThat(scheduler.checkExists(triggerKey)).isTrue();
+    assertThat(scheduler.getTrigger(triggerKey).getStartTime())
+        .isEqualTo(periodicConfig2.getStartAt());
 
     // DELETE
     given().spec(baseReq).delete().then().statusCode(204);
     given().spec(baseReq).get().then().statusCode(404);
+
+    assertThat(scheduler.checkExists(jobKey)).isFalse();
+    assertThat(scheduler.checkExists(triggerKey)).isFalse();
 
     PostgresClient.stopEmbeddedPostgres();
     given().spec(baseReq).body(periodicConfig).post().then().statusCode(500);
