@@ -42,11 +42,6 @@
       <version>${okapi.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>mod-configuration-client</artifactId>
-      <version>5.1.0</version>
-    </dependency>
-    <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
       <version>${vertx.version}</version>
