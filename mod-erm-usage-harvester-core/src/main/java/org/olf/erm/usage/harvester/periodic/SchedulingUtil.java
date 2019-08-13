@@ -107,8 +107,14 @@ public class SchedulingUtil {
         return null;
     }
 
+    Date startTrigger = config.getStartAt();
+    if (config.getLastTriggeredAt() != null
+        && config.getLastTriggeredAt().compareTo(startTrigger) > 0) {
+      startTrigger = config.getLastTriggeredAt();
+    }
+
     return TriggerBuilder.newTrigger()
-        .startAt(Date.from(start.withSecond(0).atZone(ZoneId.systemDefault()).toInstant()))
+        .startAt(startTrigger)
         .withIdentity(new TriggerKey(tenantId))
         .withSchedule(cronScheduleBuilder.withMisfireHandlingInstructionFireAndProceed())
         .build();
