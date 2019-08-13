@@ -62,6 +62,14 @@ public class SchedulingUtil {
     }
   }
 
+  public static void deleteJob(String tenantId) {
+    try {
+      deleteJob(StdSchedulerFactory.getDefaultScheduler(), tenantId);
+    } catch (SchedulerException e) {
+      log.error("Tenant: {}, unable to get default scheduler: {}", tenantId, e.getMessage());
+    }
+  }
+
   public static void deleteJob(Scheduler scheduler, String tenantId) {
     JobKey jobKey = new JobKey(tenantId);
     try {
@@ -107,7 +115,8 @@ public class SchedulingUtil {
         return null;
     }
 
-    Date startTrigger = config.getStartAt();
+    Date startTrigger =
+        Date.from(start.withSecond(0).withNano(0).atZone(ZoneId.systemDefault()).toInstant());
     if (config.getLastTriggeredAt() != null
         && config.getLastTriggeredAt().compareTo(startTrigger) > 0) {
       startTrigger = config.getLastTriggeredAt();
