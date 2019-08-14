@@ -5,12 +5,8 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Date;
 import java.util.List;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
-import org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval;
 import org.folio.rest.resource.interfaces.PostDeployVerticle;
 import org.olf.erm.usage.harvester.OkapiClient;
 import org.olf.erm.usage.harvester.periodic.PeriodicConfigPgUtil;
@@ -46,21 +42,10 @@ public class PostDeployImpl implements PostDeployVerticle {
   @Override
   public void init(Vertx arg0, Context arg1, Handler<AsyncResult<Boolean>> arg2) {
     if (Boolean.TRUE.equals(arg1.config().getBoolean("testing"))) {
+      log.info("Skipping PostDeployImpl (testing==true)");
       arg2.handle(Future.succeededFuture(true));
       return;
     }
-
-    PeriodicConfig periodicConfig =
-        new PeriodicConfig()
-            .withStartAt(
-                Date.from(
-                    LocalDateTime.now()
-                        .withSecond(0)
-                        .plusMinutes(1)
-                        .atZone(ZoneId.systemDefault())
-                        .toInstant()))
-            .withPeriodicInterval(PeriodicInterval.DAILY);
-    PeriodicConfigPgUtil.upsert(arg1, "diku", periodicConfig);
 
     try {
       Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
