@@ -54,6 +54,7 @@ public class ErmUsageHarvesterAPITest {
     JsonObject cfg = new JsonObject(deployCfg);
     cfg.put("testing", true);
     cfg.put("http.port", port);
+    RestAssured.reset();
     RestAssured.port = port;
     RestAssured.basePath = "erm-usage-harvester";
     RestAssured.defaultParser = Parser.JSON;

@@ -62,6 +62,7 @@ public class StartAPITest {
     cfg.put("http.port", port);
     String okapiMockUrl = "http://localhost:" + wireMockRule.port() + "/okapiMock";
     cfg.put("okapiUrl", okapiMockUrl);
+    RestAssured.reset();
     RestAssured.port = port;
     RestAssured.defaultParser = Parser.JSON;
     RestAssured.filters(new ResponseLoggingFilter(), new RequestLoggingFilter());

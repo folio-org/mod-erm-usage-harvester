@@ -76,6 +76,7 @@ public class ErmUsageHarvesterPeriodicAPIIT {
   public static void afterClass() {
     PostgresClient.stopEmbeddedPostgres();
     vertx.close();
+    RestAssured.reset();
   }
 
   @Test
