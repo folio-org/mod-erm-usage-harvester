@@ -7,6 +7,7 @@ import java.util.Date;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
+import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,17 +24,30 @@ public class HarvestTenantJob implements Job {
                     vertxContext, tenantId, pc.withLastTriggeredAt(fireTime)));
   }
 
+  private void failAndLog(Future future, String message) {
+    log.error(message);
+    future.fail(message);
+  }
+
   @Override
   public void execute(JobExecutionContext context) {
+    Future<String> future = Future.future();
+    context.setResult(future);
+
     Context vertxContext;
     try {
-      vertxContext = (Context) context.getScheduler().getContext().get("vertxContext");
-      if (vertxContext == null) {
-        log.error("Tenant: {}, vert.x context is null", tenantId);
-        return;
-      }
-    } catch (Exception e) {
-      log.error("Tenant: {}, error getting vert.x context: ", e.getMessage(), e);
+      Object o = context.getScheduler().getContext().get("vertxContext");
+      vertxContext = o instanceof Context ? (Context) o : null;
+    } catch (SchedulerException e) {
+      failAndLog(
+          future,
+          String.format(
+              "Tenant: %s, error getting scheduler context: %s", tenantId, e.getMessage()));
+      return;
+    }
+
+    if (vertxContext == null) {
+      failAndLog(future, String.format("Tenant: %s, error getting vert.x context", tenantId));
       return;
     }
 
@@ -45,33 +59,37 @@ public class HarvestTenantJob implements Job {
             ar -> {
               if (ar.succeeded()) {
                 if (ar.result().statusCode() != 200) {
-                  log.error(
-                      "Tenant: {}, error starting job, received {} {} from start interface: {}",
-                      tenantId,
-                      ar.result().statusCode(),
-                      ar.result().statusMessage(),
-                      ar.result().bodyAsString());
+                  failAndLog(
+                      future,
+                      String.format(
+                          "Tenant: %s, error starting job, received %s %s from start interface: %s",
+                          tenantId,
+                          ar.result().statusCode(),
+                          ar.result().statusMessage(),
+                          ar.result().bodyAsString()));
                 } else {
                   log.info("Tenant: {}, job started", tenantId);
+                  updateLastTriggeredAt(vertxContext, context.getFireTime())
+                      .setHandler(
+                          ar2 -> {
+                            if (ar2.succeeded()) {
+                              future.complete();
+                            } else {
+                              failAndLog(
+                                  future,
+                                  String.format(
+                                      "Tenant: %s, failed updating lastTriggeredAt: %s",
+                                      tenantId, ar2.cause().getMessage()));
+                            }
+                          });
                 }
               } else {
-                log.error(
-                    "Tenant: {}, error connecting to start interface: {}",
-                    tenantId,
-                    ar.cause().getMessage(),
-                    ar.cause());
+                failAndLog(
+                    future,
+                    String.format(
+                        "Tenant: %s, error connecting to start interface: %s",
+                        tenantId, ar.cause().getMessage()));
               }
-
-              updateLastTriggeredAt(vertxContext, context.getFireTime())
-                  .setHandler(
-                      ar2 -> {
-                        if (ar2.failed()) {
-                          log.error(
-                              "Tenant: {}, failed updating lastTriggeredAt: {}",
-                              tenantId,
-                              ar2.cause().getMessage());
-                        }
-                      });
             });
   }
 
