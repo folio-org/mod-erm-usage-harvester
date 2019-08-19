@@ -18,7 +18,7 @@ public class OkapiClient {
 
   private static final Logger LOG = LoggerFactory.getLogger(OkapiClient.class);
   public static final String INTERFACE_NAME = "erm-usage-harvester";
-  public static final String INTERFACE_VER = "1.1";
+  public static final String INTERFACE_VER = "1.2";
 
   private final String okapiUrl;
   private final String tenantsPath;

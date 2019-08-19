@@ -6,7 +6,7 @@
     },
     {
       "run": "after",
-      "snippet": "ALTER TABLE periodic ADD CONSTRAINT check_uuid CHECK (id='8bf5fe33-5ec8-420c-a86d-6320c55ba554');"
+      "snippet": "BEGIN; ALTER TABLE periodic DROP CONSTRAINT IF EXISTS check_uuid; ALTER TABLE periodic ADD CONSTRAINT check_uuid CHECK (id='8bf5fe33-5ec8-420c-a86d-6320c55ba554'); COMMIT;"
     }
   ],
   "tables": [
