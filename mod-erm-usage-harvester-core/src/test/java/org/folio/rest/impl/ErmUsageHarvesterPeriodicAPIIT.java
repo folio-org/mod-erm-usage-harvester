@@ -10,10 +10,8 @@ import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -21,15 +19,17 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.RestVerticle;
-import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.olf.erm.usage.harvester.EmbeddedPostgresRule;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -43,13 +43,11 @@ public class ErmUsageHarvesterPeriodicAPIIT {
   private static Vertx vertx;
   private static int port;
 
-  @BeforeClass
-  public static void beforeClass(TestContext context) throws IOException {
-    Async async = context.async();
-    vertx = Vertx.vertx();
-    PostgresClient instance = PostgresClient.getInstance(vertx);
-    instance.startEmbeddedPostgres();
+  @ClassRule public static EmbeddedPostgresRule pgRule = new EmbeddedPostgresRule(TENANT);
 
+  @BeforeClass
+  public static void beforeClass(TestContext context) {
+    vertx = VertxUtils.getVertxFromContextOrNew();
     port = NetworkUtils.nextFreePort();
 
     RestAssured.reset();
@@ -57,24 +55,13 @@ public class ErmUsageHarvesterPeriodicAPIIT {
     RestAssured.basePath = "erm-usage-harvester/periodic";
     RestAssured.defaultParser = Parser.JSON;
 
-    TenantClient tenantClient = new TenantClient("http://localhost:" + port, TENANT, TENANT);
     DeploymentOptions options = new DeploymentOptions();
     options.setConfig(new JsonObject().put("http.port", port).put("testing", true));
-    vertx.deployVerticle(
-        RestVerticle.class.getName(),
-        options,
-        h -> {
-          try {
-            tenantClient.postTenant(null, res -> async.complete());
-          } catch (Exception e) {
-            context.fail(e);
-          }
-        });
+    vertx.deployVerticle(RestVerticle.class.getName(), options, context.asyncAssertSuccess());
   }
 
   @AfterClass
   public static void afterClass() {
-    PostgresClient.stopEmbeddedPostgres();
     vertx.close();
     RestAssured.reset();
   }
