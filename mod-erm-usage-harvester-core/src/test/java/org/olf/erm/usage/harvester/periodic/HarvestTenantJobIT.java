@@ -7,7 +7,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -131,7 +130,7 @@ public class HarvestTenantJobIT {
                     context.verify(
                         v -> {
                           assertThat(ar.cause().getMessage()).contains("error connecting");
-                          verify(1, getRequestedFor(urlPathEqualTo(START_PATH)));
+                          wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH)));
                         });
                     async.complete();
                   } else {
@@ -155,7 +154,7 @@ public class HarvestTenantJobIT {
                     context.verify(
                         v -> {
                           assertThat(ar.cause().getMessage()).contains("received 404");
-                          verify(1, getRequestedFor(urlPathEqualTo(START_PATH)));
+                          wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH)));
                         });
                     PeriodicConfigPgUtil.get(vertxContext, TENANT)
                         .setHandler(
@@ -188,7 +187,8 @@ public class HarvestTenantJobIT {
             new JobWasExecutedListener(
                 ar -> {
                   if (ar.succeeded()) {
-                    context.verify(v -> verify(1, getRequestedFor(urlPathEqualTo(START_PATH))));
+                    context.verify(
+                        v -> wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH))));
                     PeriodicConfigPgUtil.get(vertxContext, TENANT)
                         .setHandler(
                             ar2 -> {
