@@ -128,4 +128,6 @@ public class SchedulingUtil {
         .withSchedule(cronScheduleBuilder.withMisfireHandlingInstructionFireAndProceed())
         .build();
   }
+
+  private SchedulingUtil() {}
 }

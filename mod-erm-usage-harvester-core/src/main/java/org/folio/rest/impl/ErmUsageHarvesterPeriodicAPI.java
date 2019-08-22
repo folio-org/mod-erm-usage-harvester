@@ -67,8 +67,9 @@ public class ErmUsageHarvesterPeriodicAPI implements ErmUsageHarvesterPeriodic {
                 if (ar.result().getUpdated() == 1) {
                   asyncResultHandler.handle(Future.succeededFuture(Response.noContent().build()));
                   SchedulingUtil.deleteJob(okapiHeaders.get(XOkapiHeaders.TENANT));
-                } else
+                } else {
                   asyncResultHandler.handle(Future.succeededFuture(Response.status(404).build()));
+                }
               } else {
                 asyncResultHandler.handle(Future.succeededFuture(Response.serverError().build()));
               }
