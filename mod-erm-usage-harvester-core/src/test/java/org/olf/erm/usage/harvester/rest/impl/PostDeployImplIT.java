@@ -1,4 +1,4 @@
-package org.folio.rest.impl;
+package org.olf.erm.usage.harvester.rest.impl;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;

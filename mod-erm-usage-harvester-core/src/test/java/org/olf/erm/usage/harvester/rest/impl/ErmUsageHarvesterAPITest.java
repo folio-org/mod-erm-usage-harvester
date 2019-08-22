@@ -1,4 +1,4 @@
-package org.folio.rest.impl;
+package org.olf.erm.usage.harvester.rest.impl;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
@@ -20,6 +20,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.impl.ErmUsageHarvesterAPI;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
