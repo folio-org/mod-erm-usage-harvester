@@ -8,7 +8,6 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -76,13 +75,17 @@ public class PostDeployImplIT {
             .withStartAt(Date.from(Instant.now().plusSeconds(3600)))
             .withPeriodicInterval(PeriodicInterval.MONTHLY);
 
+    // https://issues.folio.org/browse/RMB-427
     Future<String> tenantFuture1 = Future.future();
     Future<String> tenantFuture2 = Future.future();
     PeriodicConfigPgUtil.upsert(vertx.getOrCreateContext(), TENANT, config)
         .setHandler(tenantFuture1.completer());
-    PeriodicConfigPgUtil.upsert(vertx.getOrCreateContext(), TENANT2, config)
-        .setHandler(tenantFuture2.completer());
-    CompositeFuture.all(tenantFuture1, tenantFuture2)
+    tenantFuture1
+        .compose(
+            s ->
+                PeriodicConfigPgUtil.upsert(vertx.getOrCreateContext(), TENANT2, config)
+                    .setHandler(tenantFuture2.completer()),
+            tenantFuture2)
         .setHandler(
             ar -> {
               if (ar.succeeded()) {
