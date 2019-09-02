@@ -1,8 +1,7 @@
-package org.folio.rest.impl;
+package org.olf.erm.usage.harvester.rest.impl;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
@@ -32,12 +31,11 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.olf.erm.usage.harvester.OkapiClient;
 
 @RunWith(VertxUnitRunner.class)
 public class StartAPITest {
 
-  private static Vertx vertx = Vertx.vertx();
+  private static Vertx vertx;
 
   @ClassRule
   public static WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
@@ -62,6 +60,7 @@ public class StartAPITest {
     cfg.put("http.port", port);
     String okapiMockUrl = "http://localhost:" + wireMockRule.port() + "/okapiMock";
     cfg.put("okapiUrl", okapiMockUrl);
+    RestAssured.reset();
     RestAssured.port = port;
     RestAssured.defaultParser = Parser.JSON;
     RestAssured.filters(new ResponseLoggingFilter(), new RequestLoggingFilter());
@@ -79,31 +78,15 @@ public class StartAPITest {
 
   @Test
   public void testThatAllTenantsAreStarted(TestContext context) {
-    JsonArray enabled =
-        new JsonArray()
-            .add(
-                new JsonObject()
-                    .put("id", OkapiClient.INTERFACE_NAME)
-                    .put("version", OkapiClient.INTERFACE_VER));
     JsonArray jsonArray =
         Stream.iterate(1, i -> ++i)
             .limit(3)
             .map(
-                i -> {
-                  stubFor(
-                      get("/okapiMock/_/proxy/tenants/tenant" + i + "/interfaces")
-                          .willReturn(
-                              aResponse()
-                                  .withStatus(200)
-                                  .withBody(
-                                      (i % 2 != 0)
-                                          ? enabled.encodePrettily()
-                                          : new JsonArray().encodePrettily())));
-                  return new JsonObject()
-                      .put("id", "tenant" + i)
-                      .put("name", "Library" + i)
-                      .put("description", "Description" + i);
-                })
+                i ->
+                    new JsonObject()
+                        .put("id", "tenant" + i)
+                        .put("name", "Library" + i)
+                        .put("description", "Description" + i))
             .collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
 
     stubFor(
@@ -126,15 +109,11 @@ public class StartAPITest {
     async.awaitSuccess();
 
     verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants")));
-    verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants/tenant1/interfaces")));
-    verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants/tenant2/interfaces")));
-    verify(getRequestedFor(urlMatching("/okapiMock/_/proxy/tenants/tenant3/interfaces")));
 
     verify(
         getRequestedFor(urlMatching("/okapiMock/erm-usage-harvester/start"))
             .withHeader(XOkapiHeaders.TENANT, equalTo("tenant1")));
     verify(
-        exactly(0),
         getRequestedFor(urlMatching("/okapiMock/erm-usage-harvester/start"))
             .withHeader(XOkapiHeaders.TENANT, equalTo("tenant2")));
     verify(

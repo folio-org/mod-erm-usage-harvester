@@ -18,7 +18,6 @@ import javax.ws.rs.core.Response;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.resource.ErmUsageHarvester;
-import org.olf.erm.usage.harvester.OkapiClient;
 import org.olf.erm.usage.harvester.Token;
 import org.olf.erm.usage.harvester.WorkerVerticle;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
@@ -28,36 +27,31 @@ import org.slf4j.LoggerFactory;
 
 public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ErmUsageHarvesterAPI.class);
+  private static final Logger log = LoggerFactory.getLogger(ErmUsageHarvesterAPI.class);
   public static final Error ERR_NO_TOKEN =
       new Error().withType("Error").withMessage("No Okapi Token provided");
 
-  public void depoyWorkerVerticle(Vertx vertx, Token token, String providerId) {
-    new OkapiClient(vertx, vertx.getOrCreateContext().config())
-        .hasHarvesterInterface(token.getTenantId())
-        .compose(
-            v -> {
-              Future<String> deploy = Future.future();
-              WorkerVerticle verticle =
-                  (Strings.isNullOrEmpty(providerId))
-                      ? new WorkerVerticle(token)
-                      : new WorkerVerticle(token, providerId);
-              vertx.deployVerticle(
-                  verticle,
-                  new DeploymentOptions().setConfig(vertx.getOrCreateContext().config()),
-                  deploy.completer());
-              return deploy;
-            })
-        .setHandler(
-            ar -> {
-              if (ar.failed()) {
-                LOG.error(
-                    String.format(
-                        "Tenant: %s, failed deploying WorkerVerticle: %s",
-                        token.getTenantId(), ar.cause().getMessage()),
-                    ar.cause());
-              }
-            });
+  public void deployWorkerVerticle(Vertx vertx, Token token, String providerId) {
+    Future<String> deploy = Future.future();
+    WorkerVerticle verticle =
+        (Strings.isNullOrEmpty(providerId))
+            ? new WorkerVerticle(token)
+            : new WorkerVerticle(token, providerId);
+    vertx.deployVerticle(
+        verticle,
+        new DeploymentOptions().setConfig(vertx.getOrCreateContext().config()),
+        deploy.completer());
+
+    deploy.setHandler(
+        ar -> {
+          if (ar.failed()) {
+            log.error(
+                String.format(
+                    "Tenant: %s, failed deploying WorkerVerticle: %s",
+                    token.getTenantId(), ar.cause().getMessage()),
+                ar.cause());
+          }
+        });
   }
 
   @Override
@@ -75,8 +69,8 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
     Token token = new Token(tokenStr);
     String msg = String.format("Processing of tenant: %s requested.", token.getTenantId());
-    LOG.info(msg);
-    depoyWorkerVerticle(vertxContext.owner(), token, null);
+    log.info(msg);
+    deployWorkerVerticle(vertxContext.owner(), token, null);
     String result = new JsonObject().put("message", msg).toString();
     asyncResultHandler.handle(
         Future.succeededFuture(Response.ok(result, MediaType.APPLICATION_JSON_TYPE).build()));
@@ -100,8 +94,8 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     String msg =
         String.format(
             "Processing of ProviderId: %s, Tenant: %s requested.", id, token.getTenantId());
-    LOG.info(msg);
-    depoyWorkerVerticle(vertxContext.owner(), token, id);
+    log.info(msg);
+    deployWorkerVerticle(vertxContext.owner(), token, id);
     String result = new JsonObject().put("message", msg).toString();
     asyncResultHandler.handle(
         Future.succeededFuture(Response.ok(result, MediaType.APPLICATION_JSON_TYPE).build()));

@@ -1,0 +1,37 @@
+#%RAML 1.0
+title: mod-erm-usage-harvester periodic API
+version: v1
+baseUri: http://localhost/erm-usage-harvester/periodic
+
+documentation:
+  - title: mod-erm-usage-harvester periodic API
+    content: This documents the API calls that can be made to mod-erm-usage-harvester periodic API
+
+types:
+  periodicConfig: !include schemas/periodicConfig.json
+  errors: !include raml-util/schemas/errors.schema
+
+traits:
+  orderable: !include ./raml-util/traits/orderable.raml
+  pageable: !include ./raml-util/traits/pageable.raml
+  searchable: !include ./raml-util/traits/searchable.raml
+  language: !include ./raml-util/traits/language.raml
+  validate: !include ./raml-util/traits/validation.raml
+
+resourceTypes:
+  collection: !include ./raml-util/rtypes/collection.raml
+  collection-item: !include ./raml-util/rtypes/item-collection.raml
+
+/erm-usage-harvester/periodic:
+    description: Manage periodic harvesting configuration
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: periodicConfig
+    post:
+      body:
+        application/json:
+          type: periodicConfig
+    delete:

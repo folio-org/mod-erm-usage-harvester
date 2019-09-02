@@ -30,28 +30,21 @@ public class StartAPI implements Start {
         .compose(
             tenantList -> {
               tenantList.forEach(
-                  tenantId ->
-                      okapiClient
-                          .hasHarvesterInterface(tenantId)
-                          .compose(
-                              v -> {
-                                // call /start endpoint for each tenant
-                                Future<AsyncResult<HttpResponse<Buffer>>> startTenant =
-                                    Future.future();
-                                String okapiUrl =
-                                    vertx.getOrCreateContext().config().getString("okapiUrl");
-                                WebClient.create(vertx)
-                                    .getAbs(okapiUrl + "/erm-usage-harvester/start")
-                                    .putHeader(XOkapiHeaders.TENANT, tenantId)
-                                    .send(ar -> startTenant.completer());
-                                return startTenant;
-                              })
-                          .setHandler(
-                              ar -> {
-                                if (ar.failed()) {
-                                  LOG.error(ar.cause().getMessage(), ar.cause());
-                                }
-                              }));
+                  tenantId -> {
+                    // call /start endpoint for each tenant
+                    Future<AsyncResult<HttpResponse<Buffer>>> startTenant = Future.future();
+                    String okapiUrl = vertx.getOrCreateContext().config().getString("okapiUrl");
+                    WebClient.create(vertx)
+                        .getAbs(okapiUrl + "/erm-usage-harvester/start")
+                        .putHeader(XOkapiHeaders.TENANT, tenantId)
+                        .send(ar -> startTenant.completer());
+                    startTenant.setHandler(
+                        ar -> {
+                          if (ar.failed()) {
+                            LOG.error(ar.cause().getMessage(), ar.cause());
+                          }
+                        });
+                  });
               return Future.succeededFuture();
             })
         .setHandler(

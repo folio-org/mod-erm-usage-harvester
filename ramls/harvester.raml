@@ -1,11 +1,11 @@
 #%RAML 1.0
-title: Aggregator Settings
+title: mod-erm-usage-harvester API
 version: v1
 baseUri: http://localhost/erm-usage-harvester
 
 documentation:
-  - title: mod-erm-usage API
-    content: This documents the API calls that can be made to query and manage aggregator settings
+  - title: mod-erm-usage-harvester API
+    content: This documents the API calls that can be made to mod-erm-usage-harvester
 
 types:
   errors: !include raml-util/schemas/errors.schema
@@ -31,9 +31,8 @@ resourceTypes:
   /impl:
     get:
       description: Get available service implementations
-      queryParameters: 
+      queryParameters:
         aggregator:
           description: Filter by 'isAggregator' property (true or false)
           type: string
           required: false
-
