@@ -1,3 +1,9 @@
+# 1.4.0
+* Add periodic harvesting (UIEUS-3)
+* Update jackson-databind version to 2.9.9.3
+* Update RMB version to 26.2.4
+* Remove unused schema (MODEUS-28)
+
 # 1.3.2
 * Update jackson-databind to 2.9.9.1 CVE-2019-12814
 
