@@ -12,6 +12,7 @@ import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.namespace.QName;
 import javax.xml.ws.BindingProvider;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.cxf.endpoint.Client;
 import org.apache.cxf.frontend.ClientProxy;
@@ -41,6 +42,10 @@ public class CS41Impl implements ServiceEndpoint {
   private ReportRequest createReportRequest(String report, String beginDate, String endDate) {
     Requestor requestor = new Requestor();
     requestor.setID(provider.getSushiCredentials().getRequestorId());
+    requestor.setName(
+        ObjectUtils.defaultIfNull(provider.getSushiCredentials().getRequestorName(), ""));
+    requestor.setEmail(
+        ObjectUtils.defaultIfNull(provider.getSushiCredentials().getRequestorMail(), ""));
 
     CustomerReference ref = new CustomerReference();
     ref.setID(provider.getSushiCredentials().getCustomerId());
