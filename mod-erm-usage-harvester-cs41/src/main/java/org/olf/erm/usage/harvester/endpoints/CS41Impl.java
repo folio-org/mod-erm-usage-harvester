@@ -131,8 +131,8 @@ public class CS41Impl implements ServiceEndpoint {
             block.fail("Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
           }
         },
+        false,
         future.completer());
-
     return future;
   }
 
