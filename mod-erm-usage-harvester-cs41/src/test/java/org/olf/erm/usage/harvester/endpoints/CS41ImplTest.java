@@ -3,12 +3,14 @@ package org.olf.erm.usage.harvester.endpoints;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.any;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingXPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -72,21 +74,34 @@ public class CS41ImplTest {
         .setHandler(
             ar -> {
               assertThat(ar.succeeded()).isTrue();
-              wireMockRule.verify(1, postRequestedFor(urlPathEqualTo(SUSHI_SERVICE)));
-
+              wireMockRule.verify(
+                  1,
+                  postRequestedFor(urlPathEqualTo(SUSHI_SERVICE))
+                      .withRequestBody(
+                          matchingXPath(
+                                  "//ns:Requestor[ns:ID='reqId1' and ns:Name='' and ns:Email='']")
+                              .withXPathNamespace("ns", "http://www.niso.org/schemas/sushi")));
               async.complete();
             });
 
     async.await(5000);
-    wireMockRule.stop();
+  }
 
-    Async async2 = ctx.async();
+  @Test
+  public void testFetchSingleReportNoConnection(TestContext ctx) {
+    CS41Impl cs41 = new CS41Impl(provider);
+
+    wireMockRule.stubFor(
+        post(urlPathEqualTo(SUSHI_SERVICE))
+            .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
+
+    Async async = ctx.async();
     cs41.fetchSingleReport(REPORT_TYPE, BEGIN_DATE, END_DATE)
         .setHandler(
             ar -> {
               assertThat(ar.failed()).isTrue();
               assertThat(ar.cause().getMessage()).contains("Error getting report");
-              async2.complete();
+              async.complete();
             });
   }
 

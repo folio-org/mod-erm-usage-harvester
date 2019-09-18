@@ -1,3 +1,7 @@
+# 1.4.1
+* cs41: Parallel harvesting of reports (MODEUS-34)
+* cs41: Use `RequestorName` and `RequestorEmail` when creating a `ReportRequest` (UIEUS-109)
+
 # 1.4.0
 * Add periodic harvesting (UIEUS-3)
 * Update jackson-databind version to 2.9.9.3
