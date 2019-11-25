@@ -22,6 +22,7 @@ import java.net.Proxy.Type;
 import java.net.ProxySelector;
 import java.net.SocketAddress;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
@@ -43,6 +44,7 @@ public class CS41ImplTest {
   private static final String END_DATE = "2018-01-31";
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
   @Rule public WireMockRule wireMockProxyRule = new WireMockRule(wireMockConfig().dynamicPort());
+  @Rule public WireMockRule wireMockRedirectRule = new WireMockRule(wireMockConfig().dynamicPort());
 
   private UsageDataProvider provider =
       new UsageDataProvider()
@@ -98,11 +100,13 @@ public class CS41ImplTest {
     Async async = ctx.async();
     cs41.fetchSingleReport(REPORT_TYPE, BEGIN_DATE, END_DATE)
         .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause().getMessage()).contains("Error getting report");
-              async.complete();
-            });
+            ar ->
+                ctx.verify(
+                    v -> {
+                      assertThat(ar.failed()).isTrue();
+                      assertThat(ar.cause().getMessage()).contains("Error getting report");
+                      async.complete();
+                    }));
   }
 
   @Test
@@ -131,5 +135,53 @@ public class CS41ImplTest {
 
     wireMockRule.verify(0, postRequestedFor(anyUrl()));
     wireMockProxyRule.verify(1, postRequestedFor(anyUrl()));
+  }
+
+  @Test
+  public void testHttpErrorMessage(TestContext context) {
+    CS41Impl cs41 = new CS41Impl(provider);
+
+    wireMockRule.stubFor(
+        post(urlPathEqualTo(SUSHI_SERVICE))
+            .willReturn(
+                aResponse().withStatus(500).withHeader("TestHeaderKey", "TestHeaderValue")));
+
+    Async async = context.async();
+    cs41.fetchSingleReport(REPORT_TYPE, BEGIN_DATE, END_DATE)
+        .setHandler(
+            ar ->
+                context.verify(
+                    v -> {
+                      assertThat(ar.failed()).isTrue();
+                      assertThat(ar.cause().getMessage())
+                          .contains(
+                              Arrays.asList(
+                                  "Error getting report",
+                                  "status code 500",
+                                  "TestHeaderKey",
+                                  "TestHeaderValue"));
+                      async.complete();
+                    }));
+  }
+
+  @Test
+  public void testHttpRedirect(TestContext context) {
+    CS41Impl cs41 = new CS41Impl(provider);
+
+    System.out.println(wireMockRedirectRule.url(""));
+
+    wireMockRule.stubFor(
+        post(urlPathEqualTo(SUSHI_SERVICE))
+            .willReturn(
+                aResponse().withStatus(302).withHeader("Location", wireMockRedirectRule.url(""))));
+    wireMockRedirectRule.stubFor(post(anyUrl()).willReturn(aResponse().withStatus(200)));
+
+    Async async = context.async();
+    cs41.fetchSingleReport(REPORT_TYPE, BEGIN_DATE, END_DATE).setHandler(ar -> async.complete());
+
+    async.await(2000);
+
+    wireMockRule.verify(1, postRequestedFor(anyUrl()));
+    wireMockRedirectRule.verify(1, postRequestedFor(anyUrl()));
   }
 }
