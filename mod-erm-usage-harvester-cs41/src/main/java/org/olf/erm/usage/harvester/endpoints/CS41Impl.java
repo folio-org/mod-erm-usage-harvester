@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -15,7 +16,13 @@ import javax.xml.ws.BindingProvider;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.cxf.endpoint.Client;
+import org.apache.cxf.ext.logging.LoggingInInterceptor;
 import org.apache.cxf.frontend.ClientProxy;
+import org.apache.cxf.helpers.CastUtils;
+import org.apache.cxf.interceptor.Fault;
+import org.apache.cxf.message.Message;
+import org.apache.cxf.phase.AbstractPhaseInterceptor;
+import org.apache.cxf.phase.Phase;
 import org.apache.cxf.transport.http.HTTPConduit;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.niso.schemas.counter.Report;
@@ -97,6 +104,30 @@ public class CS41Impl implements ServiceEndpoint {
 
     BindingProvider bindingProvider = (BindingProvider) port;
     bindingProvider.getRequestContext().put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, serviceUrl);
+
+    Client client = ClientProxy.getClient(port);
+    HTTPConduit httpConduit = (HTTPConduit) client.getConduit();
+    httpConduit.getClient().setAutoRedirect(true);
+
+    client
+        .getInInterceptors()
+        .add(
+            new AbstractPhaseInterceptor<Message>(Phase.READ) {
+              @Override
+              public void handleMessage(Message message) {
+                int statusCode = (int) message.get(Message.RESPONSE_CODE);
+                Map<String, List<String>> headers =
+                    CastUtils.cast((Map) message.get(Message.PROTOCOL_HEADERS));
+
+                if (statusCode / 100 != 2) {
+                  String errMessage =
+                      String.format(
+                          "Server responded with status code %s, headers: %s", statusCode, headers);
+                  throw new Fault(new java.lang.Exception(errMessage));
+                }
+              }
+            });
+    client.getInFaultInterceptors().add(new LoggingInInterceptor());
   }
 
   @Override
