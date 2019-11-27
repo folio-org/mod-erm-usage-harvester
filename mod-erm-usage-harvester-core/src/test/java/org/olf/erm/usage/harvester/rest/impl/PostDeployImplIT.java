@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -75,13 +74,7 @@ public class PostDeployImplIT {
             .withStartAt(Date.from(Instant.now().plusSeconds(3600)))
             .withPeriodicInterval(PeriodicInterval.MONTHLY);
 
-    // TODO: https://issues.folio.org/browse/RMB-427
-    Promise<String> tenantPromise1 = Promise.promise();
-    Promise<String> tenantPromise2 = Promise.promise();
     PeriodicConfigPgUtil.upsert(vertx.getOrCreateContext(), TENANT, config)
-        .setHandler(tenantPromise1);
-    tenantPromise1
-        .future()
         .compose(s -> PeriodicConfigPgUtil.upsert(vertx.getOrCreateContext(), TENANT2, config))
         .setHandler(
             ar -> {
