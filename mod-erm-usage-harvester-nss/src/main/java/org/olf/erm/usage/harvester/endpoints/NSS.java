@@ -1,6 +1,7 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.ProxyOptions;
@@ -68,7 +69,7 @@ public class NSS implements ServiceEndpoint {
   public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
     final String url = buildURL(report, beginDate, endDate);
 
-    Future<String> future = Future.future();
+    Promise<String> promise = Promise.promise();
 
     WebClientOptions options = new WebClientOptions();
     try {
@@ -99,18 +100,18 @@ public class NSS implements ServiceEndpoint {
                       && reportResponse.getReport() != null
                       && !reportResponse.getReport().getReport().isEmpty()) {
                     Report report2 = reportResponse.getReport().getReport().get(0);
-                    future.complete(Counter4Utils.toJSON(report2));
+                    promise.complete(Counter4Utils.toJSON(report2));
                   } else {
-                    future.fail("Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
+                    promise.fail("Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
                   }
                 } else {
-                  future.fail(
+                  promise.fail(
                       url + " - " + ar.result().statusCode() + " : " + ar.result().statusMessage());
                 }
               } else {
-                future.fail(ar.cause());
+                promise.fail(ar.cause());
               }
             });
-    return future;
+    return promise.future();
   }
 }

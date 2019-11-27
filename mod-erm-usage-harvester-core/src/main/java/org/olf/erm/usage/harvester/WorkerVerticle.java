@@ -10,6 +10,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.Json;
@@ -92,7 +93,7 @@ public class WorkerVerticle extends AbstractVerticle {
         String.format("(harvestingConfig.harvestingStatus=%s)", HarvestingStatus.ACTIVE);
     LOG.info(logprefix, "getting providers");
 
-    Future<UsageDataProviders> future = Future.future();
+    Promise<UsageDataProviders> promise = Promise.promise();
 
     WebClient client = WebClient.create(vertx);
     client
@@ -112,13 +113,13 @@ public class WorkerVerticle extends AbstractVerticle {
                   try {
                     entity = ar.result().bodyAsJson(UsageDataProviders.class);
                     LOG.info(logprefix, "total providers: " + entity.getTotalRecords());
-                    future.complete(entity);
+                    promise.complete(entity);
                   } catch (Exception e) {
-                    future.fail(
+                    promise.fail(
                         format(logprefix, String.format(ERR_MSG_DECODE, url, e.getMessage())));
                   }
                 } else {
-                  future.fail(
+                  promise.fail(
                       format(
                           logprefix,
                           String.format(
@@ -128,15 +129,15 @@ public class WorkerVerticle extends AbstractVerticle {
                               url)));
                 }
               } else {
-                future.fail(format(logprefix, "error: " + ar.cause().getMessage()));
+                promise.fail(format(logprefix, "error: " + ar.cause().getMessage()));
               }
             });
-    return future;
+    return promise.future();
   }
 
   public Future<AggregatorSetting> getAggregatorSetting(UsageDataProvider provider) {
     final String logprefix = TENANT + token.getTenantId() + ", {}";
-    Future<AggregatorSetting> future = Future.future();
+    Promise<AggregatorSetting> promise = Promise.promise();
 
     Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
     if (aggregator == null || aggregator.getId() == null) {
@@ -159,13 +160,13 @@ public class WorkerVerticle extends AbstractVerticle {
                   try {
                     AggregatorSetting setting = ar.result().bodyAsJson(AggregatorSetting.class);
                     LOG.info(logprefix, "got AggregatorSetting for id: " + aggregator.getId());
-                    future.complete(setting);
+                    promise.complete(setting);
                   } catch (Exception e) {
-                    future.fail(
+                    promise.fail(
                         format(logprefix, String.format(ERR_MSG_DECODE, aggrUrl, e.getMessage())));
                   }
                 } else {
-                  future.fail(
+                  promise.fail(
                       format(
                           logprefix,
                           String.format(
@@ -175,7 +176,7 @@ public class WorkerVerticle extends AbstractVerticle {
                               aggrUrl)));
                 }
               } else {
-                future.fail(
+                promise.fail(
                     format(
                         logprefix,
                         "failed getting AggregatorSetting for id: "
@@ -184,7 +185,7 @@ public class WorkerVerticle extends AbstractVerticle {
                             + ar.cause().getMessage()));
               }
             });
-    return future;
+    return promise.future();
   }
 
   public CounterReport createCounterReport(
@@ -205,34 +206,34 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   public Future<ServiceEndpoint> getServiceEndpoint(UsageDataProvider provider) {
-    Future<AggregatorSetting> aggrFuture = Future.future();
-    Future<ServiceEndpoint> sepFuture = Future.future();
+    Promise<AggregatorSetting> aggrPromise = Promise.promise();
+    Promise<ServiceEndpoint> sepPromise = Promise.promise();
 
     boolean useAggregator =
         provider.getHarvestingConfig().getHarvestVia().equals(HarvestVia.AGGREGATOR);
     Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
-    // Complete aggrFuture if aggregator is not set.. aka skip it
+    // Complete aggrPromise if aggregator is not set.. aka skip it
     if (useAggregator && aggregator != null && aggregator.getId() != null) {
-      aggrFuture = getAggregatorSetting(provider);
+      getAggregatorSetting(provider).setHandler(aggrPromise);
     } else {
-      aggrFuture.complete(null);
+      aggrPromise.complete(null);
     }
 
-    aggrFuture.compose(
-        as -> {
-          ServiceEndpoint sep = ServiceEndpoint.create(provider, as);
-          if (sep != null) {
-            sepFuture.complete(sep);
-          } else {
-            sepFuture.fail(
-                String.format(
-                    "Tenant: %s, Provider: %s, No service implementation available",
-                    token.getTenantId(), provider.getLabel()));
-          }
-        },
-        sepFuture);
-
-    return sepFuture;
+    return aggrPromise
+        .future()
+        .compose(
+            as -> {
+              ServiceEndpoint sep = ServiceEndpoint.create(provider, as);
+              if (sep != null) {
+                sepPromise.complete(sep);
+              } else {
+                sepPromise.fail(
+                    String.format(
+                        "Tenant: %s, Provider: %s, No service implementation available",
+                        token.getTenantId(), provider.getLabel()));
+              }
+              return sepPromise.future();
+            });
   }
 
   /**
@@ -246,7 +247,7 @@ public class WorkerVerticle extends AbstractVerticle {
    */
   public Future<List<YearMonth>> getValidMonths(
       String providerId, String reportName, YearMonth start, YearMonth end) {
-    Future<List<YearMonth>> future = Future.future();
+    Promise<List<YearMonth>> promise = Promise.promise();
     WebClient client = WebClient.create(vertx);
 
     String queryStr =
@@ -273,9 +274,9 @@ public class WorkerVerticle extends AbstractVerticle {
                   result
                       .getCounterReports()
                       .forEach(r -> availableMonths.add(YearMonth.parse(r.getYearMonth())));
-                  future.complete(availableMonths);
+                  promise.complete(availableMonths);
                 } else {
-                  future.fail(
+                  promise.fail(
                       String.format(
                           ERR_MSG_STATUS,
                           ar.result().statusCode(),
@@ -283,11 +284,11 @@ public class WorkerVerticle extends AbstractVerticle {
                           okapiUrl + reportsPath));
                 }
               } else {
-                future.fail(ar.cause());
+                promise.fail(ar.cause());
               }
             });
 
-    return future;
+    return promise.future();
   }
 
   /**
@@ -310,7 +311,7 @@ public class WorkerVerticle extends AbstractVerticle {
       return Future.failedFuture("Harvesting not active");
     }
 
-    Future<List<FetchItem>> future = Future.future();
+    Promise<List<FetchItem>> promise = Promise.promise();
 
     YearMonth startMonth =
         DateUtil.getStartMonth(provider.getHarvestingConfig().getHarvestingStart());
@@ -357,13 +358,13 @@ public class WorkerVerticle extends AbstractVerticle {
         .setHandler(
             ar -> {
               if (ar.succeeded()) {
-                future.complete(fetchList);
+                promise.complete(fetchList);
               } else {
-                future.fail(ar.cause());
+                promise.fail(ar.cause());
               }
             });
 
-    return future;
+    return promise.future();
   }
 
   @SuppressWarnings("rawtypes")
@@ -372,7 +373,7 @@ public class WorkerVerticle extends AbstractVerticle {
     LOG.info(logprefix, "processing provider: " + provider.getLabel());
 
     List<Future> futList = new ArrayList<>();
-    Future<List<Future>> future = Future.future();
+    Promise<List<Future>> promise = Promise.promise();
 
     Future<ServiceEndpoint> sep = getServiceEndpoint(provider);
     sep.compose(s -> getFetchList(provider))
@@ -385,8 +386,8 @@ public class WorkerVerticle extends AbstractVerticle {
               }
               list.forEach(
                   li -> {
-                    Future complete = Future.future();
-                    futList.add(complete);
+                    Promise complete = Promise.promise();
+                    futList.add(complete.future());
                     sep.result()
                         .fetchSingleReport(li.reportType, li.begin, li.end)
                         .setHandler(
@@ -419,17 +420,17 @@ public class WorkerVerticle extends AbstractVerticle {
                                       });
                             });
                   });
-              future.complete(futList);
+              promise.complete(futList);
               return Future.<Void>succeededFuture();
             })
         .setHandler(
             h -> {
               if (h.failed()) {
                 LOG.error(logprefix, "Provider: " + provider.getLabel() + ", " + h.cause());
-                future.complete(Collections.emptyList());
+                promise.complete(Collections.emptyList());
               }
             });
-    return future;
+    return promise.future();
   }
 
   public Future<HttpResponse<Buffer>> postReport(CounterReport report) {
@@ -459,7 +460,7 @@ public class WorkerVerticle extends AbstractVerticle {
     }
     final String url = urlTmp;
 
-    final Future<HttpResponse<Buffer>> future = Future.future();
+    final Promise<HttpResponse<Buffer>> promise = Promise.promise();
 
     LOG.info(logprefix, "posting report with id " + report.getId());
 
@@ -480,21 +481,21 @@ public class WorkerVerticle extends AbstractVerticle {
                         ar.result().statusCode(),
                         ar.result().statusMessage(),
                         url));
-                future.complete(ar.result());
+                promise.complete(ar.result());
               } else {
                 LOG.error(ar.cause().getMessage(), ar.cause());
-                future.fail(ar.cause());
+                promise.fail(ar.cause());
               }
             });
 
-    return future;
+    return promise.future();
   }
 
   /** completes with the found report or null if none is found fails otherwise */
   public Future<CounterReport> getReport(
       String providerId, String reportName, String month, boolean tiny) {
     WebClient client = WebClient.create(vertx);
-    Future<CounterReport> future = Future.future();
+    Promise<CounterReport> promise = Promise.promise();
     String queryStr =
         String.format(
             "(providerId=%s AND yearMonth=%s AND reportName==%s)", providerId, month, reportName);
@@ -511,9 +512,9 @@ public class WorkerVerticle extends AbstractVerticle {
                 if (handler.result().statusCode() == 200) {
                   CounterReports collection = handler.result().bodyAsJson(CounterReports.class);
                   if (collection.getCounterReports().isEmpty()) {
-                    future.complete(null);
+                    promise.complete(null);
                   } else if (collection.getCounterReports().size() == 1) {
-                    future.complete(collection.getCounterReports().get(0));
+                    promise.complete(collection.getCounterReports().get(0));
                   } else {
                     String msg =
                         String.format(
@@ -525,16 +526,16 @@ public class WorkerVerticle extends AbstractVerticle {
                                 + ", "
                                 + month
                                 + ", not processed");
-                    future.fail(msg);
+                    promise.fail(msg);
                   }
                 } else {
-                  future.fail("received status code " + handler.result().statusCode());
+                  promise.fail("received status code " + handler.result().statusCode());
                 }
               } else {
-                future.fail(handler.cause());
+                promise.fail(handler.cause());
               }
             });
-    return future;
+    return promise.future();
   }
 
   public void run() {
@@ -644,7 +645,7 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   public Future<String> getModConfigurationValue(String module, String code, String defaultValue) {
-    Future<String> future = Future.future();
+    Promise<String> promise = Promise.promise();
     final String path = CONFIG_PATH;
     final String queryStr = String.format("(module = %s and configName = %s)", module, code);
     WebClient client = WebClient.create(vertx);
@@ -662,7 +663,7 @@ public class WorkerVerticle extends AbstractVerticle {
                   JsonArray configs =
                       ar.result().bodyAsJsonObject().getJsonArray("configs", new JsonArray());
                   if (configs.size() == 1) {
-                    future.complete(configs.getJsonObject(0).getString("value"));
+                    promise.complete(configs.getJsonObject(0).getString("value"));
                   }
                 } else {
                   LOG.info(
@@ -671,10 +672,8 @@ public class WorkerVerticle extends AbstractVerticle {
                       ar.result().statusMessage());
                 }
               }
-              if (!future.isComplete()) {
-                future.complete(defaultValue);
-              }
+              promise.tryComplete(defaultValue);
             });
-    return future;
+    return promise.future();
   }
 }

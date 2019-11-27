@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.periodic;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.ext.web.client.WebClient;
 import java.util.Date;
 import org.folio.okapi.common.XOkapiHeaders;
@@ -24,15 +25,15 @@ public class HarvestTenantJob implements Job {
                     vertxContext, tenantId, pc.withLastTriggeredAt(fireTime)));
   }
 
-  private void failAndLog(Future future, String message) {
+  private void failAndLog(Promise promise, String message) {
     log.error(message);
-    future.fail(message);
+    promise.fail(message);
   }
 
   @Override
   public void execute(JobExecutionContext context) {
-    Future<String> future = Future.future();
-    context.setResult(future);
+    Promise<String> promise = Promise.promise();
+    context.setResult(promise);
 
     Context vertxContext;
     try {
@@ -40,14 +41,14 @@ public class HarvestTenantJob implements Job {
       vertxContext = o instanceof Context ? (Context) o : null;
     } catch (SchedulerException e) {
       failAndLog(
-          future,
+          promise,
           String.format(
               "Tenant: %s, error getting scheduler context: %s", tenantId, e.getMessage()));
       return;
     }
 
     if (vertxContext == null) {
-      failAndLog(future, String.format("Tenant: %s, error getting vert.x context", tenantId));
+      failAndLog(promise, String.format("Tenant: %s, error getting vert.x context", tenantId));
       return;
     }
 
@@ -60,7 +61,7 @@ public class HarvestTenantJob implements Job {
               if (ar.succeeded()) {
                 if (ar.result().statusCode() != 200) {
                   failAndLog(
-                      future,
+                      promise,
                       String.format(
                           "Tenant: %s, error starting job, received %s %s from start interface: %s",
                           tenantId,
@@ -73,10 +74,10 @@ public class HarvestTenantJob implements Job {
                       .setHandler(
                           ar2 -> {
                             if (ar2.succeeded()) {
-                              future.complete();
+                              promise.complete();
                             } else {
                               failAndLog(
-                                  future,
+                                  promise,
                                   String.format(
                                       "Tenant: %s, failed updating lastTriggeredAt: %s",
                                       tenantId, ar2.cause().getMessage()));
@@ -85,7 +86,7 @@ public class HarvestTenantJob implements Job {
                 }
               } else {
                 failAndLog(
-                    future,
+                    promise,
                     String.format(
                         "Tenant: %s, error connecting to start interface: %s",
                         tenantId, ar.cause().getMessage()));

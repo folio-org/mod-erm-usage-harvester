@@ -3,6 +3,7 @@ package org.olf.erm.usage.harvester;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.io.Resources;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -35,7 +36,7 @@ public class EmbeddedPostgresRule implements TestRule {
 
   private Future<List<String>> createSchema(String tenant) {
     log.info("Creating schema for tenant: {}", tenant);
-    Future<List<String>> createSchema = Future.future();
+    Promise<List<String>> createSchema = Promise.promise();
     try {
       String tableInput =
           Resources.toString(
@@ -61,7 +62,8 @@ public class EmbeddedPostgresRule implements TestRule {
     } catch (Exception e) {
       createSchema.fail(e);
     }
-    return createSchema;
+
+    return createSchema.future();
   }
 
   private Future<List<String>> createSchemas(Future<List<String>> start, List<String> tenantList) {

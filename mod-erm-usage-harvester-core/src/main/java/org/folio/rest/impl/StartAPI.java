@@ -4,6 +4,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
@@ -32,18 +33,20 @@ public class StartAPI implements Start {
               tenantList.forEach(
                   tenantId -> {
                     // call /start endpoint for each tenant
-                    Future<AsyncResult<HttpResponse<Buffer>>> startTenant = Future.future();
+                    Promise<HttpResponse<Buffer>> startTenant = Promise.promise();
                     String okapiUrl = vertx.getOrCreateContext().config().getString("okapiUrl");
                     WebClient.create(vertx)
                         .getAbs(okapiUrl + "/erm-usage-harvester/start")
                         .putHeader(XOkapiHeaders.TENANT, tenantId)
-                        .send(ar -> startTenant.completer());
-                    startTenant.setHandler(
-                        ar -> {
-                          if (ar.failed()) {
-                            LOG.error(ar.cause().getMessage(), ar.cause());
-                          }
-                        });
+                        .send(startTenant);
+                    startTenant
+                        .future()
+                        .setHandler(
+                            ar -> {
+                              if (ar.failed()) {
+                                LOG.error(ar.cause().getMessage(), ar.cause());
+                              }
+                            });
                   });
               return Future.succeededFuture();
             })
