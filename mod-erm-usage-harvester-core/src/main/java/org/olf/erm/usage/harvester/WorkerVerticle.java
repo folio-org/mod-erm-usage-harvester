@@ -646,10 +646,11 @@ public class WorkerVerticle extends AbstractVerticle {
   public Future<String> getModConfigurationValue(String module, String code, String defaultValue) {
     Future<String> future = Future.future();
     final String path = CONFIG_PATH;
-    final String cql = String.format("?query=(module = %s and configName = %s)", module, code);
+    final String queryStr = String.format("(module = %s and configName = %s)", module, code);
     WebClient client = WebClient.create(vertx);
     client
-        .getAbs(okapiUrl + path + cql)
+        .getAbs(okapiUrl + path)
+        .setQueryParam(QUERY_PARAM, queryStr)
         .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
