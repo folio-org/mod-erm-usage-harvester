@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import io.reactivex.Observable;
 import io.reactivex.schedulers.Schedulers;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import java.lang.reflect.Method;
 import java.net.Proxy;
 import java.net.URI;
@@ -122,7 +123,7 @@ public class CS50Impl implements ServiceEndpoint {
     String customerId = provider.getSushiCredentials().getCustomerId();
     String platform = Objects.toString(provider.getSushiCredentials().getPlatform(), "");
 
-    Future<String> future = Future.future();
+    Promise<String> promise = Promise.promise();
     try {
       ((Observable<?>) method.invoke(client, customerId, beginDate, endDate, platform))
           .subscribeOn(Schedulers.io())
@@ -131,19 +132,19 @@ public class CS50Impl implements ServiceEndpoint {
                 String content = gson.toJson(r);
                 SUSHIReportHeader reportHeader = Counter5Utils.getReportHeader(content);
                 if (reportHeader == null) {
-                  future.fail("Unkown Error - 200 Response is missing reportHeader");
+                  promise.fail("Unkown Error - 200 Response is missing reportHeader");
                 } else if (reportHeader.getExceptions() != null
                     && !reportHeader.getExceptions().isEmpty()) {
-                  future.fail(gson.toJson(reportHeader.getExceptions()));
+                  promise.fail(gson.toJson(reportHeader.getExceptions()));
                 } else {
-                  future.complete(content);
+                  promise.complete(content);
                 }
               },
-              e -> future.fail(getSushiError(e)));
+              e -> promise.fail(getSushiError(e)));
     } catch (Exception e) {
-      future.fail(e);
+      promise.fail(e);
     }
 
-    return future;
+    return promise.future();
   }
 }

@@ -6,6 +6,7 @@ import io.vertx.core.Context;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -32,26 +33,26 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       new Error().withType("Error").withMessage("No Okapi Token provided");
 
   public void deployWorkerVerticle(Vertx vertx, Token token, String providerId) {
-    Future<String> deploy = Future.future();
+    Promise<String> deploy = Promise.promise();
     WorkerVerticle verticle =
         (Strings.isNullOrEmpty(providerId))
             ? new WorkerVerticle(token)
             : new WorkerVerticle(token, providerId);
     vertx.deployVerticle(
-        verticle,
-        new DeploymentOptions().setConfig(vertx.getOrCreateContext().config()),
-        deploy.completer());
+        verticle, new DeploymentOptions().setConfig(vertx.getOrCreateContext().config()), deploy);
 
-    deploy.setHandler(
-        ar -> {
-          if (ar.failed()) {
-            log.error(
-                String.format(
-                    "Tenant: %s, failed deploying WorkerVerticle: %s",
-                    token.getTenantId(), ar.cause().getMessage()),
-                ar.cause());
-          }
-        });
+    deploy
+        .future()
+        .setHandler(
+            ar -> {
+              if (ar.failed()) {
+                log.error(
+                    String.format(
+                        "Tenant: %s, failed deploying WorkerVerticle: %s",
+                        token.getTenantId(), ar.cause().getMessage()),
+                    ar.cause());
+              }
+            });
   }
 
   @Override

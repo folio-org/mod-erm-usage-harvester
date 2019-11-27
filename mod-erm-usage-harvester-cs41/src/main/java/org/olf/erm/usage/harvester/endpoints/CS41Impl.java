@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -132,7 +133,7 @@ public class CS41Impl implements ServiceEndpoint {
 
   @Override
   public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
-    Future<String> future = Future.future();
+    Promise<String> promise = Promise.promise();
 
     Context context = Vertx.currentContext();
     if (context == null) context = Vertx.vertx().getOrCreateContext();
@@ -163,8 +164,8 @@ public class CS41Impl implements ServiceEndpoint {
           }
         },
         false,
-        future.completer());
-    return future;
+        promise);
+    return promise.future();
   }
 
   @Override

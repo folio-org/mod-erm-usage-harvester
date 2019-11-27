@@ -4,6 +4,7 @@ import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -33,7 +34,7 @@ public class OkapiClient {
   }
 
   public Future<List<String>> getTenants() {
-    Future<List<String>> future = Future.future();
+    Promise<List<String>> promise = Promise.promise();
 
     final String url = okapiUrl + tenantsPath;
     WebClient client = WebClient.create(vertx);
@@ -52,12 +53,12 @@ public class OkapiClient {
                             .map(o -> ((JsonObject) o).getString("id"))
                             .collect(Collectors.toList());
                     LOG.info("Found tenants: {}", tenants);
-                    future.complete(tenants);
+                    promise.complete(tenants);
                   } catch (Exception e) {
-                    future.fail(String.format(ERR_MSG_DECODE, url, e.getMessage()));
+                    promise.fail(String.format(ERR_MSG_DECODE, url, e.getMessage()));
                   }
                 } else {
-                  future.fail(
+                  promise.fail(
                       String.format(
                           ERR_MSG_STATUS,
                           ar.result().statusCode(),
@@ -65,16 +66,16 @@ public class OkapiClient {
                           url));
                 }
               } else {
-                future.fail("Failed getting tenants: " + ar.cause());
+                promise.fail("Failed getting tenants: " + ar.cause());
               }
             });
-    return future;
+    return promise.future();
   }
 
   public Future<Void> hasHarvesterInterface(String tenantId) {
     final String interfacesUrl = okapiUrl + tenantsPath + "/" + tenantId + "/interfaces";
 
-    Future<Void> future = Future.future();
+    Promise<Void> promise = Promise.promise();
     WebClient client = WebClient.create(vertx);
     client
         .getAbs(interfacesUrl)
@@ -97,20 +98,20 @@ public class OkapiClient {
                             .count();
 
                     if (count == 1) {
-                      future.complete();
+                      promise.complete();
                     } else {
-                      future.fail(
+                      promise.fail(
                           String.format("Tenant: %s, required interface not found", tenantId));
                     }
                   } catch (Exception e) {
-                    future.fail(
+                    promise.fail(
                         String.format(
                             "Tenant: %s, %s",
                             tenantId,
                             String.format(ERR_MSG_DECODE, interfacesUrl, e.getMessage())));
                   }
                 } else {
-                  future.fail(
+                  promise.fail(
                       String.format(
                           "Tenant: %s, failed retrieving interfaces: %s",
                           tenantId,
@@ -121,12 +122,12 @@ public class OkapiClient {
                               interfacesUrl)));
                 }
               } else {
-                future.fail(
+                promise.fail(
                     String.format(
                         "Tenant: %s, failed retrieving interfaces: %s",
                         tenantId, ar.cause().getMessage()));
               }
             });
-    return future;
+    return promise.future();
   }
 }

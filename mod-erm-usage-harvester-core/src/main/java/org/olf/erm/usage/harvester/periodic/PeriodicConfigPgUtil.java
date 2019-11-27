@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.periodic;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.ext.sql.UpdateResult;
 import java.util.Map;
 import org.folio.okapi.common.XOkapiHeaders;
@@ -14,10 +15,9 @@ public class PeriodicConfigPgUtil {
   private static final String UUID = "8bf5fe33-5ec8-420c-a86d-6320c55ba554";
 
   public static Future<UpdateResult> delete(Context vertxContext, String tenantId) {
-    Future<UpdateResult> future = Future.future();
-    PostgresClient.getInstance(vertxContext.owner(), tenantId)
-        .delete(TBL, UUID, future.completer());
-    return future;
+    Promise<UpdateResult> promise = Promise.promise();
+    PostgresClient.getInstance(vertxContext.owner(), tenantId).delete(TBL, UUID, promise);
+    return promise.future();
   }
 
   public static Future<UpdateResult> delete(
@@ -27,10 +27,10 @@ public class PeriodicConfigPgUtil {
 
   public static Future<String> upsert(
       Context vertxContext, String tenantId, PeriodicConfig config) {
-    Future<String> future = Future.future();
+    Promise<String> promise = Promise.promise();
     PostgresClient.getInstance(vertxContext.owner(), tenantId)
-        .save(TBL, UUID, config, false, true, future.completer());
-    return future;
+        .save(TBL, UUID, config, false, true, promise);
+    return promise.future();
   }
 
   public static Future<String> upsert(
@@ -39,10 +39,10 @@ public class PeriodicConfigPgUtil {
   }
 
   public static Future<PeriodicConfig> get(Context vertxContext, String tenantId) {
-    Future<PeriodicConfig> future = Future.future();
+    Promise<PeriodicConfig> promise = Promise.promise();
     PostgresClient.getInstance(vertxContext.owner(), tenantId)
-        .getById(TBL, UUID, PeriodicConfig.class, future.completer());
-    return future;
+        .getById(TBL, UUID, PeriodicConfig.class, promise);
+    return promise.future();
   }
 
   public static Future<PeriodicConfig> get(Context vertxContext, Map<String, String> okapiHeaders) {
