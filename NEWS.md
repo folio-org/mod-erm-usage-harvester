@@ -1,3 +1,10 @@
+# 1.5.0
+* Update RMB to v29.1.0
+* Use new base docker image && new JAVA_OPTIONS (FOLIO-2358)
+* cs41: Improve logging, follow redirects (UIEUS-122)
+* Update jackson-databind to v2.10.0
+* Add default LaunchDescriptor settings (FOLIO-2235)
+
 # 1.4.1
 * cs41: Parallel harvesting of reports (MODEUS-34)
 * cs41: Use `RequestorName` and `RequestorEmail` when creating a `ReportRequest` (UIEUS-109)
