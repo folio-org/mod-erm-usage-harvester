@@ -1,3 +1,7 @@
+# 1.6.0
+* Fix security vulnerability reported in log4j:log4j (MODEUS-46)
+* Update required interface versions in ModuleDescriptor
+
 # 1.5.0
 * Update RMB to v29.1.0
 * Use new base docker image && new JAVA_OPTIONS (FOLIO-2358)
