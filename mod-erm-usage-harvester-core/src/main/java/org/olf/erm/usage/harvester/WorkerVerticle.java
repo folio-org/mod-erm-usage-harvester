@@ -86,7 +86,6 @@ public class WorkerVerticle extends AbstractVerticle {
     return MessageFormatter.arrayFormat(pattern, args).getMessage();
   }
 
-  // TODO: handle limits > 30
   public Future<UsageDataProviders> getActiveProviders() {
     final String logprefix = TENANT + token.getTenantId() + ", {}";
     final String url = okapiUrl + providerPath;
@@ -101,7 +100,7 @@ public class WorkerVerticle extends AbstractVerticle {
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
         .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
-        .setQueryParam("limit", "30")
+        .setQueryParam("limit", String.valueOf(Integer.MAX_VALUE))
         .setQueryParam("offset", "0")
         .setQueryParam(QUERY_PARAM, queryStr)
         .send(
