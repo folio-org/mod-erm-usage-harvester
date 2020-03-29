@@ -25,7 +25,8 @@ public class StartAPI implements Start {
 
   public void processAllTenants(Vertx vertx) {
     JsonObject config = vertx.getOrCreateContext().config();
-    OkapiClient okapiClient = new OkapiClient(vertx, config);
+    WebClient webClient = WebClient.create(vertx);
+    OkapiClient okapiClient = new OkapiClient(webClient, config);
     okapiClient
         .getTenants()
         .compose(
@@ -35,7 +36,7 @@ public class StartAPI implements Start {
                     // call /start endpoint for each tenant
                     Promise<HttpResponse<Buffer>> startTenant = Promise.promise();
                     String okapiUrl = vertx.getOrCreateContext().config().getString("okapiUrl");
-                    WebClient.create(vertx)
+                    webClient
                         .getAbs(okapiUrl + "/erm-usage-harvester/start")
                         .putHeader(XOkapiHeaders.TENANT, tenantId)
                         .send(startTenant);

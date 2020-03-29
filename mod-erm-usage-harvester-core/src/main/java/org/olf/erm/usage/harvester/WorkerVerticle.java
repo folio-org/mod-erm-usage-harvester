@@ -57,6 +57,7 @@ public class WorkerVerticle extends AbstractVerticle {
   private Token token;
   private String providerId = null;
   private int maxFailedAttempts = 5;
+  private WebClient client;
 
   private Handler<AsyncResult<CompositeFuture>> processingCompleteHandler =
       h -> {
@@ -95,7 +96,6 @@ public class WorkerVerticle extends AbstractVerticle {
 
     Promise<UsageDataProviders> promise = Promise.promise();
 
-    WebClient client = WebClient.create(vertx);
     client
         .requestAbs(HttpMethod.GET, url)
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
@@ -106,7 +106,6 @@ public class WorkerVerticle extends AbstractVerticle {
         .setQueryParam(QUERY_PARAM, queryStr)
         .send(
             ar -> {
-              client.close();
               if (ar.succeeded()) {
                 if (ar.result().statusCode() == 200) {
                   UsageDataProviders entity;
@@ -146,7 +145,6 @@ public class WorkerVerticle extends AbstractVerticle {
     }
 
     final String aggrUrl = okapiUrl + aggregatorPath + "/" + aggregator.getId();
-    WebClient client = WebClient.create(vertx);
     client
         .requestAbs(HttpMethod.GET, aggrUrl)
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
@@ -154,7 +152,6 @@ public class WorkerVerticle extends AbstractVerticle {
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
         .send(
             ar -> {
-              client.close();
               if (ar.succeeded()) {
                 if (ar.result().statusCode() == 200) {
                   try {
@@ -248,7 +245,6 @@ public class WorkerVerticle extends AbstractVerticle {
   public Future<List<YearMonth>> getValidMonths(
       String providerId, String reportName, YearMonth start, YearMonth end) {
     Promise<List<YearMonth>> promise = Promise.promise();
-    WebClient client = WebClient.create(vertx);
 
     String queryStr =
         String.format(
@@ -464,7 +460,6 @@ public class WorkerVerticle extends AbstractVerticle {
 
     LOG.info(logprefix, "posting report with id " + report.getId());
 
-    WebClient client = WebClient.create(vertx);
     client
         .requestAbs(method, url)
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
@@ -494,7 +489,6 @@ public class WorkerVerticle extends AbstractVerticle {
   /** completes with the found report or null if none is found fails otherwise */
   public Future<CounterReport> getReport(
       String providerId, String reportName, String month, boolean tiny) {
-    WebClient client = WebClient.create(vertx);
     Promise<CounterReport> promise = Promise.promise();
     String queryStr =
         String.format(
@@ -563,7 +557,6 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   public void runSingleProvider() {
-    WebClient client = WebClient.create(vertx);
     client
         .getAbs(okapiUrl + providerPath + "/" + providerId)
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
@@ -622,6 +615,7 @@ public class WorkerVerticle extends AbstractVerticle {
     reportsPath = config().getString("reportsPath");
     providerPath = config().getString("providerPath");
     aggregatorPath = config().getString("aggregatorPath");
+    client = WebClient.create(vertx);
 
     LOG.info("Tenant: {}, deployed WorkerVericle", token.getTenantId());
 
@@ -648,7 +642,6 @@ public class WorkerVerticle extends AbstractVerticle {
     Promise<String> promise = Promise.promise();
     final String path = CONFIG_PATH;
     final String queryStr = String.format("(module = %s and configName = %s)", module, code);
-    WebClient client = WebClient.create(vertx);
     client
         .getAbs(okapiUrl + path)
         .setQueryParam(QUERY_PARAM, queryStr)

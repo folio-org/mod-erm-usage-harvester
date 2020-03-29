@@ -5,6 +5,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.ext.web.client.WebClient;
 import java.util.List;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.resource.interfaces.PostDeployVerticle;
@@ -52,7 +53,7 @@ public class PostDeployImpl implements PostDeployVerticle {
       scheduler.getContext().put("vertxContext", arg1);
       scheduler.start();
 
-      new OkapiClient(arg0, arg1.config())
+      new OkapiClient(WebClient.create(arg0), arg1.config())
           .getTenants()
           .setHandler(
               ar -> {
