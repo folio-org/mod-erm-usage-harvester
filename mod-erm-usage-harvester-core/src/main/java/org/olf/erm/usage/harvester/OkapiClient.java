@@ -5,7 +5,6 @@ import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
@@ -23,26 +22,23 @@ public class OkapiClient {
 
   private final String okapiUrl;
   private final String tenantsPath;
-  private final Vertx vertx;
+  private final WebClient client;
 
-  public OkapiClient(Vertx vertx, JsonObject cfg) {
-    Objects.requireNonNull(vertx);
+  public OkapiClient(WebClient webClient, JsonObject cfg) {
     Objects.requireNonNull(cfg);
     this.okapiUrl = cfg.getString("okapiUrl");
     this.tenantsPath = cfg.getString("tenantsPath");
-    this.vertx = vertx;
+    this.client = webClient;
   }
 
   public Future<List<String>> getTenants() {
     Promise<List<String>> promise = Promise.promise();
 
     final String url = okapiUrl + tenantsPath;
-    WebClient client = WebClient.create(vertx);
     client
         .getAbs(url)
         .send(
             ar -> {
-              client.close();
               if (ar.succeeded()) {
                 if (ar.result().statusCode() == 200) {
                   JsonArray jsonArray;
@@ -76,7 +72,6 @@ public class OkapiClient {
     final String interfacesUrl = okapiUrl + tenantsPath + "/" + tenantId + "/interfaces";
 
     Promise<Void> promise = Promise.promise();
-    WebClient client = WebClient.create(vertx);
     client
         .getAbs(interfacesUrl)
         .send(

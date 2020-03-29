@@ -15,6 +15,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.ext.web.client.WebClient;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -55,7 +56,7 @@ public class OkapiClientTest {
     cfg.put("okapiUrl", StringUtils.removeEnd(wireMockRule.url(""), "/"));
     cfg.put("testing", true);
     this.tenantsPath = cfg.getString("tenantsPath");
-    okapiClient = new OkapiClient(vertx, cfg);
+    okapiClient = new OkapiClient(WebClient.create(vertx), cfg);
   }
 
   @After

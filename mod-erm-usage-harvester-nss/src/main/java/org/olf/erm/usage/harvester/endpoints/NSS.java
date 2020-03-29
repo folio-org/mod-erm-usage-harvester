@@ -24,10 +24,11 @@ import org.slf4j.LoggerFactory;
 
 public class NSS implements ServiceEndpoint {
 
+  private static final Logger LOG = LoggerFactory.getLogger(NSS.class);
+  private final WebClient client;
   private Vertx vertx;
   private UsageDataProvider provider;
   private AggregatorSetting aggregator;
-  private static final Logger LOG = LoggerFactory.getLogger(NSS.class);
 
   public NSS(UsageDataProvider provider, AggregatorSetting aggregator) {
     if (Vertx.currentContext() == null) this.vertx = Vertx.vertx();
@@ -36,6 +37,20 @@ public class NSS implements ServiceEndpoint {
     }
     this.provider = provider;
     this.aggregator = aggregator;
+
+    WebClientOptions options = new WebClientOptions();
+    try {
+      getProxy(new URI(aggregator.getServiceUrl()))
+          .ifPresent(
+              p -> {
+                InetSocketAddress addr = (InetSocketAddress) p.address();
+                options.setProxyOptions(
+                    new ProxyOptions().setHost(addr.getHostString()).setPort(addr.getPort()));
+              });
+    } catch (java.lang.Exception e) {
+      LOG.error("Error getting proxy: {}", e.getMessage());
+    }
+    this.client = WebClient.create(vertx, options);
   }
 
   public String buildURL(String report, String begin, String end) {
@@ -70,21 +85,6 @@ public class NSS implements ServiceEndpoint {
     final String url = buildURL(report, beginDate, endDate);
 
     Promise<String> promise = Promise.promise();
-
-    WebClientOptions options = new WebClientOptions();
-    try {
-      getProxy(new URI(url))
-          .ifPresent(
-              p -> {
-                InetSocketAddress addr = (InetSocketAddress) p.address();
-                options.setProxyOptions(
-                    new ProxyOptions().setHost(addr.getHostString()).setPort(addr.getPort()));
-              });
-    } catch (java.lang.Exception e) {
-      LOG.error("Error getting proxy: {}", e.getMessage());
-    }
-
-    WebClient client = WebClient.create(vertx, options);
     client
         .requestAbs(HttpMethod.GET, url)
         .send(
