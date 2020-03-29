@@ -39,7 +39,9 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
             ? new WorkerVerticle(token)
             : new WorkerVerticle(token, providerId);
     vertx.deployVerticle(
-        verticle, new DeploymentOptions().setConfig(vertx.getOrCreateContext().config()), deploy);
+        verticle,
+        new DeploymentOptions().setConfig(vertx.getOrCreateContext().config()).setWorker(true),
+        deploy);
 
     deploy
         .future()
