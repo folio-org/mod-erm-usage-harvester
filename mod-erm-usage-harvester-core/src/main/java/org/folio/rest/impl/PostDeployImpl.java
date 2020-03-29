@@ -64,7 +64,7 @@ public class PostDeployImpl implements PostDeployVerticle {
                 }
               });
     } catch (SchedulerException e) {
-      log.error("Error setting up quartz scheduler: " + e.getMessage(), e);
+      log.error("Error setting up quartz scheduler: {}", e.getMessage(), e);
       arg2.handle(Future.failedFuture(e.getMessage()));
       return;
     }

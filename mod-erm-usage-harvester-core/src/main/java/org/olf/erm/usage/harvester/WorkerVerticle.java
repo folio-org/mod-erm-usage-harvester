@@ -18,12 +18,12 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
-import java.sql.Date;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import org.folio.okapi.common.XOkapiHeaders;
@@ -239,7 +239,6 @@ public class WorkerVerticle extends AbstractVerticle {
    * @param reportName reportType
    * @param start start month
    * @param end end month
-   * @return
    */
   public Future<List<YearMonth>> getValidMonths(
       String providerId, String reportName, YearMonth start, YearMonth end) {
@@ -290,7 +289,6 @@ public class WorkerVerticle extends AbstractVerticle {
    * Returns a List of FetchItems/Months that need fetching.
    *
    * @param provider UsageDataProvider
-   * @return
    */
   public Future<List<FetchItem>> getFetchList(UsageDataProvider provider) {
     final String logprefix = TENANT + token.getTenantId() + ", {}";
@@ -623,12 +621,13 @@ public class WorkerVerticle extends AbstractVerticle {
     limit.setHandler(
         ar -> {
           if (ar.succeeded()) {
-            maxFailedAttempts = Integer.valueOf(ar.result());
+            maxFailedAttempts = Integer.parseInt(ar.result());
           }
           LOG.info(
               "Tenant: {}, using maxFailedAttempts={}", token.getTenantId(), maxFailedAttempts);
 
-          if (!config().getBoolean("testing", false)) {
+          boolean isTesting = config().getBoolean("testing", false);
+          if (!isTesting) {
             if (providerId == null) run();
             else runSingleProvider();
           } else {
@@ -639,10 +638,9 @@ public class WorkerVerticle extends AbstractVerticle {
 
   public Future<String> getModConfigurationValue(String module, String code, String defaultValue) {
     Promise<String> promise = Promise.promise();
-    final String path = CONFIG_PATH;
     final String queryStr = String.format("(module = %s and configName = %s)", module, code);
     client
-        .getAbs(okapiUrl + path)
+        .getAbs(okapiUrl + CONFIG_PATH)
         .setQueryParam(QUERY_PARAM, queryStr)
         .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
