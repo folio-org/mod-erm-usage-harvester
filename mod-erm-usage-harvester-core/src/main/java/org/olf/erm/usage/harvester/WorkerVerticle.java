@@ -1,7 +1,9 @@
 package org.olf.erm.usage.harvester;
 
-import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
-import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
+import static org.olf.erm.usage.harvester.Messages.createErrMsgDecode;
+import static org.olf.erm.usage.harvester.Messages.createMsgStatus;
+import static org.olf.erm.usage.harvester.Messages.createProviderMsg;
+import static org.olf.erm.usage.harvester.Messages.createTenantMsg;
 
 import com.google.common.net.HttpHeaders;
 import com.google.common.net.MediaType;
@@ -18,14 +20,15 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
-import java.sql.Date;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Aggregator;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
@@ -39,12 +42,10 @@ import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.MessageFormatter;
 
 public class WorkerVerticle extends AbstractVerticle {
 
   private static final Logger LOG = LoggerFactory.getLogger(WorkerVerticle.class);
-  private static final String TENANT = "Tenant: ";
   private static final String QUERY_PARAM = "query";
   private static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
   private static final String CONFIG_CODE = "maxFailedAttempts";
@@ -59,16 +60,34 @@ public class WorkerVerticle extends AbstractVerticle {
   private int maxFailedAttempts = 5;
   private WebClient client;
 
+  private void logInfo(Supplier<String> logMessage) {
+    if (LOG.isInfoEnabled()) {
+      LOG.info(logMessage.get());
+    }
+  }
+
+  private void logError(Supplier<String> logMessage, Throwable t) {
+    if (LOG.isErrorEnabled()) {
+      LOG.error(logMessage.get(), t);
+    }
+  }
+
+  private void logError(Supplier<String> logMessage) {
+    if (LOG.isErrorEnabled()) {
+      LOG.error(logMessage.get());
+    }
+  }
+
   private Handler<AsyncResult<CompositeFuture>> processingCompleteHandler =
       h -> {
         if (h.succeeded()) {
-          LOG.info("Tenant: {}, Processing completed", token.getTenantId());
+          logInfo(() -> createTenantMsg(token.getTenantId(), "Processing completed"));
           vertx.undeploy(this.deploymentID());
         } else {
-          LOG.error(
-              "Tenant: {}, Error during processing, {}",
-              token.getTenantId(),
-              h.cause().getMessage(),
+          logError(
+              () ->
+                  createTenantMsg(
+                      token.getTenantId(), "Error during processing, {}", h.cause().getMessage()),
               h.cause());
         }
       };
@@ -82,17 +101,11 @@ public class WorkerVerticle extends AbstractVerticle {
     this.providerId = providerId;
   }
 
-  private String format(String pattern, Object... args) {
-    return MessageFormatter.arrayFormat(pattern, args).getMessage();
-  }
-
-  // TODO: handle limits > 30
   public Future<UsageDataProviders> getActiveProviders() {
-    final String logprefix = TENANT + token.getTenantId() + ", {}";
     final String url = okapiUrl + providerPath;
     final String queryStr =
         String.format("(harvestingConfig.harvestingStatus=%s)", HarvestingStatus.ACTIVE);
-    LOG.info(logprefix, "getting providers");
+    logInfo(() -> createTenantMsg(token.getTenantId(), "getting providers"));
 
     Promise<UsageDataProviders> promise = Promise.promise();
 
@@ -101,7 +114,7 @@ public class WorkerVerticle extends AbstractVerticle {
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
         .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
-        .setQueryParam("limit", "30")
+        .setQueryParam("limit", String.valueOf(Integer.MAX_VALUE))
         .setQueryParam("offset", "0")
         .setQueryParam(QUERY_PARAM, queryStr)
         .send(
@@ -111,37 +124,41 @@ public class WorkerVerticle extends AbstractVerticle {
                   UsageDataProviders entity;
                   try {
                     entity = ar.result().bodyAsJson(UsageDataProviders.class);
-                    LOG.info(logprefix, "total providers: " + entity.getTotalRecords());
+                    logInfo(
+                        () ->
+                            createTenantMsg(
+                                token.getTenantId(),
+                                "total providers: {}",
+                                entity.getTotalRecords()));
                     promise.complete(entity);
                   } catch (Exception e) {
                     promise.fail(
-                        format(logprefix, String.format(ERR_MSG_DECODE, url, e.getMessage())));
+                        createTenantMsg(
+                            token.getTenantId(), createErrMsgDecode(url, e.getMessage())));
                   }
                 } else {
                   promise.fail(
-                      format(
-                          logprefix,
-                          String.format(
-                              ERR_MSG_STATUS,
-                              ar.result().statusCode(),
-                              ar.result().statusMessage(),
-                              url)));
+                      createTenantMsg(
+                          token.getTenantId(),
+                          createMsgStatus(
+                              ar.result().statusCode(), ar.result().statusMessage(), url)));
                 }
               } else {
-                promise.fail(format(logprefix, "error: " + ar.cause().getMessage()));
+                promise.fail(
+                    createTenantMsg(token.getTenantId(), "error: {}", ar.cause().getMessage()));
               }
             });
     return promise.future();
   }
 
   public Future<AggregatorSetting> getAggregatorSetting(UsageDataProvider provider) {
-    final String logprefix = TENANT + token.getTenantId() + ", {}";
     Promise<AggregatorSetting> promise = Promise.promise();
 
     Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
     if (aggregator == null || aggregator.getId() == null) {
       return Future.failedFuture(
-          format(logprefix, "no aggregator found for provider " + provider.getLabel()));
+          createTenantMsg(
+              token.getTenantId(), "no aggregator found for provider {}", provider.getLabel()));
     }
 
     final String aggrUrl = okapiUrl + aggregatorPath + "/" + aggregator.getId();
@@ -156,30 +173,32 @@ public class WorkerVerticle extends AbstractVerticle {
                 if (ar.result().statusCode() == 200) {
                   try {
                     AggregatorSetting setting = ar.result().bodyAsJson(AggregatorSetting.class);
-                    LOG.info(logprefix, "got AggregatorSetting for id: " + aggregator.getId());
+                    logInfo(
+                        () ->
+                            createTenantMsg(
+                                token.getTenantId(),
+                                "got AggregatorSetting for id: {}",
+                                aggregator.getId()));
                     promise.complete(setting);
                   } catch (Exception e) {
                     promise.fail(
-                        format(logprefix, String.format(ERR_MSG_DECODE, aggrUrl, e.getMessage())));
+                        createTenantMsg(
+                            token.getTenantId(), createErrMsgDecode(aggrUrl, e.getMessage())));
                   }
                 } else {
                   promise.fail(
-                      format(
-                          logprefix,
-                          String.format(
-                              ERR_MSG_STATUS,
-                              ar.result().statusCode(),
-                              ar.result().statusMessage(),
-                              aggrUrl)));
+                      createTenantMsg(
+                          token.getTenantId(),
+                          createMsgStatus(
+                              ar.result().statusCode(), ar.result().statusMessage(), aggrUrl)));
                 }
               } else {
                 promise.fail(
-                    format(
-                        logprefix,
-                        "failed getting AggregatorSetting for id: "
-                            + aggregator.getId()
-                            + ", "
-                            + ar.cause().getMessage()));
+                    createTenantMsg(
+                        token.getTenantId(),
+                        "failed getting AggregatorSetting for id: {}, {}",
+                        aggregator.getId(),
+                        ar.cause().getMessage()));
               }
             });
     return promise.future();
@@ -225,9 +244,10 @@ public class WorkerVerticle extends AbstractVerticle {
                 sepPromise.complete(sep);
               } else {
                 sepPromise.fail(
-                    String.format(
-                        "Tenant: %s, Provider: %s, No service implementation available",
-                        token.getTenantId(), provider.getLabel()));
+                    createTenantMsg(
+                        token.getTenantId(),
+                        createProviderMsg(
+                            provider.getLabel(), "No service implementation available")));
               }
               return sepPromise.future();
             });
@@ -240,7 +260,6 @@ public class WorkerVerticle extends AbstractVerticle {
    * @param reportName reportType
    * @param start start month
    * @param end end month
-   * @return
    */
   public Future<List<YearMonth>> getValidMonths(
       String providerId, String reportName, YearMonth start, YearMonth end) {
@@ -273,8 +292,7 @@ public class WorkerVerticle extends AbstractVerticle {
                   promise.complete(availableMonths);
                 } else {
                   promise.fail(
-                      String.format(
-                          ERR_MSG_STATUS,
+                      createMsgStatus(
                           ar.result().statusCode(),
                           ar.result().statusMessage(),
                           okapiUrl + reportsPath));
@@ -291,19 +309,17 @@ public class WorkerVerticle extends AbstractVerticle {
    * Returns a List of FetchItems/Months that need fetching.
    *
    * @param provider UsageDataProvider
-   * @return
    */
   public Future<List<FetchItem>> getFetchList(UsageDataProvider provider) {
-    final String logprefix = TENANT + token.getTenantId() + ", {}";
-
     // check if harvesting status is 'active'
     if (!provider.getHarvestingConfig().getHarvestingStatus().equals(HarvestingStatus.ACTIVE)) {
-      LOG.info(
-          logprefix,
-          "skipping "
-              + provider.getLabel()
-              + " as harvesting status is "
-              + provider.getHarvestingConfig().getHarvestingStatus());
+      logInfo(
+          () ->
+              createTenantMsg(
+                  token.getTenantId(),
+                  "skipping {} as harvesting status is {}",
+                  provider.getLabel(),
+                  provider.getHarvestingConfig().getHarvestingStatus()));
       return Future.failedFuture("Harvesting not active");
     }
 
@@ -339,12 +355,10 @@ public class WorkerVerticle extends AbstractVerticle {
                                             li.atDay(1).toString(),
                                             li.atEndOfMonth().toString());
                                     LOG.info(
-                                        "Created FetchItem: "
-                                            + fetchItem.reportType
-                                            + " "
-                                            + fetchItem.begin
-                                            + " "
-                                            + fetchItem.end);
+                                        "Created FetchItem: {} {} {}",
+                                        fetchItem.reportType,
+                                        fetchItem.begin,
+                                        fetchItem.end);
                                     fetchList.add(fetchItem);
                                   });
                               return Future.succeededFuture();
@@ -365,8 +379,8 @@ public class WorkerVerticle extends AbstractVerticle {
 
   @SuppressWarnings("rawtypes")
   public Future<List<Future>> fetchAndPostReports(UsageDataProvider provider) {
-    final String logprefix = TENANT + token.getTenantId() + ", {}";
-    LOG.info(logprefix, "processing provider: " + provider.getLabel());
+    logInfo(
+        () -> createTenantMsg(token.getTenantId(), "processing provider: {}", provider.getLabel()));
 
     List<Future> futList = new ArrayList<>();
     Promise<List<Future>> promise = Promise.promise();
@@ -376,9 +390,12 @@ public class WorkerVerticle extends AbstractVerticle {
         .compose(
             list -> {
               if (list.isEmpty()) {
-                LOG.info(
-                    logprefix,
-                    "Provider: " + provider.getLabel() + ", No reports need to be fetched.");
+                logInfo(
+                    () ->
+                        createTenantMsg(
+                            token.getTenantId(),
+                            createProviderMsg(
+                                provider.getLabel(), "No reports need to be fetched.")));
               }
               list.forEach(
                   li -> {
@@ -397,14 +414,15 @@ public class WorkerVerticle extends AbstractVerticle {
                               } else {
                                 report = createCounterReport(null, li.reportType, provider, month);
                                 report.setFailedReason(h.cause().getMessage());
-                                LOG.error(
-                                    logprefix,
-                                    "Provider: "
-                                        + provider.getLabel()
-                                        + ", "
-                                        + li.toString()
-                                        + ", "
-                                        + h.cause().getMessage());
+                                logError(
+                                    () ->
+                                        createTenantMsg(
+                                            token.getTenantId(),
+                                            createProviderMsg(
+                                                provider.getLabel(),
+                                                "{}, {}",
+                                                li,
+                                                h.cause().getMessage())));
                               }
                               postReport(report)
                                   .setHandler(
@@ -422,7 +440,12 @@ public class WorkerVerticle extends AbstractVerticle {
         .setHandler(
             h -> {
               if (h.failed()) {
-                LOG.error(logprefix, "Provider: " + provider.getLabel() + ", " + h.cause());
+                logError(
+                    () ->
+                        createTenantMsg(
+                            token.getTenantId(),
+                            createProviderMsg(provider.getLabel(), h.cause().getMessage())),
+                    h.cause());
                 promise.complete(Collections.emptyList());
               }
             });
@@ -447,7 +470,6 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   public Future<HttpResponse<Buffer>> sendReportRequest(HttpMethod method, CounterReport report) {
-    final String logprefix = TENANT + token.getTenantId() + ", {}";
     String urlTmp = okapiUrl + reportsPath;
     if (!method.equals(HttpMethod.POST) && !method.equals(HttpMethod.PUT)) {
       return Future.failedFuture("HttpMethod not supported");
@@ -458,7 +480,8 @@ public class WorkerVerticle extends AbstractVerticle {
 
     final Promise<HttpResponse<Buffer>> promise = Promise.promise();
 
-    LOG.info(logprefix, "posting report with id " + report.getId());
+    logInfo(
+        () -> createTenantMsg(token.getTenantId(), "posting report with id {}", report.getId()));
 
     client
         .requestAbs(method, url)
@@ -469,16 +492,21 @@ public class WorkerVerticle extends AbstractVerticle {
             JsonObject.mapFrom(report),
             ar -> {
               if (ar.succeeded()) {
-                LOG.info(
-                    logprefix,
-                    String.format(
-                        ERR_MSG_STATUS,
-                        ar.result().statusCode(),
-                        ar.result().statusMessage(),
-                        url));
+                logInfo(
+                    () ->
+                        createTenantMsg(
+                            token.getTenantId(),
+                            createMsgStatus(
+                                ar.result().statusCode(), ar.result().statusMessage(), url)));
                 promise.complete(ar.result());
               } else {
-                LOG.error(ar.cause().getMessage(), ar.cause());
+                logError(
+                    () ->
+                        createTenantMsg(
+                            token.getTenantId(),
+                            "error posting report: {}",
+                            ar.cause().getMessage()),
+                    ar.cause());
                 promise.fail(ar.cause());
               }
             });
@@ -510,17 +538,14 @@ public class WorkerVerticle extends AbstractVerticle {
                   } else if (collection.getCounterReports().size() == 1) {
                     promise.complete(collection.getCounterReports().get(0));
                   } else {
-                    String msg =
-                        String.format(
-                            "Tenant: %s, Provider: %s, %s",
+                    promise.fail(
+                        createTenantMsg(
                             token.getTenantId(),
-                            providerId,
-                            "Too many results for "
-                                + reportName
-                                + ", "
-                                + month
-                                + ", not processed");
-                    promise.fail(msg);
+                            createProviderMsg(
+                                providerId,
+                                "Too many results for {}, {} not processed",
+                                reportName,
+                                month)));
                   }
                 } else {
                   promise.fail("received status code " + handler.result().statusCode());
@@ -575,23 +600,25 @@ public class WorkerVerticle extends AbstractVerticle {
                         .compose(CompositeFuture::join)
                         .setHandler(processingCompleteHandler);
                   } else {
-                    LOG.error(
-                        TENANT
-                            + token.getTenantId()
-                            + ", Provider: "
-                            + provider.getLabel()
-                            + ", HarvestingStatus not ACTIVE");
+                    logError(
+                        () ->
+                            createTenantMsg(
+                                token.getTenantId(),
+                                createProviderMsg(
+                                    provider.getLabel(), "HarvestingStatus not ACTIVE")));
                     vertx.undeploy(this.deploymentID());
                   }
                 } else {
-                  LOG.error(
-                      "{}{}, Provider: {}, {} returned response {} {}",
-                      TENANT,
-                      token.getTenantId(),
-                      providerId,
-                      providerPath,
-                      h.result().statusCode(),
-                      h.result().statusMessage());
+                  logError(
+                      () ->
+                          createTenantMsg(
+                              token.getTenantId(),
+                              createProviderMsg(
+                                  providerId,
+                                  createMsgStatus(
+                                      h.result().statusCode(),
+                                      h.result().statusMessage(),
+                                      providerPath))));
                   vertx.undeploy(this.deploymentID());
                 }
               } else {
@@ -604,7 +631,7 @@ public class WorkerVerticle extends AbstractVerticle {
   @Override
   public void stop() throws Exception {
     super.stop();
-    LOG.info("Tenant: {}, undeployed WorkerVerticle", token.getTenantId());
+    logInfo(() -> createTenantMsg(token.getTenantId(), "undeployed WorkerVerticle"));
   }
 
   @Override
@@ -617,19 +644,22 @@ public class WorkerVerticle extends AbstractVerticle {
     aggregatorPath = config().getString("aggregatorPath");
     client = WebClient.create(vertx);
 
-    LOG.info("Tenant: {}, deployed WorkerVericle", token.getTenantId());
+    logInfo(() -> createTenantMsg(token.getTenantId(), "deployed WorkerVericle"));
 
     Future<String> limit = getModConfigurationValue(CONFIG_MODULE, CONFIG_CODE, "5");
 
     limit.setHandler(
         ar -> {
           if (ar.succeeded()) {
-            maxFailedAttempts = Integer.valueOf(ar.result());
+            maxFailedAttempts = Integer.parseInt(ar.result());
           }
-          LOG.info(
-              "Tenant: {}, using maxFailedAttempts={}", token.getTenantId(), maxFailedAttempts);
+          logInfo(
+              () ->
+                  createTenantMsg(
+                      token.getTenantId(), "using maxFailedAttempts={}", maxFailedAttempts));
 
-          if (!config().getBoolean("testing", false)) {
+          boolean isTesting = config().getBoolean("testing", false);
+          if (!isTesting) {
             if (providerId == null) run();
             else runSingleProvider();
           } else {
@@ -640,10 +670,9 @@ public class WorkerVerticle extends AbstractVerticle {
 
   public Future<String> getModConfigurationValue(String module, String code, String defaultValue) {
     Promise<String> promise = Promise.promise();
-    final String path = CONFIG_PATH;
     final String queryStr = String.format("(module = %s and configName = %s)", module, code);
     client
-        .getAbs(okapiUrl + path)
+        .getAbs(okapiUrl + CONFIG_PATH)
         .setQueryParam(QUERY_PARAM, queryStr)
         .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
@@ -659,10 +688,12 @@ public class WorkerVerticle extends AbstractVerticle {
                     promise.complete(configs.getJsonObject(0).getString("value"));
                   }
                 } else {
-                  LOG.info(
-                      "Received status code {} {} from configuration module",
-                      ar.result().statusCode(),
-                      ar.result().statusMessage());
+                  logInfo(
+                      () ->
+                          createMsgStatus(
+                              ar.result().statusCode(),
+                              ar.result().statusMessage(),
+                              "from configuration module"));
                 }
               }
               promise.tryComplete(defaultValue);
