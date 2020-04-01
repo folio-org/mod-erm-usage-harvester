@@ -1,3 +1,6 @@
+# 1.6.1
+* Use single instance of WebClient to prevent unavailable backend while harvesting counter-reports (MODEUS-48) 
+
 # 1.6.0
 * Fix security vulnerability reported in log4j:log4j (MODEUS-46)
 * Update required interface versions in ModuleDescriptor
