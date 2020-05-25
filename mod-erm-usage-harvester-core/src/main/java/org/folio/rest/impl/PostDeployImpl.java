@@ -26,7 +26,7 @@ public class PostDeployImpl implements PostDeployVerticle {
     tenantList.forEach(
         tenant ->
             PeriodicConfigPgUtil.get(vertxContext, tenant)
-                .setHandler(
+                .onComplete(
                     ar -> {
                       if (ar.succeeded()) {
                         PeriodicConfig periodicConfig = ar.result();
@@ -55,7 +55,7 @@ public class PostDeployImpl implements PostDeployVerticle {
 
       new OkapiClient(WebClient.create(arg0), arg1.config())
           .getTenants()
-          .setHandler(
+          .onComplete(
               ar -> {
                 if (ar.succeeded()) {
                   processTenants(arg1, ar.result());

@@ -21,7 +21,7 @@ public class ErmUsageHarvesterPeriodicAPI implements ErmUsageHarvesterPeriodic {
       Context vertxContext) {
 
     PeriodicConfigPgUtil.get(vertxContext, okapiHeaders)
-        .setHandler(
+        .onComplete(
             ar -> {
               if (ar.succeeded()) {
                 if (ar.result() == null)
@@ -43,7 +43,7 @@ public class ErmUsageHarvesterPeriodicAPI implements ErmUsageHarvesterPeriodic {
       Context vertxContext) {
 
     PeriodicConfigPgUtil.upsert(vertxContext, okapiHeaders, entity)
-        .setHandler(
+        .onComplete(
             ar -> {
               if (ar.succeeded()) {
                 asyncResultHandler.handle(Future.succeededFuture(Response.status(201).build()));
@@ -61,10 +61,10 @@ public class ErmUsageHarvesterPeriodicAPI implements ErmUsageHarvesterPeriodic {
       Context vertxContext) {
 
     PeriodicConfigPgUtil.delete(vertxContext, okapiHeaders)
-        .setHandler(
+        .onComplete(
             ar -> {
               if (ar.succeeded()) {
-                if (ar.result().getUpdated() == 1) {
+                if (ar.result().rowCount() == 1) {
                   asyncResultHandler.handle(Future.succeededFuture(Response.noContent().build()));
                   SchedulingUtil.deleteJob(okapiHeaders.get(XOkapiHeaders.TENANT));
                 } else {

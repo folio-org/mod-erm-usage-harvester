@@ -230,7 +230,7 @@ public class WorkerVerticle extends AbstractVerticle {
     Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
     // Complete aggrPromise if aggregator is not set.. aka skip it
     if (useAggregator && aggregator != null && aggregator.getId() != null) {
-      getAggregatorSetting(provider).setHandler(aggrPromise);
+      getAggregatorSetting(provider).onComplete(aggrPromise);
     } else {
       aggrPromise.complete(null);
     }
@@ -365,7 +365,7 @@ public class WorkerVerticle extends AbstractVerticle {
                             })));
 
     CompositeFuture.all(futures)
-        .setHandler(
+        .onComplete(
             ar -> {
               if (ar.succeeded()) {
                 promise.complete(fetchList);
@@ -403,7 +403,7 @@ public class WorkerVerticle extends AbstractVerticle {
                     futList.add(complete.future());
                     sep.result()
                         .fetchSingleReport(li.reportType, li.begin, li.end)
-                        .setHandler(
+                        .onComplete(
                             h -> {
                               CounterReport report;
                               LocalDate parse = LocalDate.parse(li.begin);
@@ -425,7 +425,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                                 h.cause().getMessage())));
                               }
                               postReport(report)
-                                  .setHandler(
+                                  .onComplete(
                                       h2 -> {
                                         complete.complete();
                                         if (h2.failed()) {
@@ -437,7 +437,7 @@ public class WorkerVerticle extends AbstractVerticle {
               promise.complete(futList);
               return Future.<Void>succeededFuture();
             })
-        .setHandler(
+        .onComplete(
             h -> {
               if (h.failed()) {
                 logError(
@@ -568,10 +568,10 @@ public class WorkerVerticle extends AbstractVerticle {
                   .forEach(
                       p ->
                           complete.add(this.fetchAndPostReports(p).compose(CompositeFuture::join)));
-              CompositeFuture.join(complete).setHandler(processingCompleteHandler);
+              CompositeFuture.join(complete).onComplete(processingCompleteHandler);
               return Future.succeededFuture();
             })
-        .setHandler(
+        .onComplete(
             h -> {
               if (h.failed()) {
                 LOG.error(
@@ -598,7 +598,7 @@ public class WorkerVerticle extends AbstractVerticle {
                       .equals(HarvestingStatus.ACTIVE)) {
                     fetchAndPostReports(provider)
                         .compose(CompositeFuture::join)
-                        .setHandler(processingCompleteHandler);
+                        .onComplete(processingCompleteHandler);
                   } else {
                     logError(
                         () ->
@@ -648,7 +648,7 @@ public class WorkerVerticle extends AbstractVerticle {
 
     Future<String> limit = getModConfigurationValue(CONFIG_MODULE, CONFIG_CODE, "5");
 
-    limit.setHandler(
+    limit.onComplete(
         ar -> {
           if (ar.succeeded()) {
             maxFailedAttempts = Integer.parseInt(ar.result());
