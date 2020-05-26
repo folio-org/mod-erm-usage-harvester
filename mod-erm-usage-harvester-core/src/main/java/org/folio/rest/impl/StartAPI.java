@@ -42,7 +42,7 @@ public class StartAPI implements Start {
                         .send(startTenant);
                     startTenant
                         .future()
-                        .setHandler(
+                        .onComplete(
                             ar -> {
                               if (ar.failed()) {
                                 LOG.error(ar.cause().getMessage(), ar.cause());
@@ -51,7 +51,7 @@ public class StartAPI implements Start {
                   });
               return Future.succeededFuture();
             })
-        .setHandler(
+        .onComplete(
             ar -> {
               if (ar.failed()) {
                 LOG.error(ar.cause().getMessage(), ar.cause());

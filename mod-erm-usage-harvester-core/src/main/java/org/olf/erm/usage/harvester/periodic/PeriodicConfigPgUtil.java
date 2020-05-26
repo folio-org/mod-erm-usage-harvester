@@ -3,7 +3,8 @@ package org.olf.erm.usage.harvester.periodic;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.ext.sql.UpdateResult;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import java.util.Map;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
@@ -14,14 +15,13 @@ public class PeriodicConfigPgUtil {
   private static final String TBL = "periodic";
   private static final String UUID = "8bf5fe33-5ec8-420c-a86d-6320c55ba554";
 
-  public static Future<UpdateResult> delete(Context vertxContext, String tenantId) {
-    Promise<UpdateResult> promise = Promise.promise();
+  public static Future<RowSet<Row>> delete(Context vertxContext, String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
     PostgresClient.getInstance(vertxContext.owner(), tenantId).delete(TBL, UUID, promise);
     return promise.future();
   }
 
-  public static Future<UpdateResult> delete(
-      Context vertxContext, Map<String, String> okapiHeaders) {
+  public static Future<RowSet<Row>> delete(Context vertxContext, Map<String, String> okapiHeaders) {
     return delete(vertxContext, okapiHeaders.get(XOkapiHeaders.TENANT));
   }
 

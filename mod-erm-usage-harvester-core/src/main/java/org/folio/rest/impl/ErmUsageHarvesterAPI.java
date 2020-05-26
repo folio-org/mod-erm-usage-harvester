@@ -45,7 +45,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
     deploy
         .future()
-        .setHandler(
+        .onComplete(
             ar -> {
               if (ar.failed()) {
                 log.error(

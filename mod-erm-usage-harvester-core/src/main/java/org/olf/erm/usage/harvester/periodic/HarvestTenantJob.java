@@ -71,7 +71,7 @@ public class HarvestTenantJob implements Job {
                 } else {
                   log.info("Tenant: {}, job started", tenantId);
                   updateLastTriggeredAt(vertxContext, context.getFireTime())
-                      .setHandler(
+                      .onComplete(
                           ar2 -> {
                             if (ar2.succeeded()) {
                               promise.complete();
