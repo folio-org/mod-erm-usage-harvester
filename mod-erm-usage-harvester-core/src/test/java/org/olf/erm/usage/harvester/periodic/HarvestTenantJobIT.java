@@ -48,7 +48,7 @@ import org.quartz.listeners.JobListenerSupport;
 public class HarvestTenantJobIT {
 
   public static final String START_PATH = "/erm-usage-harvester/start";
-  private static Vertx vertx;
+  private static Vertx vertx = Vertx.vertx();
   private static Context vertxContext;
   private static Scheduler scheduler;
   private static final String TENANT = "tnanet";
@@ -70,13 +70,12 @@ public class HarvestTenantJobIT {
   @ClassRule
   public static WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
 
-  @ClassRule public static EmbeddedPostgresRule pgRule = new EmbeddedPostgresRule(TENANT);
+  @ClassRule public static EmbeddedPostgresRule pgRule = new EmbeddedPostgresRule(vertx, TENANT);
 
   @Rule public Timeout timeout = Timeout.seconds(5);
 
   @BeforeClass
   public static void beforeClass(TestContext context) {
-    vertx = Vertx.vertx();
     vertxContext = vertx.getOrCreateContext();
     vertxContext.config().put("okapiUrl", "http://localhost:" + wireMockRule.port());
 

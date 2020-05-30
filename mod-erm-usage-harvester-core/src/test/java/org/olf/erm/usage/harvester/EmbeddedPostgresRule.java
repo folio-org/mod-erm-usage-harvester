@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.folio.rest.impl.TenantAPI;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
@@ -19,14 +18,17 @@ import org.slf4j.LoggerFactory;
 public class EmbeddedPostgresRule implements TestRule {
 
   private static final Logger log = LoggerFactory.getLogger(EmbeddedPostgresRule.class);
-  Vertx vertx = VertxUtils.getVertxFromContextOrNew();
+  Vertx vertx;
   List<String> tenants = new ArrayList<>();
 
-  public EmbeddedPostgresRule(String... tenants) {
+  public EmbeddedPostgresRule(Vertx vertx, String... tenants) {
+    this(vertx);
     this.tenants = Arrays.asList(tenants);
   }
 
-  public EmbeddedPostgresRule() {}
+  public EmbeddedPostgresRule(Vertx vertx) {
+    this.vertx = vertx;
+  }
 
   private Future<List<String>> createSchema(String tenant) {
     log.info("Creating schema for tenant: {}", tenant);
