@@ -23,7 +23,6 @@ import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
-import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -40,14 +39,13 @@ import org.quartz.impl.StdSchedulerFactory;
 public class ErmUsageHarvesterPeriodicAPIIT {
 
   private static final String TENANT = "testtenant";
-  private static Vertx vertx;
+  private static Vertx vertx = Vertx.vertx();
   private static int port;
 
-  @ClassRule public static EmbeddedPostgresRule pgRule = new EmbeddedPostgresRule(TENANT);
+  @ClassRule public static EmbeddedPostgresRule pgRule = new EmbeddedPostgresRule(vertx, TENANT);
 
   @BeforeClass
   public static void beforeClass(TestContext context) {
-    vertx = VertxUtils.getVertxFromContextOrNew();
     port = NetworkUtils.nextFreePort();
 
     RestAssured.reset();

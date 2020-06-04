@@ -39,19 +39,19 @@ import org.quartz.listeners.SchedulerListenerSupport;
 public class PostDeployImplIT {
   private static final String TENANT = "testtenant";
   private static final String TENANT2 = "tenant2";
-  private static Vertx vertx;
+  private static Vertx vertx = Vertx.vertx();
 
   @ClassRule
   public static WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
 
-  @ClassRule public static EmbeddedPostgresRule pgRule = new EmbeddedPostgresRule(TENANT, TENANT2);
+  @ClassRule
+  public static EmbeddedPostgresRule pgRule = new EmbeddedPostgresRule(vertx, TENANT, TENANT2);
 
   private static DeploymentOptions options = new DeploymentOptions();
 
   @BeforeClass
   public static void beforeClass(TestContext context) {
     Async async = context.async();
-    vertx = Vertx.vertx();
 
     int port = NetworkUtils.nextFreePort();
     options.setConfig(
