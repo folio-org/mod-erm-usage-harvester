@@ -11,6 +11,7 @@
             "GET"
           ],
           "pathPattern": "/erm-usage-harvester/start",
+          "permissionsRequired": [],
           "modulePermissions": [
             "usagedataproviders.collection.get",
             "usagedataproviders.item.get",
@@ -29,6 +30,7 @@
             "GET"
           ],
           "pathPattern": "/erm-usage-harvester/start/{id}",
+          "permissionsRequired": [],
           "modulePermissions": [
             "usagedataproviders.collection.get",
             "usagedataproviders.item.get",
@@ -46,7 +48,8 @@
           "methods": [
             "GET"
           ],
-          "pathPattern": "/erm-usage-harvester/impl"
+          "pathPattern": "/erm-usage-harvester/impl",
+          "permissionsRequired": []
         },
         {
           "methods": [
@@ -54,7 +57,8 @@
             "POST",
             "DELETE"
           ],
-          "pathPattern": "/erm-usage-harvester/periodic"
+          "pathPattern": "/erm-usage-harvester/periodic",
+          "permissionsRequired": []
         }
       ]
     },
