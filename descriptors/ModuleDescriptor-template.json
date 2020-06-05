@@ -167,6 +167,15 @@
         "ermusageharvester.periodic.post",
         "ermusageharvester.periodic.delete"
       ]
+    },
+    {
+      "permissionName": "ermusageharvester.readonly",
+      "displayName": "erm-usage-harvester readonly",
+      "description": "Read-only permissions for the mod-erm-harvester module",
+      "subPermissions": [
+        "ermusageharvester.impl.get",
+        "ermusageharvester.periodic.get"
+      ]
     }
   ],
   "launchDescriptor": {
