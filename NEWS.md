@@ -1,3 +1,7 @@
+# 1.7.0
+* Add permissionsRequired to ModuleDescriptor (MODEUS-72)
+* Update RMB to v30.0.0 (MODEUS-57)
+
 # 1.6.1
 * Use single instance of WebClient to prevent unavailable backend while harvesting counter-reports (MODEUS-48) 
 
