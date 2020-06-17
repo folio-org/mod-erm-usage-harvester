@@ -30,7 +30,9 @@
             "GET"
           ],
           "pathPattern": "/erm-usage-harvester/start/{id}",
-          "permissionsRequired": [],
+          "permissionsRequired": [
+            "ermusageharvester.start.single"
+          ],
           "modulePermissions": [
             "usagedataproviders.collection.get",
             "usagedataproviders.item.get",
@@ -49,16 +51,36 @@
             "GET"
           ],
           "pathPattern": "/erm-usage-harvester/impl",
-          "permissionsRequired": []
+          "permissionsRequired": [
+            "ermusageharvester.impl.get"
+          ]
         },
         {
           "methods": [
-            "GET",
-            "POST",
+            "GET"
+          ],
+          "pathPattern": "/erm-usage-harvester/periodic",
+          "permissionsRequired": [
+            "ermusageharvester.periodic.get"
+          ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/erm-usage-harvester/periodic",
+          "permissionsRequired": [
+            "ermusageharvester.periodic.post"
+          ]
+        },
+        {
+          "methods": [
             "DELETE"
           ],
           "pathPattern": "/erm-usage-harvester/periodic",
-          "permissionsRequired": []
+          "permissionsRequired": [
+            "ermusageharvester.periodic.delete"
+          ]
         }
       ]
     },
@@ -114,6 +136,54 @@
     {
       "id": "counter-reports",
       "version": "1.3"
+    }
+  ],
+  "permissionSets": [
+    {
+      "permissionName": "ermusageharvester.start.single",
+      "displayName": "erm-usage-harvester start harvesting single provider",
+      "description": "Start harvesting for a single provider"
+    },
+    {
+      "permissionName": "ermusageharvester.impl.get",
+      "displayName": "erm-usage-harvester get implementations",
+      "description": "Read available harvester implementations"
+    },
+    {
+      "permissionName": "ermusageharvester.periodic.get",
+      "displayName": "erm-usage-harvester get periodic setting",
+      "description": "Read harvester periodic setting"
+    },
+    {
+      "permissionName": "ermusageharvester.periodic.post",
+      "displayName": "erm-usage-harvester post periodic setting",
+      "description": "Save harvester periodic setting"
+    },
+    {
+      "permissionName": "ermusageharvester.periodic.delete",
+      "displayName": "erm-usage-harvester delete periodic setting",
+      "description": "Delete harvester periodic setting"
+    },
+    {
+      "permissionName": "ermusageharvester.all",
+      "displayName": "erm-usage-harvester all",
+      "description": "All permissions for the mod-erm-harvester module",
+      "subPermissions": [
+        "ermusageharvester.start.single",
+        "ermusageharvester.impl.get",
+        "ermusageharvester.periodic.get",
+        "ermusageharvester.periodic.post",
+        "ermusageharvester.periodic.delete"
+      ]
+    },
+    {
+      "permissionName": "ermusageharvester.readonly",
+      "displayName": "erm-usage-harvester readonly",
+      "description": "Read-only permissions for the mod-erm-harvester module",
+      "subPermissions": [
+        "ermusageharvester.impl.get",
+        "ermusageharvester.periodic.get"
+      ]
     }
   ],
   "launchDescriptor": {
