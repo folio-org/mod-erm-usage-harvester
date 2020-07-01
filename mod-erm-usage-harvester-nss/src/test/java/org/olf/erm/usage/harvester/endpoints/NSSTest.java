@@ -108,6 +108,25 @@ public class NSSTest {
   }
 
   @Test
+  public void fetchMultipleMonths(TestContext context) {
+    final NSS sep = new NSS(provider, aggregator);
+    final String url1 =
+        sep.buildURL("JR1", "2018-01-01", "2018-31-01").replaceFirst(wireMockRule.url(""), "/");
+    final String url2 =
+        sep.buildURL("JR1", "2018-02-01", "2018-02-28").replaceFirst(wireMockRule.url(""), "/");
+
+    wireMockRule.stubFor(any(anyUrl()).willReturn(aResponse().withStatus(404)));
+
+    Async async = context.async(2);
+    sep.fetchSingleReport("JR1", "2018-01-01", "2018-31-01").onComplete(ar -> async.countDown());
+    sep.fetchSingleReport("JR1", "2018-02-01", "2018-02-28").onComplete(ar -> async.countDown());
+
+    async.await(5000);
+    wireMockRule.verify(1, getRequestedFor(urlEqualTo(url1)));
+    wireMockRule.verify(1, getRequestedFor(urlEqualTo(url2)));
+  }
+
+  @Test
   public void fetchSingleReportWithAggregatorInvalidReport(TestContext context) {
     final NSS sep = new NSS(provider, aggregator);
     final String url = sep.buildURL(reportType, beginDate, endDate);

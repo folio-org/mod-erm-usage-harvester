@@ -90,7 +90,6 @@ public class NSS implements ServiceEndpoint {
         .send(
             ar -> {
               if (ar.succeeded()) {
-                client.close();
                 if (ar.result().statusCode() == 200) {
                   String result = ar.result().bodyAsString();
                   CounterReportResponse reportResponse =
