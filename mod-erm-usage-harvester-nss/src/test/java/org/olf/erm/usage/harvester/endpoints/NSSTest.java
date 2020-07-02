@@ -256,7 +256,7 @@ public class NSSTest {
     sep = new NSS(provider, this.aggregator);
     url = sep.buildURL(reportType, beginDate, endDate);
     decoder = new QueryStringDecoder(url);
-    assertThat(decoder.parameters().get("APIKey").get(0)).isEqualTo("");
+    assertThat(decoder.parameters().get("APIKey").get(0)).isEmpty();
 
     sep = new NSS(null, this.aggregator);
     assertThat(sep.buildURL(reportType, beginDate, endDate)).isNull();
