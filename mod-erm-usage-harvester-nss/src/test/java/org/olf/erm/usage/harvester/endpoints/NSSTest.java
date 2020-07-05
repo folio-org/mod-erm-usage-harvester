@@ -3,6 +3,7 @@ package org.olf.erm.usage.harvester.endpoints;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.any;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
@@ -12,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.io.Resources;
+import io.netty.handler.codec.http.QueryStringDecoder;
 import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -28,6 +30,7 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.List;
 import javax.xml.bind.JAXB;
+import org.folio.rest.jaxrs.model.Aggregator;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.Before;
@@ -105,6 +108,38 @@ public class NSSTest {
             context.fail(ar.cause());
           }
         });
+  }
+
+  @Test
+  public void fetchSingleReportWithNullURL(TestContext context) {
+    final NSS sep = new NSS(provider, null);
+
+    Async async = context.async();
+    Future<String> fetchSingleReport = sep.fetchSingleReport(reportType, beginDate, endDate);
+    fetchSingleReport.onComplete(
+        ar -> {
+          assertThat(ar.cause().getMessage()).startsWith("Could not create request URL");
+          async.complete();
+        });
+  }
+
+  @Test
+  public void fetchMultipleMonths(TestContext context) {
+    final NSS sep = new NSS(provider, aggregator);
+    final String url1 =
+        sep.buildURL("JR1", "2018-01-01", "2018-31-01").replaceFirst(wireMockRule.url(""), "/");
+    final String url2 =
+        sep.buildURL("JR1", "2018-02-01", "2018-02-28").replaceFirst(wireMockRule.url(""), "/");
+
+    wireMockRule.stubFor(any(anyUrl()).willReturn(aResponse().withStatus(404)));
+
+    Async async = context.async(2);
+    sep.fetchSingleReport("JR1", "2018-01-01", "2018-31-01").onComplete(ar -> async.countDown());
+    sep.fetchSingleReport("JR1", "2018-02-01", "2018-02-28").onComplete(ar -> async.countDown());
+
+    async.await(5000);
+    wireMockRule.verify(1, getRequestedFor(urlEqualTo(url1)));
+    wireMockRule.verify(1, getRequestedFor(urlEqualTo(url2)));
   }
 
   @Test
@@ -186,6 +221,48 @@ public class NSSTest {
             CounterReportResponse.class);
     assertThat(Counter4Utils.getExceptions(reportValid)).isEmpty();
     assertThat(Counter4Utils.getExceptions(reportInvalid)).isNotEmpty();
+  }
+
+  @Test
+  public void testWhiteSpacesInQueryParameter(TestContext context) {
+    Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
+    aggregator.setVendorCode("ACM Digital");
+    final NSS sep = new NSS(provider, this.aggregator);
+
+    wireMockRule.stubFor(any(anyUrl()).willReturn(aResponse().withStatus(404)));
+    Async async = context.async();
+    sep.fetchSingleReport(reportType, beginDate, endDate)
+        .onComplete(
+            ar -> {
+              context.verify(
+                  v ->
+                      wireMockRule.verify(
+                          getRequestedFor(anyUrl())
+                              .withQueryParam("Platform", equalTo("ACM Digital"))));
+              async.complete();
+            });
+
+    ;
+  }
+
+  @Test
+  public void testBuildURL() {
+    NSS sep = new NSS(provider, this.aggregator);
+    String url = sep.buildURL(reportType, beginDate, endDate);
+    QueryStringDecoder decoder = new QueryStringDecoder(url);
+    assertThat(decoder.parameters().get("APIKey").get(0)).isEqualTo("abc");
+
+    aggregator.getAggregatorConfig().setAdditionalProperty("apiKey", null);
+    sep = new NSS(provider, this.aggregator);
+    url = sep.buildURL(reportType, beginDate, endDate);
+    decoder = new QueryStringDecoder(url);
+    assertThat(decoder.parameters().get("APIKey").get(0)).isEmpty();
+
+    sep = new NSS(null, this.aggregator);
+    assertThat(sep.buildURL(reportType, beginDate, endDate)).isNull();
+
+    sep = new NSS(provider, null);
+    assertThat(sep.buildURL(reportType, beginDate, endDate)).isNull();
   }
 
   @Test
