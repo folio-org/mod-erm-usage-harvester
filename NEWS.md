@@ -1,3 +1,9 @@
+# 1.7.1
+* Bump quartz version to fix security vulnerability
+* Bump log4j-core version to fix security vulnerability
+* Query parameters are not encoded ([MODEUSHARV-1](https://issues.folio.org/browse/MODEUSHARV-2))
+* Client closed error when harvesting through aggregator ([MODEUSHARV-2](https://issues.folio.org/browse/MODEUSHARV-1))
+
 # 1.7.0
 * Add permissionsRequired to ModuleDescriptor (MODEUS-72)
 * Update RMB to v30.0.0 (MODEUS-57)
