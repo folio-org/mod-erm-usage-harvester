@@ -5,6 +5,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
@@ -64,12 +66,13 @@ import org.junit.runner.RunWith;
 public class WorkerVerticleTest {
 
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
-  @Rule public Timeout timeoutRule = Timeout.seconds(5);
+  @Rule public Timeout timeoutRule = Timeout.seconds(10);
 
   private static final String tenantId = "diku";
   private static final Token token =
       Token.createDummy(tenantId, "6bf2a318-17a9-4fd9-a889-8baf665ab3c8", tenantId);
   private static final WorkerVerticle harvester = new WorkerVerticle(token);
+  private static final String UDP_ID = "eff7063d-9ab9-49e9-8bca-5e40863455d4";
 
   private static CounterReport cr;
 
@@ -719,6 +722,65 @@ public class WorkerVerticleTest {
               } else {
                 context.fail();
               }
+            });
+  }
+
+  @Test
+  public void testUpdateUDPLastHarvestingDateSuccess(TestContext context) {
+    Async async = context.async();
+    String urlPath = "/usage-data-providers/" + UDP_ID;
+
+    stubFor(put(urlPath).willReturn(aResponse().withStatus(204)));
+    harvester
+        .updateUDPLastHarvestingDate(new UsageDataProvider().withId(UDP_ID))
+        .onSuccess(
+            ar -> {
+              context.verify(
+                  v ->
+                      verify(
+                          1,
+                          putRequestedFor(urlEqualTo(urlPath))
+                              .withRequestBody(
+                                  matchingJsonPath("$.harvestingDate", matching("[0-9]*")))));
+              async.complete();
+            })
+        .onFailure(context::fail);
+  }
+
+  @Test
+  public void testUpdateUDPLastHarvestingDateFail(TestContext context) {
+    Async async = context.async();
+    String urlPath = "/usage-data-providers/" + UDP_ID;
+
+    stubFor(put(urlPath).willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
+    harvester
+        .updateUDPLastHarvestingDate(new UsageDataProvider().withId(UDP_ID))
+        .onSuccess(v -> context.fail())
+        .onFailure(
+            t -> {
+              context.verify(
+                  v ->
+                      assertThat(t.getMessage())
+                          .contains("Failed updating harvestingDate", "peer"));
+              async.complete();
+            });
+  }
+
+  @Test
+  public void testUpdateUDPLastHarvestingDateWrongStatusCode(TestContext context) {
+    Async async = context.async();
+    String urlPath = "/usage-data-providers/" + UDP_ID;
+
+    stubFor(put(urlPath).willReturn(aResponse().withStatus(400)));
+    harvester
+        .updateUDPLastHarvestingDate(new UsageDataProvider().withId(UDP_ID))
+        .onSuccess(v -> context.fail())
+        .onFailure(
+            t -> {
+              context.verify(
+                  v ->
+                      assertThat(t.getMessage()).contains("Failed updating harvestingDate", "400"));
+              async.complete();
             });
   }
 }
