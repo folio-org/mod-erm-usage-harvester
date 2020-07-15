@@ -623,17 +623,20 @@ public class WorkerVerticleTest {
                 aResponse().withStatus(200).withBody(Json.encodePrettily(new CounterReports()))));
     stubFor(post(urlPathEqualTo("/counter-reports")).willReturn(aResponse().withStatus(201)));
     stubFor(put(urlPathMatching("/counter-reports/.*")).willReturn(aResponse().withStatus(204)));
+    stubFor(
+        put(urlPathMatching("/usage-data-providers/.*")).willReturn(aResponse().withStatus(204)));
 
     Async async = context.async();
     harvester
         .fetchAndPostReports(provider)
         .compose(CompositeFuture::join)
-        .setHandler(
+        .onComplete(
             ar -> {
               assertThat(ar.succeeded()).isTrue();
               verify(9, getRequestedFor(urlPathEqualTo("/counter-reports")));
               verify(1, postRequestedFor(urlPathEqualTo("/counter-reports")));
               verify(1, putRequestedFor(urlPathMatching("/counter-reports/.*")));
+              verify(1, putRequestedFor(urlPathMatching("/usage-data-providers/.*")));
               async.complete();
             });
   }
