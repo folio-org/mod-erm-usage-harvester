@@ -82,14 +82,13 @@ public class WorkerVerticle extends AbstractVerticle {
       h -> {
         if (h.succeeded()) {
           logInfo(() -> createTenantMsg(token.getTenantId(), "Processing completed"));
-          vertx.undeploy(this.deploymentID());
         } else {
           logError(
               () ->
                   createTenantMsg(
-                      token.getTenantId(), "Error during processing, {}", h.cause().getMessage()),
-              h.cause());
+                      token.getTenantId(), "Error during processing, {}", h.cause().getMessage()));
         }
+        vertx.undeploy(this.deploymentID());
       };
 
   public WorkerVerticle(Token token) {
