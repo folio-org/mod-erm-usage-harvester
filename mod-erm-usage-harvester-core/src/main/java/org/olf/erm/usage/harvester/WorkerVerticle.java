@@ -82,14 +82,13 @@ public class WorkerVerticle extends AbstractVerticle {
       h -> {
         if (h.succeeded()) {
           logInfo(() -> createTenantMsg(token.getTenantId(), "Processing completed"));
-          vertx.undeploy(this.deploymentID());
         } else {
           logError(
               () ->
                   createTenantMsg(
-                      token.getTenantId(), "Error during processing, {}", h.cause().getMessage()),
-              h.cause());
+                      token.getTenantId(), "Error during processing, {}", h.cause().getMessage()));
         }
+        vertx.undeploy(this.deploymentID());
       };
 
   public WorkerVerticle(Token token) {
@@ -331,7 +330,7 @@ public class WorkerVerticle extends AbstractVerticle {
 
     List<FetchItem> fetchList = new ArrayList<>();
 
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes", "java:S3740"})
     List<Future> futures = new ArrayList<>();
     provider
         .getHarvestingConfig()
@@ -377,12 +376,13 @@ public class WorkerVerticle extends AbstractVerticle {
     return promise.future();
   }
 
-  @SuppressWarnings("rawtypes")
+  @SuppressWarnings({"rawtypes", "java:S3740"})
   public Future<List<Future>> fetchAndPostReports(UsageDataProvider provider) {
     logInfo(
         () -> createTenantMsg(token.getTenantId(), "processing provider: {}", provider.getLabel()));
 
     List<Future> futList = new ArrayList<>();
+    futList.add(updateUDPLastHarvestingDate(provider));
     Promise<List<Future>> promise = Promise.promise();
 
     Future<ServiceEndpoint> sep = getServiceEndpoint(provider);
@@ -561,7 +561,7 @@ public class WorkerVerticle extends AbstractVerticle {
     getActiveProviders()
         .compose(
             providers -> {
-              @SuppressWarnings("rawtypes")
+              @SuppressWarnings({"rawtypes", "java:S3740"})
               List<Future> complete = new ArrayList<>();
               providers
                   .getUsageDataProviders()
@@ -697,6 +697,49 @@ public class WorkerVerticle extends AbstractVerticle {
                 }
               }
               promise.tryComplete(defaultValue);
+            });
+    return promise.future();
+  }
+
+  public Future<Void> updateUDPLastHarvestingDate(UsageDataProvider udp) {
+    Promise<Void> promise = Promise.promise();
+    udp.setHarvestingDate(Date.from(Instant.now()));
+    String putUDPUrl = okapiUrl + providerPath + "/" + udp.getId();
+    client
+        .putAbs(putUDPUrl)
+        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
+        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
+        .putHeader(HttpHeaders.CONTENT_TYPE, MediaType.JSON_UTF_8.toString())
+        .putHeader(HttpHeaders.ACCEPT, "text/plain")
+        .timeout(5000)
+        .sendJson(
+            udp,
+            ar -> {
+              if (ar.succeeded()) {
+                if (ar.result().statusCode() == 204) {
+                  logInfo(
+                      () ->
+                          createTenantMsg(
+                              token.getTenantId(),
+                              "Updated harvestingDate for UsageDataProvider {}[{}]",
+                              udp.getId(),
+                              udp.getLabel()));
+                  promise.complete();
+                } else {
+                  promise.fail(
+                      createProviderMsg(
+                          udp.getLabel(),
+                          "Failed updating harvestingDate: {}",
+                          createMsgStatus(
+                              ar.result().statusCode(), ar.result().statusMessage(), putUDPUrl)));
+                }
+              } else {
+                promise.fail(
+                    createProviderMsg(
+                        udp.getLabel(),
+                        "Failed updating harvestingDate: {}",
+                        ar.cause().getMessage()));
+              }
             });
     return promise.future();
   }
