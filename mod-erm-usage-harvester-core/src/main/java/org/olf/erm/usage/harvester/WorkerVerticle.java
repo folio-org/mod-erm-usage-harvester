@@ -330,7 +330,7 @@ public class WorkerVerticle extends AbstractVerticle {
 
     List<FetchItem> fetchList = new ArrayList<>();
 
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes", "java:S3740"})
     List<Future> futures = new ArrayList<>();
     provider
         .getHarvestingConfig()
@@ -376,7 +376,7 @@ public class WorkerVerticle extends AbstractVerticle {
     return promise.future();
   }
 
-  @SuppressWarnings("rawtypes")
+  @SuppressWarnings({"rawtypes", "java:S3740"})
   public Future<List<Future>> fetchAndPostReports(UsageDataProvider provider) {
     logInfo(
         () -> createTenantMsg(token.getTenantId(), "processing provider: {}", provider.getLabel()));
@@ -561,7 +561,7 @@ public class WorkerVerticle extends AbstractVerticle {
     getActiveProviders()
         .compose(
             providers -> {
-              @SuppressWarnings("rawtypes")
+              @SuppressWarnings({"rawtypes", "java:S3740"})
               List<Future> complete = new ArrayList<>();
               providers
                   .getUsageDataProviders()
