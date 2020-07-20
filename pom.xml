@@ -4,7 +4,7 @@
 
   <groupId>org.olf</groupId>
   <artifactId>mod-erm-usage-harvester</artifactId>
-  <version>1.7.2-SNAPSHOT</version>
+  <version>1.7.2</version>
   <packaging>pom</packaging>
 
   <licenses>
@@ -213,7 +213,7 @@
     <connection>scm:git:git://github.com/folio-org/${project.artifactId}.git</connection>
     <developerConnection>scm:git:git@github.com:folio-org/${project.artifactId}.git
     </developerConnection>
-    <tag>v1.7.0</tag>
+    <tag>v1.7.2</tag>
   </scm>
 
 </project>
