@@ -1,3 +1,6 @@
+# 1.7.2
+* Fix broken logging after log4j-core upgrade
+
 # 1.7.1
 * Bump quartz version to fix security vulnerability
 * Bump log4j-core version to fix security vulnerability
