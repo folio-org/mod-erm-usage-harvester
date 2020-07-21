@@ -759,9 +759,7 @@ public class WorkerVerticleTest {
         .onFailure(
             t -> {
               context.verify(
-                  v ->
-                      assertThat(t.getMessage())
-                          .contains("Failed updating harvestingDate", "peer"));
+                  v -> assertThat(t.getMessage()).contains("Failed updating harvestingDate"));
               async.complete();
             });
   }
