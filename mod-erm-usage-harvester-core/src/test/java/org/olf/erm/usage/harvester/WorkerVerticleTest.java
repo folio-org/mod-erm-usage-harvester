@@ -82,7 +82,8 @@ public class WorkerVerticleTest {
           + "  \"tenantsPath\": \"/_/proxy/tenants\",\n"
           + "  \"reportsPath\": \"/counter-reports\",\n"
           + "  \"providerPath\": \"/usage-data-providers\",\n"
-          + "  \"aggregatorPath\": \"/aggregator-settings\"\n"
+          + "  \"aggregatorPath\": \"/aggregator-settings\",\n"
+          + "  \"modConfigurationPath\": \"/configurations/entries\"\n"
           + "}";
 
   private static Vertx vertx;
