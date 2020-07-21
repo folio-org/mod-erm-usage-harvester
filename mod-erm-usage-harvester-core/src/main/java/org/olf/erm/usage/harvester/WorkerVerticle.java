@@ -49,12 +49,12 @@ public class WorkerVerticle extends AbstractVerticle {
   private static final String QUERY_PARAM = "query";
   private static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
   private static final String CONFIG_CODE = "maxFailedAttempts";
-  private static final String CONFIG_PATH = "/configurations/entries";
 
   private String okapiUrl;
   private String reportsPath;
   private String providerPath;
   private String aggregatorPath;
+  private String modConfigPath;
   private Token token;
   private String providerId = null;
   private int maxFailedAttempts = 5;
@@ -642,6 +642,7 @@ public class WorkerVerticle extends AbstractVerticle {
     reportsPath = config().getString("reportsPath");
     providerPath = config().getString("providerPath");
     aggregatorPath = config().getString("aggregatorPath");
+    modConfigPath = config().getString("modConfigurationPath");
     client = WebClient.create(vertx);
 
     logInfo(() -> createTenantMsg(token.getTenantId(), "deployed WorkerVericle"));
@@ -672,7 +673,7 @@ public class WorkerVerticle extends AbstractVerticle {
     Promise<String> promise = Promise.promise();
     final String queryStr = String.format("(module = %s and configName = %s)", module, code);
     client
-        .getAbs(okapiUrl + CONFIG_PATH)
+        .getAbs(okapiUrl + modConfigPath)
         .setQueryParam(QUERY_PARAM, queryStr)
         .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
         .putHeader(XOkapiHeaders.TOKEN, token.getToken())
