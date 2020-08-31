@@ -1,3 +1,8 @@
+# 1.8.0
+* Set datetime of last harvesting attempt in UDP (MODEUSHARV-4)
+* Make path for mod-configuration module configurable (MODEUSHARV-5)
+* Fix potential security vulnerability CVE-2018-10237 (MODEUSHARV-6)
+
 # 1.7.2
 * Fix broken logging after log4j-core upgrade
 
