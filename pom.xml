@@ -28,10 +28,10 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.release>11</maven.compiler.release>
+    <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
 
-    <raml-module-builder.version>30.2.6</raml-module-builder.version>
+    <raml-module-builder.version>31.0.2</raml-module-builder.version>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <vertx.version>3.9.2</vertx.version>
     <erm.usage.version>2.10.0</erm.usage.version>
@@ -84,7 +84,7 @@
       </dependency>
       <dependency>
         <groupId>com.github.tomakehurst</groupId>
-        <artifactId>wiremock-standalone</artifactId>
+        <artifactId>wiremock-jre8-standalone</artifactId>
         <version>2.27.1</version>
         <scope>test</scope>
       </dependency>
@@ -140,6 +140,12 @@
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
         <version>3.0.0-M3</version>
         <executions>
@@ -153,9 +159,9 @@
                 <requireMavenVersion>
                   <version>3.1.0</version>
                 </requireMavenVersion>
-                <!--<requireJavaVersion>
+                <requireJavaVersion>
                   <version>11.0.0</version>
-                </requireJavaVersion>-->
+                </requireJavaVersion>
               </rules>
             </configuration>
           </execution>
