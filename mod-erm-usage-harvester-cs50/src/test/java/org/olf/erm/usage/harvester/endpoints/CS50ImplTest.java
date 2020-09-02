@@ -41,7 +41,6 @@ import org.openapitools.client.model.COUNTERTitleReport;
 import org.openapitools.client.model.SUSHIErrorModel;
 import org.openapitools.client.model.SUSHIReportHeader;
 import retrofit2.adapter.rxjava2.HttpException;
-import sun.net.spi.DefaultProxySelector;
 
 @RunWith(VertxUnitRunner.class)
 public class CS50ImplTest {
@@ -72,7 +71,16 @@ public class CS50ImplTest {
         .getHarvestingConfig()
         .getSushiConfig()
         .setServiceUrl("http://localhost:" + wmRule.port() + "/sushi");
-    ProxySelector.setDefault(new DefaultProxySelector());
+    ProxySelector.setDefault(
+        new ProxySelector() {
+          @Override
+          public List<Proxy> select(URI uri) {
+            return Collections.singletonList(Proxy.NO_PROXY);
+          }
+
+          @Override
+          public void connectFailed(URI uri, SocketAddress socketAddress, IOException e) {}
+        });
   }
 
   private UsageDataProvider createTestProvider() {
