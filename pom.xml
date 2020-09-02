@@ -36,6 +36,7 @@
     <vertx.version>3.9.2</vertx.version>
     <erm.usage.version>2.10.0</erm.usage.version>
     <erm.usage.counter.version>1.3.0</erm.usage.counter.version>
+    <slf4j.version>1.7.30</slf4j.version>
     <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
   </properties>
 
@@ -62,13 +63,7 @@
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
-        <version>1.7.25</version>
-      </dependency>
-      <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-simple</artifactId>
-        <version>1.7.25</version>
-        <scope>test</scope>
+        <version>${slf4j.version}</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
@@ -80,6 +75,19 @@
         <artifactId>jackson-core</artifactId>
         <version>2.10.0</version>
       </dependency>
+
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-simple</artifactId>
+        <version>${slf4j.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.github.tomakehurst</groupId>
+        <artifactId>wiremock-standalone</artifactId>
+        <version>2.27.1</version>
+        <scope>test</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -87,13 +95,13 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.12</version>
+      <version>4.13</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
-      <version>3.11.1</version>
+      <version>3.17.1</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
