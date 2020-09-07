@@ -33,7 +33,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import sun.net.spi.DefaultProxySelector;
 
 @RunWith(VertxUnitRunner.class)
 public class CS41ImplTest {
@@ -60,7 +59,16 @@ public class CS41ImplTest {
         .getHarvestingConfig()
         .getSushiConfig()
         .setServiceUrl("http://localhost:" + wireMockRule.port() + SUSHI_SERVICE);
-    ProxySelector.setDefault(new DefaultProxySelector());
+    ProxySelector.setDefault(
+        new ProxySelector() {
+          @Override
+          public List<Proxy> select(URI uri) {
+            return Collections.singletonList(Proxy.NO_PROXY);
+          }
+
+          @Override
+          public void connectFailed(URI uri, SocketAddress socketAddress, IOException e) {}
+        });
   }
 
   @Test

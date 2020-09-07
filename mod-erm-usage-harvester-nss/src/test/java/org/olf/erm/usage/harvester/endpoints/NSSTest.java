@@ -42,7 +42,6 @@ import org.niso.schemas.sushi.counter.CounterReportResponse;
 import org.olf.erm.usage.counter41.Counter4Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.net.spi.DefaultProxySelector;
 
 @RunWith(VertxUnitRunner.class)
 public class NSSTest {
@@ -73,7 +72,17 @@ public class NSSTest {
                 AggregatorSetting.class)
             .withServiceUrl(wireMockRule.url("mockedAPI"));
     LOG.info("Setting Aggregator URL to: " + aggregator.getServiceUrl());
-    ProxySelector.setDefault(new DefaultProxySelector());
+
+    ProxySelector.setDefault(
+        new ProxySelector() {
+          @Override
+          public List<Proxy> select(URI uri) {
+            return Collections.singletonList(Proxy.NO_PROXY);
+          }
+
+          @Override
+          public void connectFailed(URI uri, SocketAddress socketAddress, IOException e) {}
+        });
   }
 
   @Test
