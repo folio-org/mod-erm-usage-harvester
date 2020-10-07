@@ -1,3 +1,7 @@
+# 2.0.0
+* Upgrade to RAML Module Builder 31.x (MODEUSHARV-8)
+* Update module to JDK 11 (MODEUSHARV-7)
+
 # 1.8.0
 * Set datetime of last harvesting attempt in UDP (MODEUSHARV-4)
 * Make path for mod-configuration module configurable (MODEUSHARV-5)
