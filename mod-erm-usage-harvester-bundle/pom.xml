@@ -116,6 +116,16 @@
                 </transformer>
               </transformers>
               <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
+              <filters>
+                <!-- this required to fix module logging -->
+                <!-- There are some errors in runtime and logging settings seems reset -->
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>**/Log4j2Plugins.dat</exclude>
+                  </excludes>
+                </filter>
+              </filters>
             </configuration>
           </execution>
         </executions>
