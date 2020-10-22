@@ -324,9 +324,13 @@ public class WorkerVerticle extends AbstractVerticle {
 
     Promise<List<FetchItem>> promise = Promise.promise();
 
+    // TODO: check for date Strings to not be empty
+    // TODO: check for nulls
     YearMonth startMonth =
-        DateUtil.getStartMonth(provider.getHarvestingConfig().getHarvestingStart());
-    YearMonth endMonth = DateUtil.getEndMonth(provider.getHarvestingConfig().getHarvestingEnd());
+        DateUtil.getYearMonthFromString(provider.getHarvestingConfig().getHarvestingStart());
+    YearMonth endMonth =
+        DateUtil.getYearMonthFromStringWithLimit(
+            provider.getHarvestingConfig().getHarvestingEnd(), YearMonth.now().minusMonths(1));
 
     List<FetchItem> fetchList = new ArrayList<>();
 
