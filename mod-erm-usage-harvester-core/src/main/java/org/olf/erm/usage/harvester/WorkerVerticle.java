@@ -353,11 +353,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                             reportName,
                                             li.atDay(1).toString(),
                                             li.atEndOfMonth().toString());
-                                    LOG.info(
-                                        "Created FetchItem: {} {} {}",
-                                        fetchItem.reportType,
-                                        fetchItem.begin,
-                                        fetchItem.end);
+                                    LOG.info("Created FetchItem: {}", fetchItem);
                                     fetchList.add(fetchItem);
                                   });
                               return Future.succeededFuture();
@@ -402,17 +398,19 @@ public class WorkerVerticle extends AbstractVerticle {
                     Promise complete = Promise.promise();
                     futList.add(complete.future());
                     sep.result()
-                        .fetchSingleReport(li.reportType, li.begin, li.end)
+                        .fetchSingleReport(li.getReportType(), li.getBegin(), li.getEnd())
                         .onComplete(
                             h -> {
                               CounterReport report;
-                              LocalDate parse = LocalDate.parse(li.begin);
+                              LocalDate parse = LocalDate.parse(li.getBegin());
                               YearMonth month = YearMonth.of(parse.getYear(), parse.getMonth());
                               if (h.succeeded()) {
                                 report =
-                                    createCounterReport(h.result(), li.reportType, provider, month);
+                                    createCounterReport(
+                                        h.result(), li.getReportType(), provider, month);
                               } else {
-                                report = createCounterReport(null, li.reportType, provider, month);
+                                report =
+                                    createCounterReport(null, li.getReportType(), provider, month);
                                 report.setFailedReason(h.cause().getMessage());
                                 logError(
                                     () ->
