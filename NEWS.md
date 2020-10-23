@@ -1,3 +1,7 @@
+# 2.0.1 (2020-10-23)
+* Bugfix: Module logging error "ERROR StatusLogger Unrecognized format specifier" (MODEUSHARV-14)
+* Upgrade to junit 4.13.1
+
 # 2.0.0
 * Upgrade to RAML Module Builder 31.x (MODEUSHARV-8)
 * Update module to JDK 11 (MODEUSHARV-7)
