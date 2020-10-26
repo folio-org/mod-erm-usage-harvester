@@ -209,7 +209,11 @@ public class WorkerVerticle extends AbstractVerticle {
     cr.setId(UUID.randomUUID().toString());
     cr.setYearMonth(yearMonth.toString());
     cr.setReportName(reportName);
-    cr.setRelease(provider.getHarvestingConfig().getReportRelease().toString());
+    cr.setRelease(
+        provider
+            .getHarvestingConfig()
+            .getReportRelease()
+            .toString()); // TODO: check release for null
     cr.setProviderId(provider.getId());
     cr.setDownloadTime(Date.from(Instant.now()));
     if (reportData != null) {
