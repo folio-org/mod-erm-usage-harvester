@@ -14,7 +14,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.common.FileSource;
 import com.github.tomakehurst.wiremock.extension.Parameters;
@@ -32,6 +37,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -55,6 +61,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.slf4j.LoggerFactory;
 
 @RunWith(VertxUnitRunner.class)
 public class WorkerVerticleIT {
@@ -96,6 +103,7 @@ public class WorkerVerticleIT {
   private String okapiUrl;
 
   private void createUDPs() {
+    tenantUDPMap.clear();
     UsageDataProvider udp1 =
         new UsageDataProvider()
             .withId("dcb0eec3-f63c-440b-adcd-acca2ec44f39")
@@ -138,7 +146,7 @@ public class WorkerVerticleIT {
                     .withApiKey("apiKey")
                     .withCustomerId("custId")
                     .withRequestorId("reqId"));
-    tenantUDPMap.put("tenanta", List.of(udp1, udp2));
+    tenantUDPMap.put("tenanta", new ArrayList<>(List.of(udp1, udp2)));
   }
 
   @Before
@@ -253,6 +261,105 @@ public class WorkerVerticleIT {
                           .withQueryParam("end", equalTo("2020-01-31")));
                   baseRule.verify(28 * 2, postRequestedFor(urlEqualTo(reportsPath)));
                   baseRule.verify(2, putRequestedFor(urlMatching(providerPath + "/.*")));
+                });
+            vertx.cancelTimer(id);
+            async.complete();
+          }
+        });
+
+    async.await(10000);
+  }
+
+  @Test
+  public void testLogMessageHarvestingNotActive(TestContext context) {
+    tenantUDPMap.get("tenanta").remove(1);
+    tenantUDPMap
+        .get("tenanta")
+        .get(0)
+        .getHarvestingConfig()
+        .setHarvestingStatus(HarvestingStatus.INACTIVE);
+
+    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+    Logger logger = loggerContext.getLogger(WorkerVerticle.class);
+
+    ListAppender<ILoggingEvent> newAppender = new ListAppender<>();
+    logger.addAppender(newAppender);
+    newAppender.start();
+
+    Async async = context.async();
+    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
+    ValidatableResponse then =
+        given()
+            .headers(
+                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+            .then();
+    System.out.println(
+        then.extract().statusCode()
+            + then.extract().statusLine()
+            + then.extract().body().asString());
+    then.statusCode(200);
+
+    vertx.setPeriodic(
+        1000,
+        id -> {
+          if (vertx.deploymentIDs().size() <= 1) {
+            context.verify(
+                v -> {
+                  assertThat(newAppender.list.stream())
+                      .anyMatch(
+                          event -> event.getMessage().contains("HarvestingStatus not ACTIVE"));
+                  serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
+                  baseRule.verify(0, postRequestedFor(urlEqualTo(reportsPath)));
+                  baseRule.verify(0, putRequestedFor(urlMatching(providerPath + "/.*")));
+                });
+            vertx.cancelTimer(id);
+            async.complete();
+          }
+        });
+
+    async.await(10000);
+  }
+
+  @Test
+  public void testLogMessageProviderNotFound(TestContext context) {
+    tenantUDPMap.clear();
+
+    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+    Logger logger = loggerContext.getLogger(WorkerVerticle.class);
+
+    ListAppender<ILoggingEvent> newAppender = new ListAppender<>();
+    logger.addAppender(newAppender);
+    newAppender.start();
+
+    Async async = context.async();
+    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
+    ValidatableResponse then =
+        given()
+            .headers(
+                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+            .then();
+    System.out.println(
+        then.extract().statusCode()
+            + then.extract().statusLine()
+            + then.extract().body().asString());
+    then.statusCode(200);
+
+    vertx.setPeriodic(
+        1000,
+        id -> {
+          if (vertx.deploymentIDs().size() <= 1) {
+            context.verify(
+                v -> {
+                  assertThat(newAppender.list.stream())
+                      .anyMatch(
+                          event ->
+                              event.getMessage().contains("dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+                                  && event.getMessage().contains("404"));
+                  serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
+                  baseRule.verify(0, postRequestedFor(urlEqualTo(reportsPath)));
+                  baseRule.verify(0, putRequestedFor(urlMatching(providerPath + "/.*")));
                 });
             vertx.cancelTimer(id);
             async.complete();
