@@ -4,26 +4,31 @@ import io.netty.handler.codec.http.QueryStringEncoder;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
 import io.vertx.core.net.ProxyOptions;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import java.io.StringReader;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.xml.bind.JAXB;
 import org.folio.rest.jaxrs.model.Aggregator;
 import org.folio.rest.jaxrs.model.AggregatorConfig;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
+import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.Exception;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
 import org.olf.erm.usage.counter41.Counter4Utils;
+import org.olf.erm.usage.counter41.Counter4Utils.ReportSplitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +97,76 @@ public class NSS implements ServiceEndpoint {
     return false;
   }
 
+  private List<CounterReport> createCounterReport(
+      Report report, String reportType, UsageDataProvider provider) throws ReportSplitException {
+    List<Report> splitReports = Counter4Utils.split(report);
+    return splitReports.stream()
+        .map(
+            r -> {
+              List<YearMonth> yearMonthsFromReport = Counter4Utils.getYearMonthsFromReport(r);
+              if (yearMonthsFromReport.size() != 1) {
+                throw new NSSException("Split report size not equal to 1");
+              }
+              return ServiceEndpoint.createCounterReport(
+                  Json.encode(report), reportType, provider, yearMonthsFromReport.get(0));
+            })
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public Future<List<CounterReport>> fetchReport(
+      String reportType, String beginDate, String endDate) {
+    final String url = buildURL(reportType, beginDate, endDate);
+
+    if (url == null) {
+      return Future.failedFuture("Could not create request URL due to missing parameters.");
+    }
+
+    Promise<List<CounterReport>> promise = Promise.promise();
+    try {
+      client
+          .getAbs(url)
+          .send(
+              ar -> {
+                if (ar.succeeded()) {
+                  if (ar.result().statusCode() == 200) {
+                    String result = ar.result().bodyAsString();
+                    CounterReportResponse reportResponse =
+                        JAXB.unmarshal(new StringReader(result), CounterReportResponse.class);
+                    List<Exception> exceptions = Counter4Utils.getExceptions(reportResponse);
+                    if (exceptions.isEmpty()
+                        && reportResponse.getReport() != null
+                        && !reportResponse.getReport().getReport().isEmpty()) {
+                      Report report = reportResponse.getReport().getReport().get(0);
+                      try {
+                        List<CounterReport> counterReportList =
+                            createCounterReport(report, reportType, provider);
+                        promise.complete(counterReportList);
+                      } catch (java.lang.Exception e) {
+                        promise.fail(e);
+                      }
+                    } else {
+                      promise.fail(
+                          "Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
+                    }
+                  } else {
+                    promise.fail(
+                        url
+                            + " - "
+                            + ar.result().statusCode()
+                            + " : "
+                            + ar.result().statusMessage());
+                  }
+                } else {
+                  promise.fail(ar.cause());
+                }
+              });
+    } catch (java.lang.Exception e) {
+      return Future.failedFuture(e);
+    }
+    return promise.future();
+  }
+
   @Override
   public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
     final String url = buildURL(report, beginDate, endDate);
@@ -137,5 +212,12 @@ public class NSS implements ServiceEndpoint {
       return Future.failedFuture(e);
     }
     return promise.future();
+  }
+
+  static class NSSException extends RuntimeException {
+
+    public NSSException(String message) {
+      super(message);
+    }
   }
 }
