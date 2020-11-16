@@ -6,11 +6,13 @@ import io.vertx.core.Future;
 import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.URI;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
+import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +22,10 @@ public interface ServiceEndpoint {
   boolean isValidReport(String report);
 
   Future<String> fetchSingleReport(String report, String beginDate, String endDate);
+
+  default Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate) {
+    return Future.succeededFuture(Collections.emptyList());
+  }
 
   static List<ServiceEndpointProvider> getAvailableProviders() {
     ServiceLoader<ServiceEndpointProvider> loader =

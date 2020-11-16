@@ -6,9 +6,17 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
+import java.time.YearMonth;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
+import org.folio.rest.jaxrs.model.CounterReport;
+import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.olf.erm.usage.harvester.DateUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WorkerVerticleITProvider implements ServiceEndpointProvider {
 
@@ -34,6 +42,8 @@ public class WorkerVerticleITProvider implements ServiceEndpointProvider {
   public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
 
     return new ServiceEndpoint() {
+      private final Logger log = LoggerFactory.getLogger(WorkerVerticleITProvider.class);
+
       @Override
       public boolean isValidReport(String report) {
         return false;
@@ -50,6 +60,49 @@ public class WorkerVerticleITProvider implements ServiceEndpointProvider {
             .send(promise);
 
         return promise.future().map(HttpResponse::bodyAsString);
+      }
+
+      @Override
+      public Future<List<CounterReport>> fetchReport(
+          String report, String beginDate, String endDate) {
+        log.info("Fetching report {} {} {}", report, beginDate, endDate);
+        try {
+          Thread.sleep(2000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+
+        Promise<HttpResponse<Buffer>> promise = Promise.promise();
+        client
+            .getAbs(provider.getHarvestingConfig().getSushiConfig().getServiceUrl().concat("/"))
+            .addQueryParam("report", report)
+            .addQueryParam("begin", beginDate)
+            .addQueryParam("end", endDate)
+            .send(promise);
+
+        Promise<List<CounterReport>> promise2 = Promise.promise();
+        promise
+            .future()
+            .onComplete(
+                resp -> {
+                  List<YearMonth> months = DateUtil.getYearMonths(beginDate, endDate);
+                  List<CounterReport> resultList =
+                      months.stream()
+                          .map(
+                              ym ->
+                                  new CounterReport()
+                                      .withReportName(report)
+                                      .withReport(
+                                          new Report()
+                                              .withAdditionalProperty("month", ym.toString()))
+                                      .withRelease("4")
+                                      .withProviderId("providerId")
+                                      .withYearMonth(ym.toString()))
+                          .collect(Collectors.toList());
+                  promise2.complete(resultList);
+                });
+
+        return promise2.future();
       }
     };
   }

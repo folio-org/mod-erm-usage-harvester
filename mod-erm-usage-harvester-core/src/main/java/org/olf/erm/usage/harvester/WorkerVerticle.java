@@ -7,6 +7,13 @@ import static org.olf.erm.usage.harvester.Messages.createTenantMsg;
 
 import com.google.common.net.HttpHeaders;
 import com.google.common.net.MediaType;
+import io.reactivex.Completable;
+import io.reactivex.CompletableObserver;
+import io.reactivex.Observable;
+import io.reactivex.Scheduler;
+import io.reactivex.Single;
+import io.reactivex.observers.DisposableCompletableObserver;
+import io.reactivex.schedulers.Schedulers;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -28,6 +35,9 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Aggregator;
@@ -90,6 +100,23 @@ public class WorkerVerticle extends AbstractVerticle {
         }
         vertx.undeploy(this.deploymentID());
       };
+
+  private CompletableObserver createCompletableObserver() {
+    return new DisposableCompletableObserver() {
+      @Override
+      public void onComplete() {
+        logInfo(() -> createTenantMsg(token.getTenantId(), "Processing completed"));
+      }
+
+      @Override
+      public void onError(Throwable e) {
+        logError(
+            () ->
+                createTenantMsg(
+                    token.getTenantId(), "Error during processing, {}", e.getMessage()));
+      }
+    };
+  }
 
   public WorkerVerticle(Token token) {
     this.token = token;
@@ -380,6 +407,115 @@ public class WorkerVerticle extends AbstractVerticle {
     return promise.future();
   }
 
+  private <T> Single<T> wrapFuture(Future<T> future) {
+    return io.vertx.reactivex.core.Future.<T>newInstance(future).rxOnComplete();
+  }
+
+  private Observable<List<CounterReport>> processItems(
+      UsageDataProvider provider,
+      ServiceEndpoint sep,
+      List<FetchItem> items,
+      Scheduler scheduler,
+      ThreadPoolExecutor executor) {
+
+    return Observable.fromIterable(items)
+        .flatMap(
+            fetchItem ->
+                Observable.defer(
+                        () ->
+                            io.vertx.reactivex.core.Future.<List<CounterReport>>newInstance(
+                                    sep.fetchReport(
+                                        fetchItem.getReportType(),
+                                        fetchItem.getBegin(),
+                                        fetchItem.getEnd()))
+                                .rxOnComplete()
+                                .toObservable())
+                    .subscribeOn(scheduler)
+                    .retry(
+                        3,
+                        t -> {
+                          if (t.getMessage().contains("requests")) {
+                            LOG.info("Too many requests.. retrying {}", fetchItem);
+                            executor.setCorePoolSize(1);
+                            executor.setMaximumPoolSize(1);
+                            return true;
+                          } else {
+                            return false;
+                          }
+                        })
+                    .onErrorResumeNext(
+                        t -> {
+                          LOG.info("error: " + t.getMessage());
+                          List<FetchItem> expand = FetchListUtil.expand(fetchItem);
+                          if (expand.size() <= 1 || t.getMessage().contains("requests")) {
+                            LOG.info("Returning empty CounterReport", fetchItem);
+                            return Observable.just(
+                                List.of(
+                                    createCounterReport(
+                                        null,
+                                        fetchItem.getReportType(),
+                                        provider,
+                                        DateUtil.getYearMonthFromString(fetchItem.getBegin()))));
+                          } else {
+                            LOG.info(
+                                "Expanded {} into {} single FetchItems", fetchItem, expand.size());
+                            return processItems(provider, sep, expand, scheduler, executor);
+                          }
+                        }));
+  }
+
+  private String counterReportToString(CounterReport cr) {
+    return cr.getReportName() + " " + cr.getYearMonth();
+  }
+
+  public Completable fetchAndPostReportsRx(UsageDataProvider provider) {
+    logInfo(
+        () ->
+            createTenantMsg(
+                token.getTenantId(), "processing provider v2: {}", provider.getLabel()));
+
+    wrapFuture(updateUDPLastHarvestingDate(provider))
+        .doOnError(t -> LOG.error(t.getMessage()))
+        .ignoreElement()
+        .subscribe();
+
+    Single<ServiceEndpoint> sepSingle = wrapFuture(getServiceEndpoint(provider));
+    Single<List<FetchItem>> fetchListSingle =
+        wrapFuture(getFetchList(provider))
+            .map(
+                list -> {
+                  if (list.isEmpty()) {
+                    logInfo(
+                        () ->
+                            createTenantMsg(
+                                token.getTenantId(),
+                                createProviderMsg(
+                                    provider.getLabel(), "No reports need to be fetched.")));
+                  }
+                  return list;
+                })
+            .map(FetchListUtil::collapse);
+
+    return sepSingle
+        .zipWith(
+            fetchListSingle,
+            (s, l) -> {
+              ThreadPoolExecutor threadPoolExecutor =
+                  new ThreadPoolExecutor(4, 4, 1, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
+              return processItems(
+                  provider, s, l, Schedulers.from(threadPoolExecutor), threadPoolExecutor);
+            })
+        .flatMapObservable(listObservable -> listObservable)
+        .flatMap(Observable::fromIterable)
+        .doOnNext(cr -> LOG.info("Received: {}", counterReportToString(cr)))
+        .flatMapCompletable(
+            cr ->
+                wrapFuture(postReport(cr))
+                    .ignoreElement()
+                    .doOnError(t -> LOG.error(t.getMessage()))
+                    .onErrorComplete());
+  }
+
   @SuppressWarnings({"rawtypes", "java:S3740"})
   public Future<List<Future>> fetchAndPostReports(UsageDataProvider provider) {
     logInfo(
@@ -563,6 +699,15 @@ public class WorkerVerticle extends AbstractVerticle {
     return promise.future();
   }
 
+  public void runRx() {
+    wrapFuture(getActiveProviders())
+        .map(UsageDataProviders::getUsageDataProviders)
+        .flatMapObservable(Observable::fromIterable)
+        .flatMapCompletable(this::fetchAndPostReportsRx)
+        .doAfterTerminate(() -> vertx.undeploy(this.deploymentID()))
+        .subscribe(createCompletableObserver());
+  }
+
   public void run() {
     getActiveProviders()
         .compose(
@@ -585,6 +730,38 @@ public class WorkerVerticle extends AbstractVerticle {
                 vertx.undeploy(this.deploymentID());
               }
             });
+  }
+
+  public void runSingleProviderRx() {
+    client
+        .getAbs(okapiUrl + providerPath + "/" + providerId)
+        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
+        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
+        .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
+        .rxSend()
+        .map(
+            resp -> {
+              if (resp.statusCode() == 200) {
+                return resp.bodyAsJson(UsageDataProvider.class);
+              } else {
+                throw new Exception(
+                    createProviderMsg(
+                        providerId,
+                        createMsgStatus(resp.statusCode(), resp.statusMessage(), providerPath)));
+              }
+            })
+        .map(
+            udp -> {
+              if (udp.getHarvestingConfig().getHarvestingStatus().equals(HarvestingStatus.ACTIVE)) {
+                return udp;
+              } else {
+                throw new Exception(
+                    createProviderMsg(udp.getLabel(), "HarvestingStatus not ACTIVE"));
+              }
+            })
+        .flatMapCompletable(this::fetchAndPostReportsRx)
+        .doFinally(() -> vertx.undeploy(this.deploymentID()))
+        .subscribe(createCompletableObserver());
   }
 
   public void runSingleProvider() {
@@ -667,8 +844,8 @@ public class WorkerVerticle extends AbstractVerticle {
 
           boolean isTesting = config().getBoolean("testing", false);
           if (!isTesting) {
-            if (providerId == null) run();
-            else runSingleProvider();
+            if (providerId == null) runRx();
+            else runSingleProviderRx();
           } else {
             LOG.info("TEST ENV");
           }

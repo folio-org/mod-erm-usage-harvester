@@ -5,6 +5,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
@@ -58,6 +59,7 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -222,6 +224,7 @@ public class WorkerVerticleIT {
         context.asyncAssertSuccess());
   }
 
+  @Ignore
   @Test
   public void testNumberOfRequestsMadeForTenant(TestContext context) {
     Async async = context.async();
@@ -259,6 +262,58 @@ public class WorkerVerticleIT {
                           .withQueryParam("report", equalTo("JR1"))
                           .withQueryParam("begin", equalTo("2020-01-01"))
                           .withQueryParam("end", equalTo("2020-01-31")));
+                  baseRule.verify(28 * 2, postRequestedFor(urlEqualTo(reportsPath)));
+                  baseRule.verify(2, putRequestedFor(urlMatching(providerPath + "/.*")));
+                });
+            vertx.cancelTimer(id);
+            async.complete();
+          }
+        });
+
+    async.await(10000);
+  }
+
+  @Test
+  public void testNumberOfRequestsMadeForTenantv2(TestContext context) {
+    Async async = context.async();
+
+    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
+    ValidatableResponse then =
+        given()
+            .headers(
+                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .get(okapiUrl + "/erm-usage-harvester/start")
+            .then();
+    System.out.println(
+        then.extract().statusCode()
+            + then.extract().statusLine()
+            + then.extract().body().asString());
+    then.statusCode(200);
+
+    vertx.setPeriodic(
+        1000,
+        id -> {
+          if (vertx.deploymentIDs().size() <= 1) {
+            context.verify(
+                v -> {
+                  serviceProviderARule.verify(3, getRequestedFor(urlPathEqualTo("/")));
+                  serviceProviderARule.verify(
+                      1,
+                      getRequestedFor(urlPathEqualTo("/"))
+                          .withQueryParam("report", equalTo("JR1"))
+                          .withQueryParam("begin", equalTo("2020-01-01"))
+                          .withQueryParam("end", equalTo("2020-04-30")));
+                  serviceProviderBRule.verify(3, getRequestedFor(urlPathEqualTo("/")));
+                  serviceProviderBRule.verify(
+                      1,
+                      getRequestedFor(urlPathEqualTo("/"))
+                          .withQueryParam("report", equalTo("JR1"))
+                          .withQueryParam("begin", equalTo("2020-01-01"))
+                          .withQueryParam("end", equalTo("2020-04-30")));
+                  baseRule.verify(
+                      2,
+                      postRequestedFor(urlEqualTo(reportsPath))
+                          .withRequestBody(matchingJsonPath("$.report.month", equalTo("2020-03"))));
                   baseRule.verify(28 * 2, postRequestedFor(urlEqualTo(reportsPath)));
                   baseRule.verify(2, putRequestedFor(urlMatching(providerPath + "/.*")));
                 });
@@ -369,6 +424,7 @@ public class WorkerVerticleIT {
     async.await(10000);
   }
 
+  @Ignore
   @Test
   public void testNumberOfRequestsMadeForProvider(TestContext context) {
     Async async = context.async();
@@ -401,6 +457,52 @@ public class WorkerVerticleIT {
                           .withQueryParam("end", equalTo("2020-01-31")));
                   serviceProviderBRule.verify(0, getRequestedFor(urlPathEqualTo("/")));
                   baseRule.verify(28, postRequestedFor(urlEqualTo(reportsPath)));
+                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
+                });
+            vertx.cancelTimer(id);
+            async.complete();
+          }
+        });
+
+    async.await(60000);
+  }
+
+  @Test
+  public void testNumberOfRequestsMadeForProviderv2(TestContext context) {
+    Async async = context.async();
+
+    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
+    ValidatableResponse then =
+        given()
+            .headers(
+                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+            .then();
+    System.out.println(
+        then.extract().statusCode()
+            + then.extract().statusLine()
+            + then.extract().body().asString());
+    then.statusCode(200);
+
+    vertx.setPeriodic(
+        1000,
+        id -> {
+          if (vertx.deploymentIDs().size() <= 1) {
+            context.verify(
+                v -> {
+                  serviceProviderARule.verify(3, getRequestedFor(urlPathEqualTo("/")));
+                  serviceProviderARule.verify(
+                      1,
+                      getRequestedFor(urlPathEqualTo("/"))
+                          .withQueryParam("report", equalTo("JR1"))
+                          .withQueryParam("begin", equalTo("2020-01-01"))
+                          .withQueryParam("end", equalTo("2020-04-30")));
+                  serviceProviderBRule.verify(0, getRequestedFor(urlPathEqualTo("/")));
+                  baseRule.verify(28, postRequestedFor(urlEqualTo(reportsPath)));
+                  baseRule.verify(
+                      1,
+                      postRequestedFor(urlEqualTo(reportsPath))
+                          .withRequestBody(matchingJsonPath("$.report.month", equalTo("2020-03"))));
                   baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
                 });
             vertx.cancelTimer(id);
