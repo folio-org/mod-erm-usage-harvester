@@ -108,7 +108,7 @@ public class NSS implements ServiceEndpoint {
                 throw new NSSException("Split report size not equal to 1");
               }
               return ServiceEndpoint.createCounterReport(
-                  Json.encode(report), reportType, provider, yearMonthsFromReport.get(0));
+                  Json.encode(r), reportType, provider, yearMonthsFromReport.get(0));
             })
         .collect(Collectors.toList());
   }
