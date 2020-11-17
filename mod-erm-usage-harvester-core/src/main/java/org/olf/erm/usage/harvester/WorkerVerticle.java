@@ -4,6 +4,7 @@ import static org.olf.erm.usage.harvester.Messages.createErrMsgDecode;
 import static org.olf.erm.usage.harvester.Messages.createMsgStatus;
 import static org.olf.erm.usage.harvester.Messages.createProviderMsg;
 import static org.olf.erm.usage.harvester.Messages.createTenantMsg;
+import static org.olf.erm.usage.harvester.Messages.createTenantProviderMsg;
 
 import com.google.common.net.HttpHeaders;
 import com.google.common.net.MediaType;
@@ -388,7 +389,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                             reportName,
                                             li.atDay(1).toString(),
                                             li.atEndOfMonth().toString());
-                                    LOG.info("Created FetchItem: {}", fetchItem);
+                                    LOG.debug("Created FetchItem: {}", fetchItem);
                                     fetchList.add(fetchItem);
                                   });
                               return Future.succeededFuture();
@@ -419,6 +420,11 @@ public class WorkerVerticle extends AbstractVerticle {
       ThreadPoolExecutor executor) {
 
     return Observable.fromIterable(items)
+        .doOnNext(
+            fetchItem ->
+                logInfo(
+                    createTenantProviderMsg(
+                        token.getTenantId(), provider.getLabel(), "processing {}", fetchItem)))
         .flatMap(
             fetchItem ->
                 Observable.defer(
@@ -435,7 +441,12 @@ public class WorkerVerticle extends AbstractVerticle {
                         3,
                         t -> {
                           if (t.getMessage().contains("requests")) {
-                            LOG.info("Too many requests.. retrying {}", fetchItem);
+                            logInfo(
+                                createTenantProviderMsg(
+                                    token.getTenantId(),
+                                    provider.getLabel(),
+                                    "Too many requests.. retrying {}",
+                                    fetchItem));
                             executor.setCorePoolSize(1);
                             executor.setMaximumPoolSize(1);
                             return true;
@@ -445,10 +456,20 @@ public class WorkerVerticle extends AbstractVerticle {
                         })
                     .onErrorResumeNext(
                         t -> {
-                          LOG.info("error: " + t.getMessage());
+                          logInfo(
+                              createTenantProviderMsg(
+                                  token.getTenantId(),
+                                  provider.getLabel(),
+                                  "received {}",
+                                  t.getMessage()));
                           List<FetchItem> expand = FetchListUtil.expand(fetchItem);
                           if (expand.size() <= 1 || t.getMessage().contains("requests")) {
-                            LOG.info("Returning empty CounterReport", fetchItem);
+                            logInfo(
+                                createTenantProviderMsg(
+                                    token.getTenantId(),
+                                    provider.getLabel(),
+                                    "Returning null for {}",
+                                    fetchItem));
                             return Observable.just(
                                 List.of(
                                     createCounterReport(
@@ -457,8 +478,13 @@ public class WorkerVerticle extends AbstractVerticle {
                                         provider,
                                         DateUtil.getYearMonthFromString(fetchItem.getBegin()))));
                           } else {
-                            LOG.info(
-                                "Expanded {} into {} single FetchItems", fetchItem, expand.size());
+                            logInfo(
+                                createTenantProviderMsg(
+                                    token.getTenantId(),
+                                    provider.getLabel(),
+                                    "Expanded {} into {} FetchItems",
+                                    fetchItem,
+                                    expand.size()));
                             return processItems(provider, sep, expand, scheduler, executor);
                           }
                         }));
@@ -470,9 +496,7 @@ public class WorkerVerticle extends AbstractVerticle {
 
   public Completable fetchAndPostReportsRx(UsageDataProvider provider) {
     logInfo(
-        () ->
-            createTenantMsg(
-                token.getTenantId(), "processing provider v2: {}", provider.getLabel()));
+        () -> createTenantMsg(token.getTenantId(), "processing provider: {}", provider.getLabel()));
 
     wrapFuture(updateUDPLastHarvestingDate(provider))
         .doOnError(t -> LOG.error(t.getMessage()))
