@@ -463,7 +463,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                   "received {}",
                                   t.getMessage()));
                           List<FetchItem> expand = FetchListUtil.expand(fetchItem);
-                          if (expand.size() <= 1 || t.getMessage().contains("requests")) {
+                          if (expand.size() <= 1) {
                             logInfo(
                                 createTenantProviderMsg(
                                     token.getTenantId(),
