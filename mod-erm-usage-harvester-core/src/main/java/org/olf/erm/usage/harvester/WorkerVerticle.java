@@ -40,6 +40,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Aggregator;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
@@ -462,7 +463,20 @@ public class WorkerVerticle extends AbstractVerticle {
                                   provider.getLabel(),
                                   "received {}",
                                   t.getMessage()));
+                          if (!t.getMessage().contains("Report not valid")) {
+                            // handle generic failues
+                            List<CounterReport> counterReportList =
+                                DateUtil.getYearMonths(fetchItem.getBegin(), fetchItem.getEnd())
+                                    .stream()
+                                    .map(
+                                        ym ->
+                                            createCounterReport(
+                                                null, fetchItem.getReportType(), provider, ym))
+                                    .collect(Collectors.toList());
+                            return Observable.just(counterReportList);
+                          }
                           List<FetchItem> expand = FetchListUtil.expand(fetchItem);
+                          // handle failed single month
                           if (expand.size() <= 1) {
                             logInfo(
                                 createTenantProviderMsg(
@@ -478,6 +492,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                         provider,
                                         DateUtil.getYearMonthFromString(fetchItem.getBegin()))));
                           } else {
+                            // handle failes multiple months
                             logInfo(
                                 createTenantProviderMsg(
                                     token.getTenantId(),
