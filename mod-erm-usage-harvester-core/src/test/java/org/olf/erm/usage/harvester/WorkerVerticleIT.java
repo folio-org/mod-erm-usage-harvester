@@ -8,6 +8,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.moreThanOrExactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
@@ -48,6 +49,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.CounterReports;
@@ -67,6 +69,7 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProvider3;
 import org.slf4j.LoggerFactory;
 
 @RunWith(VertxUnitRunner.class)
@@ -335,7 +338,7 @@ public class WorkerVerticleIT {
   }
 
   @Test
-  public void testNumberOfRequestsMadeForProviderWithItemExpansion(TestContext context) {
+  public void testNumberOfRequestsMadeForProviderWithErrors(TestContext context) {
     tenantUDPMap
         .get("tenanta")
         .forEach(udp -> udp.getHarvestingConfig().getSushiConfig().setServiceType("wvitp2"));
@@ -381,6 +384,75 @@ public class WorkerVerticleIT {
                               matchingJsonPath(
                                   "$.failedReason", matching("Report not valid:.*2018-03"))));
                   baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
+                });
+            vertx.cancelTimer(id);
+            async.complete();
+          }
+        });
+
+    async.await(10000);
+  }
+
+  @Test
+  public void testNumberOfThreadsUsedAfterTooManyRequestsError(TestContext context) {
+    tenantUDPMap
+        .get("tenanta")
+        .forEach(udp -> udp.getHarvestingConfig().getSushiConfig().setServiceType("wvitp3"));
+
+    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+    Logger logger = loggerContext.getLogger(WorkerVerticleITProvider3.class);
+
+    ListAppender<ILoggingEvent> newAppender = new ListAppender<>();
+    logger.addAppender(newAppender);
+    newAppender.start();
+
+    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
+    ValidatableResponse then =
+        given()
+            .headers(
+                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+            .then();
+    System.out.println(
+        then.extract().statusCode()
+            + then.extract().statusLine()
+            + then.extract().body().asString());
+    then.statusCode(200);
+
+    Async async = context.async();
+    vertx.setPeriodic(
+        1000,
+        id -> {
+          if (vertx.deploymentIDs().size() <= 1) {
+            context.verify(
+                v -> {
+                  serviceProviderARule.verify(
+                      moreThanOrExactly(3 + 12), getRequestedFor(urlPathEqualTo("/")));
+                  serviceProviderARule.verify(
+                      1,
+                      getRequestedFor(urlPathEqualTo("/"))
+                          .withQueryParam("report", equalTo("JR1"))
+                          .withQueryParam("begin", equalTo("2018-03-01"))
+                          .withQueryParam("end", equalTo("2018-03-31")));
+                  serviceProviderBRule.verify(0, getRequestedFor(urlPathEqualTo("/")));
+                  baseRule.verify(28, postRequestedFor(urlEqualTo(reportsPath)));
+                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
+
+                  List<String> threadNames =
+                      newAppender.list.stream()
+                          .filter(e -> e.getMessage().contains("Fetching report"))
+                          .map(ILoggingEvent::getThreadName)
+                          .collect(Collectors.toList());
+                  assertThat(threadNames).hasSizeGreaterThanOrEqualTo(3 + 12);
+
+                  long first5ThreadCount = threadNames.subList(0, 5).stream().distinct().count();
+                  assertThat(first5ThreadCount).isGreaterThanOrEqualTo(2);
+
+                  long last5ThreadCount =
+                      threadNames.subList(threadNames.size() - 5, threadNames.size()).stream()
+                          .distinct()
+                          .count();
+                  assertThat(last5ThreadCount).isEqualTo(1);
                 });
             vertx.cancelTimer(id);
             async.complete();
