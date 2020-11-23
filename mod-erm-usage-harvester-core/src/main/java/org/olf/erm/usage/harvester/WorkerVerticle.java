@@ -51,6 +51,7 @@ import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
 import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
+import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -441,7 +442,8 @@ public class WorkerVerticle extends AbstractVerticle {
                     .retry(
                         3,
                         t -> {
-                          if (t.getMessage().contains("requests")) {
+                          if ((t instanceof InvalidReportException)
+                              && t.getMessage().contains("requests")) {
                             logInfo(
                                 createTenantProviderMsg(
                                     token.getTenantId(),
@@ -463,7 +465,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                   provider.getLabel(),
                                   "received {}",
                                   t.getMessage()));
-                          if (!t.getMessage().contains("Report not valid")) {
+                          if (!(t instanceof InvalidReportException)) {
                             // handle generic failues
                             List<CounterReport> counterReportList =
                                 DateUtil.getYearMonths(fetchItem.getBegin(), fetchItem.getEnd())
@@ -471,7 +473,8 @@ public class WorkerVerticle extends AbstractVerticle {
                                     .map(
                                         ym ->
                                             createCounterReport(
-                                                null, fetchItem.getReportType(), provider, ym))
+                                                    null, fetchItem.getReportType(), provider, ym)
+                                                .withFailedReason(t.getMessage()))
                                     .collect(Collectors.toList());
                             return Observable.just(counterReportList);
                           }
@@ -487,10 +490,11 @@ public class WorkerVerticle extends AbstractVerticle {
                             return Observable.just(
                                 List.of(
                                     createCounterReport(
-                                        null,
-                                        fetchItem.getReportType(),
-                                        provider,
-                                        DateUtil.getYearMonthFromString(fetchItem.getBegin()))));
+                                            null,
+                                            fetchItem.getReportType(),
+                                            provider,
+                                            DateUtil.getYearMonthFromString(fetchItem.getBegin()))
+                                        .withFailedReason(t.getMessage())));
                           } else {
                             // handle failes multiple months
                             logInfo(

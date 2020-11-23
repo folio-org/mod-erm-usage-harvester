@@ -6,6 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
@@ -375,7 +376,10 @@ public class WorkerVerticleIT {
                   baseRule.verify(
                       1,
                       postRequestedFor(urlEqualTo(reportsPath))
-                          .withRequestBody(matchingJsonPath("$.report", absent())));
+                          .withRequestBody(matchingJsonPath("$.report", absent()))
+                          .withRequestBody(
+                              matchingJsonPath(
+                                  "$.failedReason", matching("Report not valid:.*2018-03"))));
                   baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
                 });
             vertx.cancelTimer(id);
@@ -423,7 +427,8 @@ public class WorkerVerticleIT {
                   baseRule.verify(
                       28,
                       postRequestedFor(urlEqualTo(reportsPath))
-                          .withRequestBody(matchingJsonPath("$.report", absent())));
+                          .withRequestBody(matchingJsonPath("$.report", absent()))
+                          .withRequestBody(matchingJsonPath("$.failedReason")));
                   baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
                 });
             vertx.cancelTimer(id);

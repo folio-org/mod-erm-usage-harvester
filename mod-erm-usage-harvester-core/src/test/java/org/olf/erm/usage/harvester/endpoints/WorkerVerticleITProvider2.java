@@ -85,9 +85,9 @@ public class WorkerVerticleITProvider2 implements ServiceEndpointProvider {
                 resp -> {
                   System.out.println(resp.statusCode());
                   if (beginDate.equals("2018-01-01") && endDate.equals("2018-12-31")) {
-                    promise2.fail("Report not valid: Missing data for Month 2018-03");
+                    promise2.fail(new InvalidReportException("Missing data for Month 2018-03"));
                   } else if (beginDate.equals("2018-03-01") && endDate.equals("2018-03-31")) {
-                    promise2.fail("Report not valid: No data for Month 2018-03");
+                    promise2.fail(new InvalidReportException("No data for Month 2018-03"));
                   } else {
                     List<YearMonth> months = DateUtil.getYearMonths(beginDate, endDate);
                     List<CounterReport> resultList =
