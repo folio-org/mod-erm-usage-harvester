@@ -143,11 +143,11 @@ public class NSS implements ServiceEndpoint {
                             createCounterReport(report, reportType, provider);
                         promise.complete(counterReportList);
                       } catch (java.lang.Exception e) {
-                        promise.fail(e);
+                        promise.fail(new InvalidReportException(e));
                       }
                     } else {
                       promise.fail(
-                          "Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
+                          new InvalidReportException(Counter4Utils.getErrorMessages(exceptions)));
                     }
                   } else {
                     promise.fail(
