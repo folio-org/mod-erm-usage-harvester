@@ -115,8 +115,8 @@ public class WorkerVerticle extends AbstractVerticle {
       public void onError(Throwable e) {
         logError(
             () ->
-                createTenantMsg(
-                    token.getTenantId(), "Error during processing, {}", e.getMessage()));
+                createTenantMsg(token.getTenantId(), "Error during processing, {}", e.getMessage()),
+            e);
       }
     };
   }
@@ -380,9 +380,7 @@ public class WorkerVerticle extends AbstractVerticle {
                         .map(
                             list -> {
                               List<YearMonth> arrayList =
-                                  DateUtil.getYearMonths(
-                                      provider.getHarvestingConfig().getHarvestingStart(),
-                                      provider.getHarvestingConfig().getHarvestingEnd());
+                                  DateUtil.getYearMonths(startMonth, endMonth);
                               arrayList.removeAll(list);
                               arrayList.forEach(
                                   li -> {
