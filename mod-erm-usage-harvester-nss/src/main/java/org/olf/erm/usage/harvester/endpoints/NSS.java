@@ -4,7 +4,6 @@ import io.netty.handler.codec.http.QueryStringEncoder;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
 import io.vertx.core.net.ProxyOptions;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
@@ -108,7 +107,7 @@ public class NSS implements ServiceEndpoint {
                 throw new NSSException("Split report size not equal to 1");
               }
               return ServiceEndpoint.createCounterReport(
-                  Json.encode(r), reportType, provider, yearMonthsFromReport.get(0));
+                  Counter4Utils.toJSON(r), reportType, provider, yearMonthsFromReport.get(0));
             })
         .collect(Collectors.toList());
   }
