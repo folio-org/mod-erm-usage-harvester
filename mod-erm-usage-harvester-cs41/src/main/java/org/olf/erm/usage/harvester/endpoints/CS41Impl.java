@@ -7,6 +7,7 @@ import io.vertx.core.Vertx;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,6 +26,7 @@ import org.apache.cxf.message.Message;
 import org.apache.cxf.phase.AbstractPhaseInterceptor;
 import org.apache.cxf.phase.Phase;
 import org.apache.cxf.transport.http.HTTPConduit;
+import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.CustomerReference;
@@ -36,6 +38,7 @@ import org.niso.schemas.sushi.ReportRequest;
 import org.niso.schemas.sushi.Requestor;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
 import org.olf.erm.usage.counter41.Counter4Utils;
+import org.olf.erm.usage.counter41.Counter4Utils.ReportSplitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sushiservice.SushiService;
@@ -131,6 +134,66 @@ public class CS41Impl implements ServiceEndpoint {
     client.getInFaultInterceptors().add(new LoggingInInterceptor());
   }
 
+  private List<CounterReport> createCounterReportList(
+      Report report, String reportType, UsageDataProvider provider) throws ReportSplitException {
+    List<Report> splitReports = Counter4Utils.split(report);
+    return splitReports.stream()
+        .map(
+            r -> {
+              List<YearMonth> yearMonthsFromReport = Counter4Utils.getYearMonthsFromReport(r);
+              if (yearMonthsFromReport.size() != 1) {
+                throw new CS41Exception("Split report size not equal to 1");
+              }
+              return ServiceEndpoint.createCounterReport(
+                  Counter4Utils.toJSON(r), reportType, provider, yearMonthsFromReport.get(0));
+            })
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public Future<List<CounterReport>> fetchReport(
+      String reportType, String beginDate, String endDate) {
+    Promise<List<CounterReport>> promise = Promise.promise();
+
+    Context context = Vertx.currentContext();
+    if (context == null) context = Vertx.vertx().getOrCreateContext();
+
+    context.executeBlocking(
+        block -> {
+          CounterReportResponse counterReportResponse;
+          try {
+            ReportRequest reportRequest = createReportRequest(reportType, beginDate, endDate);
+            counterReportResponse = port.getReport(reportRequest);
+          } catch (java.lang.Exception e) {
+            String messages =
+                ExceptionUtils.getThrowableList(e).stream()
+                    .map(Throwable::getMessage)
+                    .collect(Collectors.joining(", "));
+            block.fail("Error getting report: " + messages);
+            return;
+          }
+
+          List<Exception> exceptions = Counter4Utils.getExceptions(counterReportResponse);
+          if (exceptions.isEmpty()
+              && counterReportResponse.getReport() != null
+              && !counterReportResponse.getReport().getReport().isEmpty()) {
+            Report reportResult = counterReportResponse.getReport().getReport().get(0);
+            try {
+              List<CounterReport> counterReportList =
+                  createCounterReportList(reportResult, reportType, provider);
+              promise.complete(counterReportList);
+            } catch (java.lang.Exception e) {
+              promise.fail(new InvalidReportException(e));
+            }
+          } else {
+            block.fail(new InvalidReportException(Counter4Utils.getErrorMessages(exceptions)));
+          }
+        },
+        false,
+        promise);
+    return promise.future();
+  }
+
   @Override
   public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
     Promise<String> promise = Promise.promise();
@@ -171,5 +234,12 @@ public class CS41Impl implements ServiceEndpoint {
   @Override
   public boolean isValidReport(String report) {
     return false;
+  }
+
+  static class CS41Exception extends RuntimeException {
+
+    public CS41Exception(String message) {
+      super(message);
+    }
   }
 }
