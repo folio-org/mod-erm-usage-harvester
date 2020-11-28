@@ -96,7 +96,7 @@ public class NSS implements ServiceEndpoint {
     return false;
   }
 
-  private List<CounterReport> createCounterReport(
+  private List<CounterReport> createCounterReportList(
       Report report, String reportType, UsageDataProvider provider) throws ReportSplitException {
     List<Report> splitReports = Counter4Utils.split(report);
     return splitReports.stream()
@@ -139,7 +139,7 @@ public class NSS implements ServiceEndpoint {
                       Report report = reportResponse.getReport().getReport().get(0);
                       try {
                         List<CounterReport> counterReportList =
-                            createCounterReport(report, reportType, provider);
+                            createCounterReportList(report, reportType, provider);
                         promise.complete(counterReportList);
                       } catch (java.lang.Exception e) {
                         promise.fail(new InvalidReportException(e));
