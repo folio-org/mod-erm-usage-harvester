@@ -65,7 +65,6 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -236,57 +235,8 @@ public class WorkerVerticleIT {
     vertx.undeploy(vertx.deploymentIDs().toArray()[0].toString(), context.asyncAssertSuccess());
   }
 
-  @Ignore
   @Test
   public void testNumberOfRequestsMadeForTenant(TestContext context) {
-    Async async = context.async();
-
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
-    ValidatableResponse then =
-        given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-            .get(okapiUrl + "/erm-usage-harvester/start")
-            .then();
-    System.out.println(
-        then.extract().statusCode()
-            + then.extract().statusLine()
-            + then.extract().body().asString());
-    then.statusCode(200);
-
-    vertx.setPeriodic(
-        1000,
-        id -> {
-          if (vertx.deploymentIDs().size() <= 1) {
-            context.verify(
-                v -> {
-                  serviceProviderARule.verify(28, getRequestedFor(urlPathEqualTo("/")));
-                  serviceProviderARule.verify(
-                      1,
-                      getRequestedFor(urlPathEqualTo("/"))
-                          .withQueryParam("report", equalTo("JR1"))
-                          .withQueryParam("begin", equalTo("2020-01-01"))
-                          .withQueryParam("end", equalTo("2020-01-31")));
-                  serviceProviderBRule.verify(28, getRequestedFor(urlPathEqualTo("/")));
-                  serviceProviderBRule.verify(
-                      1,
-                      getRequestedFor(urlPathEqualTo("/"))
-                          .withQueryParam("report", equalTo("JR1"))
-                          .withQueryParam("begin", equalTo("2020-01-01"))
-                          .withQueryParam("end", equalTo("2020-01-31")));
-                  baseRule.verify(28 * 2, postRequestedFor(urlEqualTo(reportsPath)));
-                  baseRule.verify(2, putRequestedFor(urlMatching(providerPath + "/.*")));
-                });
-            vertx.cancelTimer(id);
-            async.complete();
-          }
-        });
-
-    async.await(10000);
-  }
-
-  @Test
-  public void testNumberOfRequestsMadeForTenantv2(TestContext context) {
     Async async = context.async();
 
     Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
@@ -610,51 +560,8 @@ public class WorkerVerticleIT {
     async.await(10000);
   }
 
-  @Ignore
   @Test
   public void testNumberOfRequestsMadeForProvider(TestContext context) {
-    Async async = context.async();
-
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
-    ValidatableResponse then =
-        given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-            .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-            .then();
-    System.out.println(
-        then.extract().statusCode()
-            + then.extract().statusLine()
-            + then.extract().body().asString());
-    then.statusCode(200);
-
-    vertx.setPeriodic(
-        1000,
-        id -> {
-          if (vertx.deploymentIDs().size() <= 1) {
-            context.verify(
-                v -> {
-                  serviceProviderARule.verify(28, getRequestedFor(urlPathEqualTo("/")));
-                  serviceProviderARule.verify(
-                      1,
-                      getRequestedFor(urlPathEqualTo("/"))
-                          .withQueryParam("report", equalTo("JR1"))
-                          .withQueryParam("begin", equalTo("2020-01-01"))
-                          .withQueryParam("end", equalTo("2020-01-31")));
-                  serviceProviderBRule.verify(0, getRequestedFor(urlPathEqualTo("/")));
-                  baseRule.verify(28, postRequestedFor(urlEqualTo(reportsPath)));
-                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
-                });
-            vertx.cancelTimer(id);
-            async.complete();
-          }
-        });
-
-    async.await(60000);
-  }
-
-  @Test
-  public void testNumberOfRequestsMadeForProviderv2(TestContext context) {
     Async async = context.async();
 
     Token token = new Token(Token.createFakeJWTForTenant("tenanta"));

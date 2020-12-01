@@ -1,12 +1,15 @@
 package org.olf.erm.usage.harvester;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.notMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
@@ -18,15 +21,15 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
+import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
@@ -133,59 +136,36 @@ public class WorkerVerticleTest {
         get(urlPathMatching(providerPath))
             .willReturn(aResponse().withBodyFile("usage-data-providers.json")));
 
-    Async async = context.async();
     harvester
         .getActiveProviders()
-        .setHandler(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              assertThat(ar.result().getTotalRecords()).isEqualTo(3);
-              async.complete();
-            });
+        .onComplete(
+            context.asyncAssertSuccess(udps -> assertThat(udps.getTotalRecords()).isEqualTo(3)));
   }
 
   @Test
   public void getProvidersBodyInvalid(TestContext context) {
     stubFor(get(urlPathMatching(providerPath)).willReturn(aResponse().withBody("")));
 
-    Async async = context.async();
     harvester
         .getActiveProviders()
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause().getMessage()).contains("Error decoding");
-              async.complete();
-            });
+        .onComplete(
+            context.asyncAssertFailure(t -> assertThat(t).hasMessageContaining("Error decoding")));
   }
 
   @Test
   public void getProvidersResponseInvalid(TestContext context) {
     stubFor(get(urlPathMatching(providerPath)).willReturn(aResponse().withStatus(404)));
 
-    Async async = context.async();
     harvester
         .getActiveProviders()
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause().getMessage()).contains("404");
-              async.complete();
-            });
+        .onComplete(context.asyncAssertFailure(t -> assertThat(t).hasMessageContaining("404")));
   }
 
   @Test
   public void getProvidersNoService(TestContext context) {
     wireMockRule.stop();
 
-    Async async = context.async();
-    harvester
-        .getActiveProviders()
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              async.complete();
-            });
+    harvester.getActiveProviders().onComplete(context.asyncAssertFailure());
   }
 
   @Test
@@ -201,15 +181,11 @@ public class WorkerVerticleTest {
                 aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
             .willReturn(aResponse().withBodyFile("aggregator-setting.json")));
 
-    Async async = context.async();
     harvester
         .getAggregatorSetting(provider)
-        .setHandler(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              assertThat(ar.result().getLabel()).isEqualTo("Nationaler Statistikserver");
-              async.complete();
-            });
+        .onComplete(
+            context.asyncAssertSuccess(
+                as -> assertThat(as.getLabel()).isEqualTo("Nationaler Statistikserver")));
   }
 
   @Test
@@ -231,11 +207,13 @@ public class WorkerVerticleTest {
     Async async = context.async();
     harvester
         .getAggregatorSetting(provider1)
-        .setHandler(
+        .onComplete(
             ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.result()).isNull();
-              assertThat(ar.cause().getMessage()).contains("no aggregator found");
+              context.verify(
+                  v -> {
+                    assertThat(ar.failed()).isTrue();
+                    assertThat(ar.cause().getMessage()).contains("no aggregator found");
+                  });
               async.complete();
             });
 
@@ -243,11 +221,13 @@ public class WorkerVerticleTest {
     Async async2 = context.async();
     harvester
         .getAggregatorSetting(provider2)
-        .setHandler(
+        .onComplete(
             ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.result()).isNull();
-              assertThat(ar.cause().getMessage()).contains("no aggregator found");
+              context.verify(
+                  v -> {
+                    assertThat(ar.failed()).isTrue();
+                    assertThat(ar.cause().getMessage()).contains("no aggregator found");
+                  });
               async2.complete();
             });
   }
@@ -265,16 +245,10 @@ public class WorkerVerticleTest {
                 aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
             .willReturn(aResponse().withBody("garbage")));
 
-    Async async = context.async();
     harvester
         .getAggregatorSetting(provider)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.result()).isNull();
-              assertThat(ar.cause().getMessage()).contains("Error decoding");
-              async.complete();
-            });
+        .onComplete(
+            context.asyncAssertFailure(t -> assertThat(t).hasMessageContaining("Error decoding")));
   }
 
   @Test
@@ -291,16 +265,9 @@ public class WorkerVerticleTest {
             .willReturn(
                 aResponse().withBody("Aggregator settingObject does not exist").withStatus(404)));
 
-    Async async = context.async();
     harvester
         .getAggregatorSetting(provider)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.result()).isNull();
-              assertThat(ar.cause().getMessage()).contains("404");
-              async.complete();
-            });
+        .onComplete(context.asyncAssertFailure(t -> assertThat(t).hasMessageContaining("404")));
   }
 
   @Test
@@ -313,14 +280,7 @@ public class WorkerVerticleTest {
                 UsageDataProvider.class);
     wireMockRule.stop();
 
-    Async async = context.async();
-    harvester
-        .getAggregatorSetting(provider)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              async.complete();
-            });
+    harvester.getAggregatorSetting(provider).onComplete(context.asyncAssertFailure());
   }
 
   @Test
@@ -338,10 +298,14 @@ public class WorkerVerticleTest {
 
     CounterReport result =
         harvester.createCounterReport(reportData, reportName, provider, yearMonth);
-    assertNotNull(result);
-    assertEquals(reportName, result.getReportName());
-    assertEquals(reportData, Json.encode(result.getReport()));
-    assertEquals(yearMonth.toString(), result.getYearMonth());
+    assertThat(result)
+        .isNotNull()
+        .satisfies(
+            cr -> {
+              assertThat(cr.getReportName()).isEqualTo(reportName);
+              assertThat(Json.encode(cr.getReport())).isEqualTo(reportData);
+              assertThat(cr.getYearMonth()).isEqualTo(yearMonth.toString());
+            });
   }
 
   @Test
@@ -352,18 +316,9 @@ public class WorkerVerticleTest {
             .willReturn(aResponse().withStatus(200).withBodyFile("counter-reports-empty.json")));
     stubFor(post(urlEqualTo(url)).willReturn(aResponse().withStatus(201)));
 
-    Async async = context.async();
     harvester
         .postReport(cr)
-        .setHandler(
-            ar -> {
-              if (ar.succeeded()) {
-                verify(postRequestedFor(urlEqualTo(url)));
-                async.complete();
-              } else {
-                context.fail(ar.cause());
-              }
-            });
+        .onComplete(context.asyncAssertSuccess(v -> verify(postRequestedFor(urlEqualTo(url)))));
   }
 
   @Test
@@ -375,18 +330,9 @@ public class WorkerVerticleTest {
             .willReturn(aResponse().withStatus(200).withBodyFile("counter-reports-one.json")));
     stubFor(put(urlEqualTo(urlId)).willReturn(aResponse().withStatus(201)));
 
-    Async async = context.async();
     harvester
         .postReport(cr)
-        .setHandler(
-            ar -> {
-              if (ar.succeeded()) {
-                verify(putRequestedFor(urlEqualTo(urlId)));
-                async.complete();
-              } else {
-                context.fail(ar.cause());
-              }
-            });
+        .onComplete(context.asyncAssertSuccess(v -> verify(putRequestedFor(urlEqualTo(urlId)))));
   }
 
   @Test
@@ -398,15 +344,9 @@ public class WorkerVerticleTest {
                     Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
                 UsageDataProvider.class);
 
-    Async async = context.async();
     harvester
         .getServiceEndpoint(provider)
-        .setHandler(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              assertThat(ar.result()).isNotNull();
-              async.complete();
-            });
+        .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
   }
 
   @Test
@@ -419,15 +359,11 @@ public class WorkerVerticleTest {
                 UsageDataProvider.class);
     provider.getHarvestingConfig().getSushiConfig().setServiceType("test3");
 
-    Async async = context.async();
     harvester
         .getServiceEndpoint(provider)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause().getMessage()).contains("No service implementation");
-              async.complete();
-            });
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> assertThat(t).hasMessageContaining("No service implementation")));
   }
 
   @Test
@@ -445,15 +381,9 @@ public class WorkerVerticleTest {
                 aggregatorPath + "/" + provider.getHarvestingConfig().getAggregator().getId()))
             .willReturn(aResponse().withBodyFile("aggregator-setting.json")));
 
-    Async async = context.async();
     harvester
         .getServiceEndpoint(provider)
-        .setHandler(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              assertThat(ar.result()).isNotNull();
-              async.complete();
-            });
+        .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
   }
 
   @Test
@@ -467,15 +397,9 @@ public class WorkerVerticleTest {
     provider.getHarvestingConfig().setHarvestVia(HarvestVia.AGGREGATOR);
     provider.getHarvestingConfig().setAggregator(null);
 
-    Async async = context.async();
     harvester
         .getServiceEndpoint(provider)
-        .setHandler(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              assertThat(ar.result()).isNotNull();
-              async.complete();
-            });
+        .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
   }
 
   @Test
@@ -489,15 +413,9 @@ public class WorkerVerticleTest {
     provider.getHarvestingConfig().setHarvestVia(HarvestVia.AGGREGATOR);
     provider.getHarvestingConfig().getAggregator().setId(null);
 
-    Async async = context.async();
     harvester
         .getServiceEndpoint(provider)
-        .setHandler(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              assertThat(ar.result()).isNotNull();
-              async.complete();
-            });
+        .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
   }
 
   private CounterReports createCounterSampleReports() {
@@ -522,32 +440,30 @@ public class WorkerVerticleTest {
         get(urlPathEqualTo("/counter-reports"))
             .willReturn(aResponse().withStatus(200).withBody(encode)));
 
-    Async async = context.async();
     harvester
         .getValidMonths("providerId", "JR1", YearMonth.of(2017, 12), YearMonth.of(2018, 2))
-        .setHandler(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              assertThat(ar.result())
-                  .isEqualTo(
-                      Arrays.asList(
-                          YearMonth.of(2017, 12), YearMonth.of(2018, 1), YearMonth.of(2018, 2)));
-              async.complete();
-            });
+        .onComplete(
+            context.asyncAssertSuccess(
+                list ->
+                    assertThat(list)
+                        .isEqualTo(
+                            Arrays.asList(
+                                YearMonth.of(2017, 12),
+                                YearMonth.of(2018, 1),
+                                YearMonth.of(2018, 2)))));
   }
 
   @Test
   public void testGetValidMonthsFail(TestContext context) {
     stubFor(get(urlPathEqualTo("/counter-reports")).willReturn(aResponse().withStatus(500)));
-    Async async = context.async();
     harvester
         .getValidMonths("providerId", "JR1", YearMonth.of(2017, 12), YearMonth.of(2018, 2))
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause().getMessage()).contains("Received status code", "500");
-              async.complete();
-            });
+        .onComplete(
+            context.asyncAssertFailure(
+                t ->
+                    assertThat(t)
+                        .hasMessageContaining("Received status code")
+                        .hasMessageContaining("500")));
   }
 
   @Test
@@ -557,15 +473,10 @@ public class WorkerVerticleTest {
             .withHarvestingConfig(
                 new HarvestingConfig().withHarvestingStatus(HarvestingStatus.INACTIVE));
 
-    Async async = context.async();
     harvester
         .getFetchList(provider)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause()).hasMessageContaining("not active");
-              async.complete();
-            });
+        .onComplete(
+            context.asyncAssertFailure(t -> assertThat(t).hasMessageContaining("not active")));
   }
 
   @Test
@@ -580,69 +491,80 @@ public class WorkerVerticleTest {
                     .withStatus(200)
                     .withBody(Json.encodePrettily(createCounterSampleReports()))));
 
-    Async async = context.async();
     harvester
         .getFetchList(provider)
-        .setHandler(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              assertThat(ar.result().size()).isEqualTo(3);
-              final String begin = "2018-03-01";
-              final String end = "2018-03-31";
-              assertThat(ar.result().contains(new FetchItem("JR1", begin, end))).isTrue();
-              assertThat(ar.result().contains(new FetchItem("JR2", begin, end))).isTrue();
-              assertThat(ar.result().contains(new FetchItem("JR3", begin, end))).isTrue();
-              verify(exactly(3), getRequestedFor(urlPathEqualTo("/counter-reports")));
-              async.complete();
-            });
+        .onComplete(
+            context.asyncAssertSuccess(
+                list -> {
+                  final String begin = "2018-03-01";
+                  final String end = "2018-03-31";
+                  assertThat(list)
+                      .hasSize(3)
+                      .containsExactly(
+                          new FetchItem("JR1", begin, end),
+                          new FetchItem("JR2", begin, end),
+                          new FetchItem("JR3", begin, end));
+                  verify(exactly(3), getRequestedFor(urlPathEqualTo("/counter-reports")));
+                }));
   }
 
   @Test
-  public void testFetchAndPostReports(TestContext context) {
-    UsageDataProvider provider = createSampleUsageDataProvider();
+  public void testNumberOfRequestsMadeByFetchAndPostReportsRx(TestContext context) {
+    StubMapping existingReportsStub =
+        stubFor(
+            get(urlPathEqualTo("/counter-reports"))
+                .withQueryParam("query", matching(".*failedAttempts.*"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withBody(Json.encodePrettily(createCounterSampleReports()))));
 
-    stubFor(
-        get(urlPathEqualTo("/counter-reports"))
-            .willReturn(
-                aResponse()
-                    .withStatus(200)
-                    .withBody(Json.encodePrettily(createCounterSampleReports()))));
-    stubFor(
-        get(urlEqualTo(
-                "/counter-reports?query=%28providerId%3D97329ea7-f351-458a-a460-71aa6db75e35%20"
-                    + "AND%20yearMonth%3D2018-03%20AND%20reportName%3D%3DJR1%29&tiny=true"))
-            .willReturn(
-                aResponse()
-                    .withStatus(200)
-                    .withBody(
-                        Json.encodePrettily(
-                            new CounterReports()
-                                .withCounterReports(
-                                    Collections.singletonList(new CounterReport()))))));
-    stubFor(
-        get(urlEqualTo(
-                "/counter-reports?query=%28providerId%3D97329ea7-f351-458a-a460-71aa6db75e35%20"
-                    + "AND%20yearMonth%3D2018-03%20AND%20reportName%3D%3DJR2%29&tiny=true"))
-            .willReturn(
-                aResponse().withStatus(200).withBody(Json.encodePrettily(new CounterReports()))));
+    StubMapping additionalReportStub =
+        stubFor(
+            get(urlPathEqualTo("/counter-reports"))
+                .withQueryParam("query", matching("^(?!.*failedAttempts).*2018-03.*JR1.*"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withBody(
+                            Json.encodePrettily(
+                                new CounterReports()
+                                    .withCounterReports(
+                                        Collections.singletonList(new CounterReport()))))));
+    StubMapping nonExistingReportsStub =
+        stubFor(
+            get(urlPathEqualTo("/counter-reports"))
+                .withQueryParam("query", notMatching(".*failedAttempts.*|.*2018-03.*JR1.*"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withBody(Json.encodePrettily(new CounterReports()))));
+
     stubFor(post(urlPathEqualTo("/counter-reports")).willReturn(aResponse().withStatus(201)));
     stubFor(put(urlPathMatching("/counter-reports/.*")).willReturn(aResponse().withStatus(204)));
     stubFor(
         put(urlPathMatching("/usage-data-providers/.*")).willReturn(aResponse().withStatus(204)));
 
+    UsageDataProvider provider = createSampleUsageDataProvider();
     Async async = context.async();
     harvester
-        .fetchAndPostReports(provider)
-        .compose(CompositeFuture::join)
-        .onComplete(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              verify(9, getRequestedFor(urlPathEqualTo("/counter-reports")));
-              verify(1, postRequestedFor(urlPathEqualTo("/counter-reports")));
-              verify(1, putRequestedFor(urlPathMatching("/counter-reports/.*")));
-              verify(1, putRequestedFor(urlPathMatching("/usage-data-providers/.*")));
+        .fetchAndPostReportsRx(provider)
+        .subscribe(
+            () -> {
+              context.verify(
+                  v -> {
+                    verify(3, RequestPatternBuilder.like(existingReportsStub.getRequest()));
+                    verify(1, RequestPatternBuilder.like(additionalReportStub.getRequest()));
+                    verify(5, RequestPatternBuilder.like(nonExistingReportsStub.getRequest()));
+                    verify(5, postRequestedFor(urlPathEqualTo("/counter-reports")));
+                    verify(1, putRequestedFor(urlPathMatching("/counter-reports/.*")));
+                    verify(1, putRequestedFor(urlPathMatching("/usage-data-providers/.*")));
+                    List<LoggedRequest> all = wireMockRule.findAll(anyRequestedFor(anyUrl()));
+                    assertThat(all).hasSize(17); // 16 + 1 for configurations
+                  });
               async.complete();
-            });
+            },
+            context::fail);
   }
 
   private UsageDataProvider createSampleUsageDataProvider() {
@@ -687,26 +609,20 @@ public class WorkerVerticleTest {
     Async async = context.async(2);
     harvester
         .getModConfigurationValue("testmodule", "ok", "3")
-        .setHandler(
-            ar -> {
-              if (ar.succeeded()) {
-                assertThat(ar.result()).isEqualTo("5");
-                async.countDown();
-              } else {
-                context.fail(ar.cause());
-              }
+        .onFailure(context::fail)
+        .onSuccess(
+            s -> {
+              context.verify(v -> assertThat(s).isEqualTo("5"));
+              async.countDown();
             });
 
     harvester
         .getModConfigurationValue("testmodule", "empty", "3")
-        .setHandler(
-            ar -> {
-              if (ar.succeeded()) {
-                assertThat(ar.result()).isEqualTo("3");
-                async.countDown();
-              } else {
-                context.fail();
-              }
+        .onFailure(context::fail)
+        .onSuccess(
+            s -> {
+              context.verify(v -> assertThat(s).isEqualTo("3"));
+              async.countDown();
             });
 
     async.await();
@@ -715,71 +631,55 @@ public class WorkerVerticleTest {
     Async async2 = context.async();
     harvester
         .getModConfigurationValue("testmodule", "something", "2")
-        .setHandler(
-            ar -> {
-              if (ar.succeeded()) {
-                assertThat(ar.result()).isEqualTo("2");
-                async2.complete();
-              } else {
-                context.fail();
-              }
+        .onFailure(context::fail)
+        .onSuccess(
+            s -> {
+              context.verify(v -> assertThat(s).isEqualTo("2"));
+              async2.countDown();
             });
   }
 
   @Test
   public void testUpdateUDPLastHarvestingDateSuccess(TestContext context) {
-    Async async = context.async();
     String urlPath = "/usage-data-providers/" + UDP_ID;
 
     stubFor(put(urlPath).willReturn(aResponse().withStatus(204)));
     harvester
         .updateUDPLastHarvestingDate(new UsageDataProvider().withId(UDP_ID))
-        .onSuccess(
-            ar -> {
-              context.verify(
-                  v ->
-                      verify(
-                          1,
-                          putRequestedFor(urlEqualTo(urlPath))
-                              .withRequestBody(
-                                  matchingJsonPath("$.harvestingDate", matching("[0-9]*")))));
-              async.complete();
-            })
-        .onFailure(context::fail);
+        .onComplete(
+            context.asyncAssertSuccess(
+                v ->
+                    verify(
+                        1,
+                        putRequestedFor(urlEqualTo(urlPath))
+                            .withRequestBody(
+                                matchingJsonPath("$.harvestingDate", matching("[0-9]*"))))));
   }
 
   @Test
   public void testUpdateUDPLastHarvestingDateFail(TestContext context) {
-    Async async = context.async();
     String urlPath = "/usage-data-providers/" + UDP_ID;
 
     stubFor(put(urlPath).willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
     harvester
         .updateUDPLastHarvestingDate(new UsageDataProvider().withId(UDP_ID))
-        .onSuccess(v -> context.fail())
-        .onFailure(
-            t -> {
-              context.verify(
-                  v -> assertThat(t.getMessage()).contains("Failed updating harvestingDate"));
-              async.complete();
-            });
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> assertThat(t).hasMessageContaining("Failed updating harvestingDate")));
   }
 
   @Test
   public void testUpdateUDPLastHarvestingDateWrongStatusCode(TestContext context) {
-    Async async = context.async();
     String urlPath = "/usage-data-providers/" + UDP_ID;
 
     stubFor(put(urlPath).willReturn(aResponse().withStatus(400)));
     harvester
         .updateUDPLastHarvestingDate(new UsageDataProvider().withId(UDP_ID))
-        .onSuccess(v -> context.fail())
-        .onFailure(
-            t -> {
-              context.verify(
-                  v ->
-                      assertThat(t.getMessage()).contains("Failed updating harvestingDate", "400"));
-              async.complete();
-            });
+        .onComplete(
+            context.asyncAssertFailure(
+                t ->
+                    assertThat(t)
+                        .hasMessageContaining("Failed updating harvestingDate")
+                        .hasMessageContaining("400")));
   }
 }

@@ -15,10 +15,8 @@ import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import io.reactivex.observers.DisposableCompletableObserver;
 import io.reactivex.schedulers.Schedulers;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.Json;
@@ -29,10 +27,8 @@ import io.vertx.reactivex.core.buffer.Buffer;
 import io.vertx.reactivex.ext.web.client.HttpResponse;
 import io.vertx.reactivex.ext.web.client.WebClient;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -90,19 +86,6 @@ public class WorkerVerticle extends AbstractVerticle {
       LOG.error(logMessage.get());
     }
   }
-
-  private Handler<AsyncResult<CompositeFuture>> processingCompleteHandler =
-      h -> {
-        if (h.succeeded()) {
-          logInfo(() -> createTenantMsg(token.getTenantId(), "Processing completed"));
-        } else {
-          logError(
-              () ->
-                  createTenantMsg(
-                      token.getTenantId(), "Error during processing, {}", h.cause().getMessage()));
-        }
-        vertx.undeploy(this.deploymentID());
-      };
 
   private CompletableObserver createCompletableObserver() {
     return new DisposableCompletableObserver() {
@@ -518,6 +501,7 @@ public class WorkerVerticle extends AbstractVerticle {
     wrapFuture(updateUDPLastHarvestingDate(provider))
         .doOnError(t -> LOG.error(t.getMessage()))
         .ignoreElement()
+        .onErrorComplete()
         .subscribe();
 
     Single<ServiceEndpoint> sepSingle = wrapFuture(getServiceEndpoint(provider));
@@ -555,84 +539,6 @@ public class WorkerVerticle extends AbstractVerticle {
                     .ignoreElement()
                     .doOnError(t -> LOG.error(t.getMessage()))
                     .onErrorComplete());
-  }
-
-  @SuppressWarnings({"rawtypes", "java:S3740"})
-  public Future<List<Future>> fetchAndPostReports(UsageDataProvider provider) {
-    logInfo(
-        () -> createTenantMsg(token.getTenantId(), "processing provider: {}", provider.getLabel()));
-
-    List<Future> futList = new ArrayList<>();
-    futList.add(updateUDPLastHarvestingDate(provider));
-    Promise<List<Future>> promise = Promise.promise();
-
-    Future<ServiceEndpoint> sep = getServiceEndpoint(provider);
-    sep.compose(s -> getFetchList(provider))
-        .compose(
-            list -> {
-              if (list.isEmpty()) {
-                logInfo(
-                    () ->
-                        createTenantMsg(
-                            token.getTenantId(),
-                            createProviderMsg(
-                                provider.getLabel(), "No reports need to be fetched.")));
-              }
-              list.forEach(
-                  li -> {
-                    Promise complete = Promise.promise();
-                    futList.add(complete.future());
-                    sep.result()
-                        .fetchSingleReport(li.getReportType(), li.getBegin(), li.getEnd())
-                        .onComplete(
-                            h -> {
-                              CounterReport report;
-                              LocalDate parse = LocalDate.parse(li.getBegin());
-                              YearMonth month = YearMonth.of(parse.getYear(), parse.getMonth());
-                              if (h.succeeded()) {
-                                report =
-                                    createCounterReport(
-                                        h.result(), li.getReportType(), provider, month);
-                              } else {
-                                report =
-                                    createCounterReport(null, li.getReportType(), provider, month);
-                                report.setFailedReason(h.cause().getMessage());
-                                logError(
-                                    () ->
-                                        createTenantMsg(
-                                            token.getTenantId(),
-                                            createProviderMsg(
-                                                provider.getLabel(),
-                                                "{}, {}",
-                                                li,
-                                                h.cause().getMessage())));
-                              }
-                              postReport(report)
-                                  .onComplete(
-                                      h2 -> {
-                                        complete.complete();
-                                        if (h2.failed()) {
-                                          LOG.error(h2.cause().getMessage());
-                                        }
-                                      });
-                            });
-                  });
-              promise.complete(futList);
-              return Future.<Void>succeededFuture();
-            })
-        .onComplete(
-            h -> {
-              if (h.failed()) {
-                logError(
-                    () ->
-                        createTenantMsg(
-                            token.getTenantId(),
-                            createProviderMsg(provider.getLabel(), h.cause().getMessage())),
-                    h.cause());
-                promise.complete(Collections.emptyList());
-              }
-            });
-    return promise.future();
   }
 
   public Future<HttpResponse<Buffer>> postReport(CounterReport report) {
@@ -749,30 +655,6 @@ public class WorkerVerticle extends AbstractVerticle {
         .subscribe(createCompletableObserver());
   }
 
-  public void run() {
-    getActiveProviders()
-        .compose(
-            providers -> {
-              @SuppressWarnings({"rawtypes", "java:S3740"})
-              List<Future> complete = new ArrayList<>();
-              providers
-                  .getUsageDataProviders()
-                  .forEach(
-                      p ->
-                          complete.add(this.fetchAndPostReports(p).compose(CompositeFuture::join)));
-              CompositeFuture.join(complete).onComplete(processingCompleteHandler);
-              return Future.succeededFuture();
-            })
-        .onComplete(
-            h -> {
-              if (h.failed()) {
-                LOG.error(
-                    "Verticle has failed, id: {}, {}", this.deploymentID(), h.cause().getMessage());
-                vertx.undeploy(this.deploymentID());
-              }
-            });
-  }
-
   public void runSingleProviderRx() {
     client
         .getAbs(okapiUrl + providerPath + "/" + providerId)
@@ -803,53 +685,6 @@ public class WorkerVerticle extends AbstractVerticle {
         .flatMapCompletable(this::fetchAndPostReportsRx)
         .doFinally(() -> vertx.undeploy(this.deploymentID()))
         .subscribe(createCompletableObserver());
-  }
-
-  public void runSingleProvider() {
-    client
-        .getAbs(okapiUrl + providerPath + "/" + providerId)
-        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
-        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
-        .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
-        .send(
-            h -> {
-              if (h.succeeded()) {
-                if (h.result().statusCode() == 200) {
-                  UsageDataProvider provider = h.result().bodyAsJson(UsageDataProvider.class);
-                  if (provider
-                      .getHarvestingConfig()
-                      .getHarvestingStatus()
-                      .equals(HarvestingStatus.ACTIVE)) {
-                    fetchAndPostReports(provider)
-                        .compose(CompositeFuture::join)
-                        .onComplete(processingCompleteHandler);
-                  } else {
-                    logError(
-                        () ->
-                            createTenantMsg(
-                                token.getTenantId(),
-                                createProviderMsg(
-                                    provider.getLabel(), "HarvestingStatus not ACTIVE")));
-                    vertx.undeploy(this.deploymentID());
-                  }
-                } else {
-                  logError(
-                      () ->
-                          createTenantMsg(
-                              token.getTenantId(),
-                              createProviderMsg(
-                                  providerId,
-                                  createMsgStatus(
-                                      h.result().statusCode(),
-                                      h.result().statusMessage(),
-                                      providerPath))));
-                  vertx.undeploy(this.deploymentID());
-                }
-              } else {
-                LOG.error(h.cause().getMessage(), h.cause());
-                vertx.undeploy(this.deploymentID());
-              }
-            });
   }
 
   @Override
