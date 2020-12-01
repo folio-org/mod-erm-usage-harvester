@@ -45,24 +45,6 @@ public class WorkerVerticleITProvider implements ServiceEndpointProvider {
       private final Logger log = LoggerFactory.getLogger(WorkerVerticleITProvider.class);
 
       @Override
-      public boolean isValidReport(String report) {
-        return false;
-      }
-
-      @Override
-      public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
-        Promise<HttpResponse<Buffer>> promise = Promise.promise();
-        client
-            .getAbs(provider.getHarvestingConfig().getSushiConfig().getServiceUrl().concat("/"))
-            .addQueryParam("report", report)
-            .addQueryParam("begin", beginDate)
-            .addQueryParam("end", endDate)
-            .send(promise);
-
-        return promise.future().map(HttpResponse::bodyAsString);
-      }
-
-      @Override
       public Future<List<CounterReport>> fetchReport(
           String report, String beginDate, String endDate) {
         log.info("Fetching report {} {} {}", report, beginDate, endDate);
