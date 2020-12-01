@@ -5,6 +5,7 @@ import static org.olf.erm.usage.harvester.Messages.createMsgStatus;
 import static org.olf.erm.usage.harvester.Messages.createProviderMsg;
 import static org.olf.erm.usage.harvester.Messages.createTenantMsg;
 import static org.olf.erm.usage.harvester.Messages.createTenantProviderMsg;
+import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createCounterReport;
 
 import com.google.common.net.HttpHeaders;
 import com.google.common.net.MediaType;
@@ -19,7 +20,6 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.reactivex.core.AbstractVerticle;
@@ -31,7 +31,6 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +43,6 @@ import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.CounterReports;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
-import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
@@ -214,27 +212,6 @@ public class WorkerVerticle extends AbstractVerticle {
               }
             });
     return promise.future();
-  }
-
-  public CounterReport createCounterReport(
-      String reportData, String reportName, UsageDataProvider provider, YearMonth yearMonth) {
-    CounterReport cr = new CounterReport();
-    cr.setId(UUID.randomUUID().toString());
-    cr.setYearMonth(yearMonth.toString());
-    cr.setReportName(reportName);
-    cr.setRelease(
-        provider
-            .getHarvestingConfig()
-            .getReportRelease()
-            .toString()); // TODO: check release for null
-    cr.setProviderId(provider.getId());
-    cr.setDownloadTime(Date.from(Instant.now()));
-    if (reportData != null) {
-      cr.setReport(Json.decodeValue(reportData, Report.class));
-    } else {
-      cr.setFailedAttempts(1);
-    }
-    return cr;
   }
 
   public Future<ServiceEndpoint> getServiceEndpoint(UsageDataProvider provider) {

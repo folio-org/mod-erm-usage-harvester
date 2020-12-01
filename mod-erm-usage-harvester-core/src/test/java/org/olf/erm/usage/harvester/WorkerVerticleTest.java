@@ -64,6 +64,7 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 
 @RunWith(VertxUnitRunner.class)
 public class WorkerVerticleTest {
@@ -297,7 +298,7 @@ public class WorkerVerticleTest {
     final YearMonth yearMonth = YearMonth.of(2018, 1);
 
     CounterReport result =
-        harvester.createCounterReport(reportData, reportName, provider, yearMonth);
+        ServiceEndpoint.createCounterReport(reportData, reportName, provider, yearMonth);
     assertThat(result)
         .isNotNull()
         .satisfies(
