@@ -1,12 +1,15 @@
 package org.olf.erm.usage.harvester;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.notMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
@@ -24,9 +27,11 @@ import static org.junit.Assert.assertNotNull;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
+import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
@@ -598,51 +603,62 @@ public class WorkerVerticleTest {
   }
 
   @Test
-  public void testFetchAndPostReports(TestContext context) {
-    UsageDataProvider provider = createSampleUsageDataProvider();
+  public void testNumberOfRequestsMadeByFetchAndPostReportsRx(TestContext context) {
+    StubMapping existingReportsStub =
+        stubFor(
+            get(urlPathEqualTo("/counter-reports"))
+                .withQueryParam("query", matching(".*failedAttempts.*"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withBody(Json.encodePrettily(createCounterSampleReports()))));
 
-    stubFor(
-        get(urlPathEqualTo("/counter-reports"))
-            .willReturn(
-                aResponse()
-                    .withStatus(200)
-                    .withBody(Json.encodePrettily(createCounterSampleReports()))));
-    stubFor(
-        get(urlEqualTo(
-                "/counter-reports?query=%28providerId%3D97329ea7-f351-458a-a460-71aa6db75e35%20"
-                    + "AND%20yearMonth%3D2018-03%20AND%20reportName%3D%3DJR1%29&tiny=true"))
-            .willReturn(
-                aResponse()
-                    .withStatus(200)
-                    .withBody(
-                        Json.encodePrettily(
-                            new CounterReports()
-                                .withCounterReports(
-                                    Collections.singletonList(new CounterReport()))))));
-    stubFor(
-        get(urlEqualTo(
-                "/counter-reports?query=%28providerId%3D97329ea7-f351-458a-a460-71aa6db75e35%20"
-                    + "AND%20yearMonth%3D2018-03%20AND%20reportName%3D%3DJR2%29&tiny=true"))
-            .willReturn(
-                aResponse().withStatus(200).withBody(Json.encodePrettily(new CounterReports()))));
+    StubMapping additionalReportStub =
+        stubFor(
+            get(urlPathEqualTo("/counter-reports"))
+                .withQueryParam("query", matching("^(?!.*failedAttempts).*2018-03.*JR1.*"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withBody(
+                            Json.encodePrettily(
+                                new CounterReports()
+                                    .withCounterReports(
+                                        Collections.singletonList(new CounterReport()))))));
+    StubMapping nonExistingReportsStub =
+        stubFor(
+            get(urlPathEqualTo("/counter-reports"))
+                .withQueryParam("query", notMatching(".*failedAttempts.*|.*2018-03.*JR1.*"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withBody(Json.encodePrettily(new CounterReports()))));
+
     stubFor(post(urlPathEqualTo("/counter-reports")).willReturn(aResponse().withStatus(201)));
     stubFor(put(urlPathMatching("/counter-reports/.*")).willReturn(aResponse().withStatus(204)));
     stubFor(
         put(urlPathMatching("/usage-data-providers/.*")).willReturn(aResponse().withStatus(204)));
 
+    UsageDataProvider provider = createSampleUsageDataProvider();
     Async async = context.async();
     harvester
-        .fetchAndPostReports(provider)
-        .compose(CompositeFuture::join)
-        .onComplete(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              verify(9, getRequestedFor(urlPathEqualTo("/counter-reports")));
-              verify(1, postRequestedFor(urlPathEqualTo("/counter-reports")));
-              verify(1, putRequestedFor(urlPathMatching("/counter-reports/.*")));
-              verify(1, putRequestedFor(urlPathMatching("/usage-data-providers/.*")));
+        .fetchAndPostReportsRx(provider)
+        .subscribe(
+            () -> {
+              context.verify(
+                  v -> {
+                    verify(3, RequestPatternBuilder.like(existingReportsStub.getRequest()));
+                    verify(1, RequestPatternBuilder.like(additionalReportStub.getRequest()));
+                    verify(5, RequestPatternBuilder.like(nonExistingReportsStub.getRequest()));
+                    verify(5, postRequestedFor(urlPathEqualTo("/counter-reports")));
+                    verify(1, putRequestedFor(urlPathMatching("/counter-reports/.*")));
+                    verify(1, putRequestedFor(urlPathMatching("/usage-data-providers/.*")));
+                    List<LoggedRequest> all = wireMockRule.findAll(anyRequestedFor(anyUrl()));
+                    assertThat(all).hasSize(17); // 16 + 1 for configurations
+                  });
               async.complete();
-            });
+            },
+            context::fail);
   }
 
   private UsageDataProvider createSampleUsageDataProvider() {
