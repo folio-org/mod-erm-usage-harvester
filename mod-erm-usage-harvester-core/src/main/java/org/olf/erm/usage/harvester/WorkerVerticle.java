@@ -516,6 +516,7 @@ public class WorkerVerticle extends AbstractVerticle {
     wrapFuture(updateUDPLastHarvestingDate(provider))
         .doOnError(t -> LOG.error(t.getMessage()))
         .ignoreElement()
+        .onErrorComplete()
         .subscribe();
 
     Single<ServiceEndpoint> sepSingle = wrapFuture(getServiceEndpoint(provider));
