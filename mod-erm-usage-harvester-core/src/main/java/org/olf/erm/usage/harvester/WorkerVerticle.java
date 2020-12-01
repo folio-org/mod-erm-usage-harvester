@@ -15,10 +15,8 @@ import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import io.reactivex.observers.DisposableCompletableObserver;
 import io.reactivex.schedulers.Schedulers;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.Json;
@@ -88,19 +86,6 @@ public class WorkerVerticle extends AbstractVerticle {
       LOG.error(logMessage.get());
     }
   }
-
-  private Handler<AsyncResult<CompositeFuture>> processingCompleteHandler =
-      h -> {
-        if (h.succeeded()) {
-          logInfo(() -> createTenantMsg(token.getTenantId(), "Processing completed"));
-        } else {
-          logError(
-              () ->
-                  createTenantMsg(
-                      token.getTenantId(), "Error during processing, {}", h.cause().getMessage()));
-        }
-        vertx.undeploy(this.deploymentID());
-      };
 
   private CompletableObserver createCompletableObserver() {
     return new DisposableCompletableObserver() {
