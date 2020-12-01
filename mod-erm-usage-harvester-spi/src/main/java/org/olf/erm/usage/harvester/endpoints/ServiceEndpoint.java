@@ -24,8 +24,6 @@ import org.slf4j.LoggerFactory;
 
 public interface ServiceEndpoint {
 
-  boolean isValidReport(String report);
-
   /**
    * Fetches a report from a provider and returns a list containing a {@link CounterReport} for each
    * month in the requested range.

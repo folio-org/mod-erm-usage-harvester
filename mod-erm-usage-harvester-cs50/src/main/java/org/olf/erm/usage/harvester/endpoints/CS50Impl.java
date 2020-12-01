@@ -36,11 +36,6 @@ public class CS50Impl implements ServiceEndpoint {
   private static final Gson gson = new Gson();
   private static final Logger LOG = LoggerFactory.getLogger(CS50Impl.class);
 
-  @Override
-  public boolean isValidReport(String report) {
-    return false;
-  }
-
   CS50Impl(UsageDataProvider provider) {
     Objects.requireNonNull(provider.getSushiCredentials());
     Objects.requireNonNull(provider.getHarvestingConfig());

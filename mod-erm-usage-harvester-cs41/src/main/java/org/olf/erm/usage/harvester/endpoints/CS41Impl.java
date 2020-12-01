@@ -194,11 +194,6 @@ public class CS41Impl implements ServiceEndpoint {
     return promise.future();
   }
 
-  @Override
-  public boolean isValidReport(String report) {
-    return false;
-  }
-
   static class CS41Exception extends RuntimeException {
 
     public CS41Exception(String message) {

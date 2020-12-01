@@ -91,11 +91,6 @@ public class NSS implements ServiceEndpoint {
     return null;
   }
 
-  @Override
-  public boolean isValidReport(String report) {
-    return false;
-  }
-
   private List<CounterReport> createCounterReportList(
       Report report, String reportType, UsageDataProvider provider) throws ReportSplitException {
     List<Report> splitReports = Counter4Utils.split(report);
