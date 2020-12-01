@@ -501,7 +501,7 @@ public class WorkerVerticleTest {
                   final String end = "2018-03-31";
                   assertThat(list)
                       .hasSize(3)
-                      .containsExactly(
+                      .containsExactlyInAnyOrder(
                           new FetchItem("JR1", begin, end),
                           new FetchItem("JR2", begin, end),
                           new FetchItem("JR3", begin, end));
