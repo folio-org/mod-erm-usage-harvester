@@ -174,50 +174,6 @@ public class CS50Impl implements ServiceEndpoint {
     return promise.future();
   }
 
-  @Override
-  public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
-    String reportID = report.replace("_", "").toUpperCase();
-
-    Method method;
-    try {
-      method =
-          client
-              .getClass()
-              .getMethod(
-                  "getReports" + reportID, String.class, String.class, String.class, String.class);
-    } catch (NoSuchMethodException e) {
-      LOG.error(e.getMessage(), e);
-      return Future.failedFuture(e);
-    }
-
-    String customerId = provider.getSushiCredentials().getCustomerId();
-    String platform = Objects.toString(provider.getSushiCredentials().getPlatform(), "");
-
-    Promise<String> promise = Promise.promise();
-    try {
-      ((Observable<?>) method.invoke(client, customerId, beginDate, endDate, platform))
-          .subscribeOn(Schedulers.io())
-          .subscribe(
-              r -> {
-                String content = gson.toJson(r);
-                SUSHIReportHeader reportHeader = Counter5Utils.getReportHeader(content);
-                if (reportHeader == null) {
-                  promise.fail("Unkown Error - 200 Response is missing reportHeader");
-                } else if (reportHeader.getExceptions() != null
-                    && !reportHeader.getExceptions().isEmpty()) {
-                  promise.fail(gson.toJson(reportHeader.getExceptions()));
-                } else {
-                  promise.complete(content);
-                }
-              },
-              e -> promise.fail(getSushiError(e)));
-    } catch (Exception e) {
-      promise.fail(e);
-    }
-
-    return promise.future();
-  }
-
   static class CS50Exception extends RuntimeException {
 
     public CS50Exception(String message) {

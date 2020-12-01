@@ -166,53 +166,6 @@ public class NSS implements ServiceEndpoint {
     return promise.future();
   }
 
-  @Override
-  public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
-    final String url = buildURL(report, beginDate, endDate);
-
-    if (url == null) {
-      return Future.failedFuture("Could not create request URL due to missing parameters.");
-    }
-
-    Promise<String> promise = Promise.promise();
-    try {
-      client
-          .getAbs(url)
-          .send(
-              ar -> {
-                if (ar.succeeded()) {
-                  if (ar.result().statusCode() == 200) {
-                    String result = ar.result().bodyAsString();
-                    CounterReportResponse reportResponse =
-                        JAXB.unmarshal(new StringReader(result), CounterReportResponse.class);
-                    List<Exception> exceptions = Counter4Utils.getExceptions(reportResponse);
-                    if (exceptions.isEmpty()
-                        && reportResponse.getReport() != null
-                        && !reportResponse.getReport().getReport().isEmpty()) {
-                      Report report2 = reportResponse.getReport().getReport().get(0);
-                      promise.complete(Counter4Utils.toJSON(report2));
-                    } else {
-                      promise.fail(
-                          "Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
-                    }
-                  } else {
-                    promise.fail(
-                        url
-                            + " - "
-                            + ar.result().statusCode()
-                            + " : "
-                            + ar.result().statusMessage());
-                  }
-                } else {
-                  promise.fail(ar.cause());
-                }
-              });
-    } catch (java.lang.Exception e) {
-      return Future.failedFuture(e);
-    }
-    return promise.future();
-  }
-
   static class NSSException extends RuntimeException {
 
     public NSSException(String message) {

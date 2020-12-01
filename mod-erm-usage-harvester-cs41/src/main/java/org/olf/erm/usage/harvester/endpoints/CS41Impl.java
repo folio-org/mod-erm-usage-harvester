@@ -195,43 +195,6 @@ public class CS41Impl implements ServiceEndpoint {
   }
 
   @Override
-  public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
-    Promise<String> promise = Promise.promise();
-
-    Context context = Vertx.currentContext();
-    if (context == null) context = Vertx.vertx().getOrCreateContext();
-
-    context.executeBlocking(
-        block -> {
-          CounterReportResponse counterReportResponse;
-          try {
-            ReportRequest reportRequest = createReportRequest(report, beginDate, endDate);
-            counterReportResponse = port.getReport(reportRequest);
-          } catch (java.lang.Exception e) {
-            String messages =
-                ExceptionUtils.getThrowableList(e).stream()
-                    .map(Throwable::getMessage)
-                    .collect(Collectors.joining(", "));
-            block.fail("Error getting report: " + messages);
-            return;
-          }
-
-          List<Exception> exceptions = Counter4Utils.getExceptions(counterReportResponse);
-          if (exceptions.isEmpty()
-              && counterReportResponse.getReport() != null
-              && !counterReportResponse.getReport().getReport().isEmpty()) {
-            Report reportResult = counterReportResponse.getReport().getReport().get(0);
-            block.complete(Counter4Utils.toJSON(reportResult));
-          } else {
-            block.fail("Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
-          }
-        },
-        false,
-        promise);
-    return promise.future();
-  }
-
-  @Override
   public boolean isValidReport(String report) {
     return false;
   }

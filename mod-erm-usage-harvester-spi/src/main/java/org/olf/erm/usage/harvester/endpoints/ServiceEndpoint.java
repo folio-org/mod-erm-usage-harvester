@@ -9,7 +9,6 @@ import java.net.ProxySelector;
 import java.net.URI;
 import java.time.Instant;
 import java.time.YearMonth;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -27,11 +26,22 @@ public interface ServiceEndpoint {
 
   boolean isValidReport(String report);
 
-  Future<String> fetchSingleReport(String report, String beginDate, String endDate);
-
-  default Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate) {
-    return Future.succeededFuture(Collections.emptyList());
-  }
+  /**
+   * Fetches a report from a provider and returns a list containing a {@link CounterReport} for each
+   * month in the requested range.
+   *
+   * <p>The returned Future should fail with {@link InvalidReportException} if the fetched report
+   * contains any COUNTER exceptions.
+   *
+   * <p>Use {@link ServiceEndpoint#createCounterReport(String, String, UsageDataProvider,
+   * YearMonth)} for creating a {@link CounterReport}
+   *
+   * @param report requested report type
+   * @param beginDate start date (e.g. "2018-01-01")
+   * @param endDate end date (e.g. "2018-12-31")
+   * @return List of {@link CounterReport}
+   */
+  Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate);
 
   static CounterReport createCounterReport(
       String reportData, String reportName, UsageDataProvider provider, YearMonth yearMonth) {
@@ -59,7 +69,7 @@ public interface ServiceEndpoint {
   static ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
     Objects.requireNonNull(provider);
 
-    final Logger LOG = LoggerFactory.getLogger(ServiceEndpoint.class);
+    final Logger log = LoggerFactory.getLogger(ServiceEndpoint.class);
 
     String serviceType;
     if (Objects.isNull(aggregator)) {
@@ -74,7 +84,7 @@ public interface ServiceEndpoint {
     }
 
     if (Strings.isNullOrEmpty(serviceType)) {
-      LOG.error("ServiceType is null or empty for providerId {}", provider.getId());
+      log.error("ServiceType is null or empty for providerId {}", provider.getId());
       return null;
     }
 
@@ -86,7 +96,7 @@ public interface ServiceEndpoint {
       }
     }
 
-    LOG.error("No implementation found for serviceType '{}'", serviceType);
+    log.error("No implementation found for serviceType '{}'", serviceType);
     return null;
   }
 
