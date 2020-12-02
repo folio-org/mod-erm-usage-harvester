@@ -3,15 +3,27 @@ package org.olf.erm.usage.harvester;
 import java.util.Objects;
 
 public class FetchItem {
-  String reportType;
-  String begin;
-  String end;
+  private final String reportType;
+  private final String begin;
+  private final String end;
 
   public FetchItem(String reportType, String begin, String end) {
     super();
     this.reportType = reportType;
     this.begin = begin;
     this.end = end;
+  }
+
+  public String getReportType() {
+    return reportType;
+  }
+
+  public String getBegin() {
+    return begin;
+  }
+
+  public String getEnd() {
+    return end;
   }
 
   @Override

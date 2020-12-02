@@ -10,20 +10,24 @@ import io.vertx.ext.web.client.WebClientOptions;
 import java.io.StringReader;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.xml.bind.JAXB;
 import org.folio.rest.jaxrs.model.Aggregator;
 import org.folio.rest.jaxrs.model.AggregatorConfig;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
+import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.Exception;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
 import org.olf.erm.usage.counter41.Counter4Utils;
+import org.olf.erm.usage.counter41.Counter4Utils.ReportSplitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,20 +91,32 @@ public class NSS implements ServiceEndpoint {
     return null;
   }
 
-  @Override
-  public boolean isValidReport(String report) {
-    return false;
+  private List<CounterReport> createCounterReportList(
+      Report report, String reportType, UsageDataProvider provider) throws ReportSplitException {
+    List<Report> splitReports = Counter4Utils.split(report);
+    return splitReports.stream()
+        .map(
+            r -> {
+              List<YearMonth> yearMonthsFromReport = Counter4Utils.getYearMonthsFromReport(r);
+              if (yearMonthsFromReport.size() != 1) {
+                throw new NSSException("Split report size not equal to 1");
+              }
+              return ServiceEndpoint.createCounterReport(
+                  Counter4Utils.toJSON(r), reportType, provider, yearMonthsFromReport.get(0));
+            })
+        .collect(Collectors.toList());
   }
 
   @Override
-  public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
-    final String url = buildURL(report, beginDate, endDate);
+  public Future<List<CounterReport>> fetchReport(
+      String reportType, String beginDate, String endDate) {
+    final String url = buildURL(reportType, beginDate, endDate);
 
     if (url == null) {
       return Future.failedFuture("Could not create request URL due to missing parameters.");
     }
 
-    Promise<String> promise = Promise.promise();
+    Promise<List<CounterReport>> promise = Promise.promise();
     try {
       client
           .getAbs(url)
@@ -115,11 +131,17 @@ public class NSS implements ServiceEndpoint {
                     if (exceptions.isEmpty()
                         && reportResponse.getReport() != null
                         && !reportResponse.getReport().getReport().isEmpty()) {
-                      Report report2 = reportResponse.getReport().getReport().get(0);
-                      promise.complete(Counter4Utils.toJSON(report2));
+                      Report report = reportResponse.getReport().getReport().get(0);
+                      try {
+                        List<CounterReport> counterReportList =
+                            createCounterReportList(report, reportType, provider);
+                        promise.complete(counterReportList);
+                      } catch (java.lang.Exception e) {
+                        promise.fail(new InvalidReportException(e));
+                      }
                     } else {
                       promise.fail(
-                          "Report not valid: " + Counter4Utils.getErrorMessages(exceptions));
+                          new InvalidReportException(Counter4Utils.getErrorMessages(exceptions)));
                     }
                   } else {
                     promise.fail(
@@ -137,5 +159,12 @@ public class NSS implements ServiceEndpoint {
       return Future.failedFuture(e);
     }
     return promise.future();
+  }
+
+  static class NSSException extends RuntimeException {
+
+    public NSSException(String message) {
+      super(message);
+    }
   }
 }

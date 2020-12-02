@@ -1,49 +1,82 @@
 package org.olf.erm.usage.harvester;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.time.YearMonth;
-import java.time.temporal.ChronoUnit;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.Test;
 
 public class DateUtilTest {
   @Test
-  public void testValues() {
-    YearMonth current = YearMonth.now();
+  public void testGetYearMonths() {
+    List<YearMonth> result1 = DateUtil.getYearMonths("2018-01", "2019-06");
+    assertThat(result1)
+        .hasSize(18)
+        .containsExactlyElementsOf(
+            Stream.iterate(YearMonth.of(2018, 1), ym -> ym.plusMonths(1))
+                .limit(18)
+                .collect(Collectors.toList()));
 
-    List<YearMonth> result1 = DateUtil.getYearMonths("2018-01", "2080-12");
-    assertEquals(YearMonth.parse("2018-01").until(current, ChronoUnit.MONTHS), result1.size());
+    List<YearMonth> result2 = DateUtil.getYearMonths("2018-01-01", "2019-06-30");
+    List<YearMonth> result3 = DateUtil.getYearMonths("2018-01-05", "2019-06-15");
+    assertThat(result1).isEqualTo(result2).isEqualTo(result3);
 
-    List<YearMonth> result2 = DateUtil.getYearMonths("2018-01", "");
-    assertEquals(YearMonth.parse("2018-01").until(current, ChronoUnit.MONTHS), result2.size());
+    List<YearMonth> result4 = DateUtil.getYearMonths("2020-01", "2018-12");
+    assertThat(result4).isEmpty();
 
-    List<YearMonth> result3 = DateUtil.getYearMonths("2018-01", null);
-    assertEquals(YearMonth.parse("2018-01").until(current, ChronoUnit.MONTHS), result3.size());
+    List<YearMonth> result5 = DateUtil.getYearMonths("2018-01", "2018-01");
+    assertThat(result5).containsExactly(YearMonth.of(2018, 1));
+  }
 
-    List<YearMonth> result4 = DateUtil.getYearMonths(YearMonth.now().toString(), null);
-    assertTrue(result4.isEmpty());
+  @Test
+  public void testGetYearMonthFromStringWithLimit() {
+    YearMonth r1 = DateUtil.getYearMonthFromStringWithLimit("2020-01-01", YearMonth.of(2019, 12));
+    YearMonth r2 = DateUtil.getYearMonthFromStringWithLimit("2020-01-15", YearMonth.of(2019, 12));
+    YearMonth r3 = DateUtil.getYearMonthFromStringWithLimit("", YearMonth.of(2019, 12));
+    YearMonth r4 = DateUtil.getYearMonthFromStringWithLimit(null, YearMonth.of(2019, 12));
+    assertThat(r1).isEqualTo(YearMonth.of(2019, 12)).isEqualTo(r2).isEqualTo(r3).isEqualTo(r4);
 
-    List<YearMonth> result5 =
-        DateUtil.getYearMonths(YearMonth.now().plusMonths(3).toString(), "2080-12");
-    assertTrue(result5.isEmpty());
+    YearMonth r5 = DateUtil.getYearMonthFromStringWithLimit("2018-01-01", YearMonth.of(2019, 12));
+    YearMonth r6 = DateUtil.getYearMonthFromStringWithLimit("2018-01-15", YearMonth.of(2019, 12));
+    YearMonth r7 = DateUtil.getYearMonthFromStringWithLimit("2018-01-15", YearMonth.of(2018, 1));
+    assertThat(r5).isEqualTo(YearMonth.of(2018, 1)).isEqualTo(r6).isEqualTo(r7);
+  }
 
-    List<YearMonth> result6 = DateUtil.getYearMonths("2018-01", "2018-01");
-    assertEquals(1, result6.size());
-
-    List<YearMonth> result7 = DateUtil.getYearMonths("2018-01", "2018-02");
-    assertEquals(2, result7.size());
-    assertEquals("2018-01", result7.get(0).toString());
-    assertEquals("2018-02", result7.get(1).toString());
+  @Test(expected = DateTimeParseException.class)
+  public void testGetYearMonthsInvalidFormat() {
+    DateUtil.getYearMonths("01.01.2018", "31.01.2018");
   }
 
   @Test(expected = NullPointerException.class)
-  public void testStartStrNull() {
+  public void testGetYearMonthsStartStrNull() {
     DateUtil.getYearMonths(null, "2080-12");
   }
 
-  @Test(expected = NullPointerException.class)
-  public void testStartStrEmpty() {
+  @Test(expected = DateTimeParseException.class)
+  public void testGetYearMonthsStartStrEmpty() {
     DateUtil.getYearMonths("", "2080-12");
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testGetYearMonthsEndStrNull() {
+    DateUtil.getYearMonths("2020-01", null);
+  }
+
+  @Test(expected = DateTimeParseException.class)
+  public void testGetYearMonthsEndStrEmpty() {
+    DateUtil.getYearMonths("2020-01", "");
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testGetYearMonthsStartMonthIsNull() {
+    DateUtil.getYearMonths(null, YearMonth.now());
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testGetYearMonthsEndMonthIsNull() {
+    DateUtil.getYearMonths(YearMonth.now(), null);
   }
 }

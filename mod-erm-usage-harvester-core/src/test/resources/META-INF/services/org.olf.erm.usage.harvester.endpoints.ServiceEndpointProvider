@@ -1,2 +1,5 @@
 org.olf.erm.usage.harvester.endpoints.Test1Provider
 org.olf.erm.usage.harvester.endpoints.Test2Provider
+org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProvider
+org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProvider2
+org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProvider3

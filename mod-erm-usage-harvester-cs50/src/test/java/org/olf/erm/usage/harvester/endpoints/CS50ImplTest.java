@@ -5,14 +5,14 @@ import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
-import io.vertx.ext.unit.Async;
+import io.vertx.core.json.Json;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
+import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -40,7 +41,7 @@ import org.junit.runner.RunWith;
 import org.openapitools.client.model.COUNTERTitleReport;
 import org.openapitools.client.model.SUSHIErrorModel;
 import org.openapitools.client.model.SUSHIReportHeader;
-import retrofit2.adapter.rxjava2.HttpException;
+import retrofit2.HttpException;
 
 @RunWith(VertxUnitRunner.class)
 public class CS50ImplTest {
@@ -53,7 +54,7 @@ public class CS50ImplTest {
   private static final String REQUESTOR_ID = "RequestorId123";
   private static final COUNTERTitleReport emptyReport;
   private static UsageDataProvider provider;
-  private static Gson gson = new Gson();
+  private static final Gson gson = new Gson();
 
   @Rule public WireMockRule wmRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
   @Rule public WireMockRule proxyRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
@@ -92,6 +93,7 @@ public class CS50ImplTest {
                 .withRequestorId(REQUESTOR_ID))
         .withHarvestingConfig(
             new HarvestingConfig()
+                .withReportRelease(5)
                 .withSushiConfig(
                     new SushiConfig()
                         .withServiceUrl("http://localhost:" + wmRule.port() + "/sushi")
@@ -121,177 +123,163 @@ public class CS50ImplTest {
           public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {}
         });
 
-    String cr = gson.toJson(emptyReport);
-    proxyRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(200).withBody(cr)));
+    proxyRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
 
-    Async async = context.async();
     new CS50Impl(provider)
-        .fetchSingleReport(REPORT, BEGIN_DATE, END_DATE)
-        .setHandler(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              assertThat(ar.result()).isEqualTo(cr);
-              proxyRule.verify(1, getRequestedFor(urlPathEqualTo(REPORT_PATH)));
-              wmRule.verify(0, getRequestedFor(urlPathEqualTo(REPORT_PATH)));
-              async.complete();
-            });
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                v -> {
+                  proxyRule.verify(1, getRequestedFor(urlPathEqualTo(REPORT_PATH)));
+                  wmRule.verify(0, getRequestedFor(urlPathEqualTo(REPORT_PATH)));
+                }));
   }
 
   @Test
-  public void testFetchSingleReportNoHeader(TestContext context) {
+  public void testFetchReportNoHeader(TestContext context) {
     String cr = gson.toJson(new COUNTERTitleReport());
     wmRule.stubFor(
         get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(200).withBody(cr)));
 
-    Async async = context.async();
     new CS50Impl(provider)
-        .fetchSingleReport(REPORT, BEGIN_DATE, END_DATE)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              verifyApiCall();
-              async.complete();
-            });
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).hasMessageContaining("missing reportHeader");
+                  verifyApiCall();
+                }));
   }
 
   @Test
-  public void testFetchSingleReportOk(TestContext context) {
-    String cr = gson.toJson(emptyReport);
+  public void testFetchReportOk(TestContext context) throws IOException {
+    String expectedReportStr =
+        Resources.toString(Resources.getResource("SampleReport.json"), StandardCharsets.UTF_8);
     wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(200).withBody(cr)));
+        get(urlPathEqualTo(REPORT_PATH))
+            .willReturn(aResponse().withStatus(200).withBody(expectedReportStr)));
 
-    Async async = context.async();
     new CS50Impl(provider)
-        .fetchSingleReport(REPORT, BEGIN_DATE, END_DATE)
-        .setHandler(
-            ar -> {
-              assertThat(ar.succeeded()).isTrue();
-              assertThat(ar.result()).isEqualTo(cr);
-              verifyApiCall();
-              async.complete();
-            });
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertSuccess(
+                list -> {
+                  assertThat(list).hasSize(1);
+                  Report receivedReport = list.get(0).getReport();
+                  Report expectedReport =
+                      Json.decodeValue(
+                          gson.toJson(gson.fromJson(expectedReportStr, COUNTERTitleReport.class)),
+                          Report.class);
+                  assertThat(receivedReport)
+                      .usingRecursiveComparison()
+                      .ignoringCollectionOrder()
+                      .isEqualTo(expectedReport);
+                  verifyApiCall();
+                }));
   }
 
   @Test
-  public void testFetchSingleReportError(TestContext context) throws IOException {
+  public void testFetchReportError(TestContext context) throws IOException {
     String errStr = Resources.toString(Resources.getResource("error.json"), StandardCharsets.UTF_8);
     wmRule.stubFor(
         get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(400).withBody(errStr)));
 
-    Async async = context.async();
     new CS50Impl(provider)
-        .fetchSingleReport(REPORT, BEGIN_DATE, END_DATE)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause()).hasMessageContaining("api_key Invalid");
-              verifyApiCall();
-              async.complete();
-            });
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t)
+                      .isNotInstanceOf(InvalidReportException.class)
+                      .hasMessageContaining("api_key Invalid");
+                  verifyApiCall();
+                }));
   }
 
   @Test
-  public void testFetchSingleReportErrorArray(TestContext context) throws IOException {
+  public void testFetchReportErrorArray(TestContext context) throws IOException {
     String errStr =
         Resources.toString(Resources.getResource("error2.json"), StandardCharsets.UTF_8);
     wmRule.stubFor(
         get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(400).withBody(errStr)));
 
-    Async async = context.async();
     new CS50Impl(provider)
-        .fetchSingleReport(REPORT, BEGIN_DATE, END_DATE)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause()).hasMessageContaining("api_key Invalid");
-              verifyApiCall();
-              async.complete();
-            });
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).hasMessageContaining("api_key Invalid");
+                  verifyApiCall();
+                }));
   }
 
   @Test
-  public void testFetchSingleReport404(TestContext context) {
+  public void testFetchReport404(TestContext context) {
     wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
 
-    Async async = context.async();
     new CS50Impl(provider)
-        .fetchSingleReport(REPORT, BEGIN_DATE, END_DATE)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause())
-                  .isInstanceOf(HttpException.class)
-                  .hasMessageContaining("Not Found");
-              verifyApiCall();
-              async.complete();
-            });
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).isInstanceOf(HttpException.class).hasMessageContaining("Not Found");
+                  verifyApiCall();
+                }));
   }
 
   @Test
-  public void testFetchSingleReportNoService(TestContext context) {
+  public void testFetchReportNoService(TestContext context) {
     wmRule.stop();
 
-    Async async = context.async();
     new CS50Impl(provider)
-        .fetchSingleReport(REPORT, BEGIN_DATE, END_DATE)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause()).isInstanceOf(ConnectException.class);
-              async.complete();
-            });
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(t -> assertThat(t).isInstanceOf(ConnectException.class)));
   }
 
   @Test
-  public void testFetchSingleReportGarbage(TestContext context) {
+  public void testFetchReportGarbage(TestContext context) {
     wmRule.stubFor(
         get(urlPathEqualTo(REPORT_PATH))
             .willReturn(aResponse().withFault(Fault.RANDOM_DATA_THEN_CLOSE)));
 
-    Async async = context.async();
     new CS50Impl(provider)
-        .fetchSingleReport(REPORT, BEGIN_DATE, END_DATE)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause()).isInstanceOf(IOException.class);
-              verifyApiCall();
-              async.complete();
-            });
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).isInstanceOf(IOException.class);
+                  verifyApiCall();
+                }));
   }
 
   @Test
-  public void testNoSuchMethod() {
+  public void testFetchReportNoSuchMethod(TestContext context) {
     new CS50Impl(provider)
-        .fetchSingleReport("XY_99", BEGIN_DATE, END_DATE)
-        .setHandler(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause()).isInstanceOf(NoSuchMethodException.class);
-            });
+        .fetchReport("XY_99", BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> assertThat(t).isInstanceOf(NoSuchMethodException.class)));
   }
 
   @Test
-  public void testFetchSingleReportError202(TestContext context) throws IOException {
+  public void testFetchReportError202(TestContext context) throws IOException {
     String errStr = Resources.toString(Resources.getResource("error.json"), StandardCharsets.UTF_8);
     wmRule.stubFor(
         get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(202).withBody(errStr)));
 
     new CS50Impl(provider)
-        .fetchSingleReport(REPORT, BEGIN_DATE, END_DATE)
-        .setHandler(
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
             context.asyncAssertFailure(
-                t ->
-                    context.verify(
-                        v -> {
-                          assertThat(t.getMessage()).contains("api_key Invalid");
-                          verifyApiCall();
-                        })));
+                t -> {
+                  assertThat(t).hasMessageContaining("api_key Invalid");
+                  verifyApiCall();
+                }));
   }
 
   @Test
-  public void testFetchSingleReportError200WithError(TestContext context) throws IOException {
+  public void testFetchReportError200WithError(TestContext context) throws IOException {
     String errStr = Resources.toString(Resources.getResource("error.json"), StandardCharsets.UTF_8);
 
     SUSHIReportHeader header = new SUSHIReportHeader();
@@ -307,14 +295,12 @@ public class CS50ImplTest {
             .willReturn(aResponse().withStatus(200).withBody(gson.toJson(report))));
 
     new CS50Impl(provider)
-        .fetchSingleReport(REPORT, BEGIN_DATE, END_DATE)
-        .setHandler(
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
             context.asyncAssertFailure(
-                t ->
-                    context.verify(
-                        v -> {
-                          assertThat(t.getMessage()).contains("api_key Invalid");
-                          verifyApiCall();
-                        })));
+                t -> {
+                  assertThat(t).hasMessageContaining("api_key Invalid");
+                  verifyApiCall();
+                }));
   }
 }

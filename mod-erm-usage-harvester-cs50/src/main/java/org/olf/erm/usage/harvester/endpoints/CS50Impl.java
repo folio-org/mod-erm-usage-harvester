@@ -9,14 +9,19 @@ import io.vertx.core.Promise;
 import java.lang.reflect.Method;
 import java.net.Proxy;
 import java.net.URI;
+import java.time.YearMonth;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter50.Counter5Utils;
+import org.olf.erm.usage.counter50.Counter5Utils.Counter5UtilsException;
 import org.openapitools.client.ApiClient;
 import org.openapitools.client.model.SUSHIErrorModel;
 import org.openapitools.client.model.SUSHIReportHeader;
@@ -26,15 +31,10 @@ import retrofit2.HttpException;
 
 public class CS50Impl implements ServiceEndpoint {
 
-  private UsageDataProvider provider;
-  private DefaultApi client;
-  private static Gson gson = new Gson();
+  private final UsageDataProvider provider;
+  private final DefaultApi client;
+  private static final Gson gson = new Gson();
   private static final Logger LOG = LoggerFactory.getLogger(CS50Impl.class);
-
-  @Override
-  public boolean isValidReport(String report) {
-    return false;
-  }
 
   CS50Impl(UsageDataProvider provider) {
     Objects.requireNonNull(provider.getSushiCredentials());
@@ -104,8 +104,26 @@ public class CS50Impl implements ServiceEndpoint {
     return e;
   }
 
+  private List<CounterReport> createCounterReportList(
+      Object report, String reportType, UsageDataProvider provider) throws Counter5UtilsException {
+
+    List<Object> splitReports = Counter5Utils.split(report);
+    return splitReports.stream()
+        .map(
+            r -> {
+              List<YearMonth> yearMonthsFromReport = Counter5Utils.getYearMonthFromReport(r);
+              if (yearMonthsFromReport.size() != 1) {
+                throw new CS50Exception("Split report size not equal to 1");
+              }
+
+              return ServiceEndpoint.createCounterReport(
+                  gson.toJson(r), reportType, provider, yearMonthsFromReport.get(0));
+            })
+        .collect(Collectors.toList());
+  }
+
   @Override
-  public Future<String> fetchSingleReport(String report, String beginDate, String endDate) {
+  public Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate) {
     String reportID = report.replace("_", "").toUpperCase();
 
     Method method;
@@ -123,21 +141,24 @@ public class CS50Impl implements ServiceEndpoint {
     String customerId = provider.getSushiCredentials().getCustomerId();
     String platform = Objects.toString(provider.getSushiCredentials().getPlatform(), "");
 
-    Promise<String> promise = Promise.promise();
+    Promise<List<CounterReport>> promise = Promise.promise();
     try {
       ((Observable<?>) method.invoke(client, customerId, beginDate, endDate, platform))
           .subscribeOn(Schedulers.io())
           .subscribe(
               r -> {
                 String content = gson.toJson(r);
-                SUSHIReportHeader reportHeader = Counter5Utils.getReportHeader(content);
+                SUSHIReportHeader reportHeader = Counter5Utils.getSushiReportHeader(content);
                 if (reportHeader == null) {
                   promise.fail("Unkown Error - 200 Response is missing reportHeader");
                 } else if (reportHeader.getExceptions() != null
                     && !reportHeader.getExceptions().isEmpty()) {
-                  promise.fail(gson.toJson(reportHeader.getExceptions()));
+                  promise.fail(
+                      new InvalidReportException(gson.toJson(reportHeader.getExceptions())));
                 } else {
-                  promise.complete(content);
+                  List<CounterReport> counterReportList =
+                      createCounterReportList(r, report, provider);
+                  promise.complete(counterReportList);
                 }
               },
               e -> promise.fail(getSushiError(e)));
@@ -146,5 +167,12 @@ public class CS50Impl implements ServiceEndpoint {
     }
 
     return promise.future();
+  }
+
+  static class CS50Exception extends RuntimeException {
+
+    public CS50Exception(String message) {
+      super(message);
+    }
   }
 }

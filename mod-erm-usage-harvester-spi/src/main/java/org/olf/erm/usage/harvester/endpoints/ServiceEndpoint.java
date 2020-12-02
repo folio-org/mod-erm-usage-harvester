@@ -3,23 +3,60 @@ package org.olf.erm.usage.harvester.endpoints;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import io.vertx.core.Future;
+import io.vertx.core.json.Json;
 import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.URI;
+import java.time.Instant;
+import java.time.YearMonth;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.UUID;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
+import org.folio.rest.jaxrs.model.CounterReport;
+import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public interface ServiceEndpoint {
 
-  boolean isValidReport(String report);
+  /**
+   * Fetches a report from a provider and returns a list containing a {@link CounterReport} for each
+   * month in the requested range.
+   *
+   * <p>The returned Future should fail with {@link InvalidReportException} if the fetched report
+   * contains any COUNTER exceptions.
+   *
+   * <p>Use {@link ServiceEndpoint#createCounterReport(String, String, UsageDataProvider,
+   * YearMonth)} for creating a {@link CounterReport}
+   *
+   * @param report requested report type
+   * @param beginDate start date (e.g. "2018-01-01")
+   * @param endDate end date (e.g. "2018-12-31")
+   * @return List of {@link CounterReport}
+   */
+  Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate);
 
-  Future<String> fetchSingleReport(String report, String beginDate, String endDate);
+  static CounterReport createCounterReport(
+      String reportData, String reportName, UsageDataProvider provider, YearMonth yearMonth) {
+    CounterReport cr = new CounterReport();
+    cr.setId(UUID.randomUUID().toString());
+    cr.setYearMonth(yearMonth.toString());
+    cr.setReportName(reportName);
+    cr.setRelease(provider.getHarvestingConfig().getReportRelease().toString());
+    cr.setProviderId(provider.getId());
+    cr.setDownloadTime(Date.from(Instant.now()));
+    if (reportData != null) {
+      cr.setReport(Json.decodeValue(reportData, Report.class));
+    } else {
+      cr.setFailedAttempts(1);
+    }
+    return cr;
+  }
 
   static List<ServiceEndpointProvider> getAvailableProviders() {
     ServiceLoader<ServiceEndpointProvider> loader =
@@ -30,7 +67,7 @@ public interface ServiceEndpoint {
   static ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
     Objects.requireNonNull(provider);
 
-    final Logger LOG = LoggerFactory.getLogger(ServiceEndpoint.class);
+    final Logger log = LoggerFactory.getLogger(ServiceEndpoint.class);
 
     String serviceType;
     if (Objects.isNull(aggregator)) {
@@ -45,7 +82,7 @@ public interface ServiceEndpoint {
     }
 
     if (Strings.isNullOrEmpty(serviceType)) {
-      LOG.error("ServiceType is null or empty for providerId {}", provider.getId());
+      log.error("ServiceType is null or empty for providerId {}", provider.getId());
       return null;
     }
 
@@ -57,7 +94,7 @@ public interface ServiceEndpoint {
       }
     }
 
-    LOG.error("No implementation found for serviceType '{}'", serviceType);
+    log.error("No implementation found for serviceType '{}'", serviceType);
     return null;
   }
 
