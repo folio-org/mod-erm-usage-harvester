@@ -80,7 +80,7 @@ public class HarvestTenantJobIT {
     vertxContext.config().put("okapiUrl", "http://localhost:" + wireMockRule.port());
 
     PeriodicConfigPgUtil.upsert(vertxContext, TENANT, config)
-        .setHandler(context.asyncAssertSuccess());
+        .onComplete(context.asyncAssertSuccess());
   }
 
   @Before
@@ -156,7 +156,7 @@ public class HarvestTenantJobIT {
                           wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH)));
                         });
                     PeriodicConfigPgUtil.get(vertxContext, TENANT)
-                        .setHandler(
+                        .onComplete(
                             ar2 -> {
                               if (ar2.succeeded()) {
                                 context.verify(
@@ -189,7 +189,7 @@ public class HarvestTenantJobIT {
                     context.verify(
                         v -> wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH))));
                     PeriodicConfigPgUtil.get(vertxContext, TENANT)
-                        .setHandler(
+                        .onComplete(
                             ar2 -> {
                               if (ar2.succeeded()) {
                                 context.verify(
@@ -219,7 +219,7 @@ public class HarvestTenantJobIT {
     @Override
     public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
       Future<String> result = (Future<String>) context.getResult();
-      result.setHandler(handler);
+      result.onComplete(handler);
     }
 
     @Override

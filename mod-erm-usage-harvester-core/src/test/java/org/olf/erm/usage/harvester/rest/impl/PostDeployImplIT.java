@@ -76,7 +76,7 @@ public class PostDeployImplIT {
 
     PeriodicConfigPgUtil.upsert(vertx.getOrCreateContext(), TENANT, config)
         .compose(s -> PeriodicConfigPgUtil.upsert(vertx.getOrCreateContext(), TENANT2, config))
-        .setHandler(
+        .onComplete(
             ar -> {
               if (ar.succeeded()) {
                 async.complete();
