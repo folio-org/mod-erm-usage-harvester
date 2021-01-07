@@ -73,7 +73,7 @@ public class OkapiClientTest {
     Async async = context.async();
     okapiClient
         .getTenants()
-        .setHandler(
+        .onComplete(
             ar -> {
               context.assertTrue(ar.succeeded());
               context.assertEquals(2, ar.result().size());
@@ -89,7 +89,7 @@ public class OkapiClientTest {
     Async async = context.async();
     okapiClient
         .getTenants()
-        .setHandler(
+        .onComplete(
             ar -> {
               context.assertTrue(ar.failed());
               context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
@@ -104,7 +104,7 @@ public class OkapiClientTest {
     Async async = context.async();
     okapiClient
         .getTenants()
-        .setHandler(
+        .onComplete(
             ar -> {
               context.assertTrue(ar.succeeded());
               context.assertTrue(ar.result().isEmpty());
@@ -119,7 +119,7 @@ public class OkapiClientTest {
     Async async = context.async();
     okapiClient
         .getTenants()
-        .setHandler(
+        .onComplete(
             ar -> {
               context.assertTrue(ar.failed());
               context.assertTrue(ar.cause().getMessage().contains("404"));
@@ -134,7 +134,7 @@ public class OkapiClientTest {
     Async async = context.async();
     okapiClient
         .getTenants()
-        .setHandler(
+        .onComplete(
             ar -> {
               context.assertTrue(ar.failed());
               LOG.error(ar.cause().getMessage(), ar.cause());
@@ -151,7 +151,7 @@ public class OkapiClientTest {
     Async async = context.async();
     okapiClient
         .getTenants()
-        .setHandler(
+        .onComplete(
             ar -> {
               context.assertTrue(ar.failed());
               async.complete();
@@ -167,7 +167,7 @@ public class OkapiClientTest {
     Async async = context.async();
     okapiClient
         .hasHarvesterInterface(tenantId)
-        .setHandler(
+        .onComplete(
             ar -> {
               assertThat(ar.succeeded()).isFalse();
               assertThat(ar.cause()).hasMessageContaining("not found");
@@ -184,7 +184,7 @@ public class OkapiClientTest {
     Async async = context.async();
     okapiClient
         .hasHarvesterInterface(tenantId)
-        .setHandler(
+        .onComplete(
             ar -> {
               context.assertTrue(ar.failed());
               context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
@@ -201,7 +201,7 @@ public class OkapiClientTest {
     Async async = context.async();
     okapiClient
         .hasHarvesterInterface(tenantId)
-        .setHandler(
+        .onComplete(
             ar -> {
               assertThat(ar.failed()).isTrue();
               assertThat(ar.cause())
@@ -218,7 +218,7 @@ public class OkapiClientTest {
     Async async = context.async();
     okapiClient
         .hasHarvesterInterface(tenantId)
-        .setHandler(
+        .onComplete(
             ar -> {
               assertThat(ar.failed()).isTrue();
               assertThat(ar.cause()).hasMessageContaining("failed retrieving");
@@ -241,7 +241,7 @@ public class OkapiClientTest {
     Async async = context.async();
     okapiClient
         .hasHarvesterInterface(tenantId)
-        .setHandler(
+        .onComplete(
             ar -> {
               context.assertTrue(ar.succeeded());
               async.complete();

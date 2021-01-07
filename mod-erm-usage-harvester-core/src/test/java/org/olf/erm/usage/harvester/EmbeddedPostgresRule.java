@@ -34,10 +34,10 @@ public class EmbeddedPostgresRule implements TestRule {
     log.info("Creating schema for tenant: {}", tenant);
     Promise<List<String>> createSchema = Promise.promise();
     try {
-      String sqlFile = new TenantAPI().sqlFile(tenant, false, null, null);
+      String[] sqlFile = new TenantAPI().sqlFile(tenant, false, null, null);
       PostgresClient.getInstance(vertx)
           .runSQLFile(
-              sqlFile,
+              String.join("\n", sqlFile),
               true,
               ar -> {
                 if (ar.succeeded()) {
