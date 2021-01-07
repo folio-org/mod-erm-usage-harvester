@@ -22,6 +22,7 @@ import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.reactivex.SingleHelper;
 import io.vertx.reactivex.core.AbstractVerticle;
 import io.vertx.reactivex.core.buffer.Buffer;
 import io.vertx.reactivex.ext.web.client.HttpResponse;
@@ -369,7 +370,7 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   private <T> Single<T> wrapFuture(Future<T> future) {
-    return io.vertx.reactivex.core.Future.<T>newInstance(future).rxOnComplete();
+    return SingleHelper.toSingle(future::onComplete);
   }
 
   private Observable<List<CounterReport>> processItems(
@@ -389,12 +390,13 @@ public class WorkerVerticle extends AbstractVerticle {
             fetchItem ->
                 Observable.defer(
                         () ->
-                            io.vertx.reactivex.core.Future.<List<CounterReport>>newInstance(
-                                    sep.fetchReport(
-                                        fetchItem.getReportType(),
-                                        fetchItem.getBegin(),
-                                        fetchItem.getEnd()))
-                                .rxOnComplete()
+                            SingleHelper.<List<CounterReport>>toSingle(
+                                    h ->
+                                        sep.fetchReport(
+                                                fetchItem.getReportType(),
+                                                fetchItem.getBegin(),
+                                                fetchItem.getEnd())
+                                            .onComplete(h))
                                 .toObservable())
                     .subscribeOn(scheduler)
                     .retry(
