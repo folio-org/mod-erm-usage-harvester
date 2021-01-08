@@ -105,7 +105,7 @@ Will trigger harvesting every last day of month at 8am UTC starting on `2019-01-
 
 ### Issue tracker
 
-See project [MODERM](https://issues.folio.org/browse/MODERM)
+See project [MODEUSHARV](https://issues.folio.org/browse/MODEUSHARV)
 at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker).
 
 ### Other documentation
