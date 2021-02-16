@@ -23,7 +23,6 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter50.Counter5Utils;
 import org.olf.erm.usage.counter50.Counter5Utils.Counter5UtilsException;
 import org.openapitools.client.ApiClient;
-import org.openapitools.client.model.SUSHIErrorModel;
 import org.openapitools.client.model.SUSHIReportHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,15 +81,6 @@ public class CS50Impl implements ServiceEndpoint {
     client = apiClient.createService(DefaultApi.class);
   }
 
-  private String toJsonOrString(String s) {
-    try {
-      SUSHIErrorModel sushiErrorModel = gson.fromJson(s, SUSHIErrorModel.class);
-      return gson.toJson(sushiErrorModel);
-    } catch (Exception e) {
-      return s;
-    }
-  }
-
   private Throwable getSushiError(Throwable e) {
     if (e instanceof HttpException) {
       HttpException ex = (HttpException) e;
@@ -98,7 +88,7 @@ public class CS50Impl implements ServiceEndpoint {
         ResponseBody responseBody = ex.response().errorBody();
         String errorBody = Objects.requireNonNull(responseBody).string();
         if (!Strings.isNullOrEmpty(errorBody)) {
-          return new Throwable(toJsonOrString(errorBody), ex);
+          return new Throwable(errorBody, ex);
         }
       } catch (Exception exc) {
         return new Throwable("Error parsing error response: " + exc.getMessage(), ex);
@@ -142,11 +132,12 @@ public class CS50Impl implements ServiceEndpoint {
     }
 
     String customerId = provider.getSushiCredentials().getCustomerId();
-    String platform = Objects.toString(provider.getSushiCredentials().getPlatform(), "");
+    String platform = provider.getSushiCredentials().getPlatform();
 
     Promise<List<CounterReport>> promise = Promise.promise();
     try {
       ((Observable<?>) method.invoke(client, customerId, beginDate, endDate, platform))
+          .singleOrError()
           .subscribeOn(Schedulers.io())
           .subscribe(
               r -> {
