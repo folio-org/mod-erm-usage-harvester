@@ -132,7 +132,7 @@ public class CS50Impl implements ServiceEndpoint {
     }
 
     String customerId = provider.getSushiCredentials().getCustomerId();
-    String platform = Objects.toString(provider.getSushiCredentials().getPlatform(), "");
+    String platform = provider.getSushiCredentials().getPlatform();
 
     Promise<List<CounterReport>> promise = Promise.promise();
     try {
