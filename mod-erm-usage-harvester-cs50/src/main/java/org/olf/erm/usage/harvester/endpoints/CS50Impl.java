@@ -137,6 +137,7 @@ public class CS50Impl implements ServiceEndpoint {
     Promise<List<CounterReport>> promise = Promise.promise();
     try {
       ((Observable<?>) method.invoke(client, customerId, beginDate, endDate, platform))
+          .singleOrError()
           .subscribeOn(Schedulers.io())
           .subscribe(
               r -> {
