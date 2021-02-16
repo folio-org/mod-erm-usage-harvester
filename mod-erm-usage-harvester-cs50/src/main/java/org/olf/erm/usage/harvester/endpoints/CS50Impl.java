@@ -49,8 +49,11 @@ public class CS50Impl implements ServiceEndpoint {
     ApiClient apiClient = new ApiClient();
     String apiKey = provider.getSushiCredentials().getApiKey();
     String reqId = provider.getSushiCredentials().getRequestorId();
-    if (!Strings.isNullOrEmpty(apiKey)) apiClient = new ApiClient("api_key", apiKey);
-    if (!Strings.isNullOrEmpty(reqId)) apiClient = new ApiClient("requestor_id", reqId);
+    if (!Strings.isNullOrEmpty(apiKey)) {
+      apiClient = new ApiClient("api_key", apiKey);
+    } else if (!Strings.isNullOrEmpty(reqId)) {
+      apiClient = new ApiClient("requestor_id", reqId);
+    }
 
     apiClient.getAdapterBuilder().baseUrl(baseUrl);
     apiClient.getOkBuilder().readTimeout(60, TimeUnit.SECONDS);
