@@ -29,6 +29,12 @@
       <groupId>org.olf</groupId>
       <artifactId>mod-erm-usage-harvester-cs50</artifactId>
       <version>${project.parent.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>rxjava</artifactId>
+          <groupId>io.reactivex.rxjava2</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
