@@ -136,11 +136,11 @@
   "requires": [
     {
       "id": "usage-data-providers",
-      "version": "2.5"
+      "version": "2.5 2.6"
     },
     {
       "id": "aggregator-settings",
-      "version": "1.1"
+      "version": "1.1 1.2"
     },
     {
       "id": "counter-reports",
