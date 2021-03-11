@@ -479,7 +479,11 @@ public class WorkerVerticle extends AbstractVerticle {
         () -> createTenantMsg(token.getTenantId(), "processing provider: {}", provider.getLabel()));
 
     wrapFuture(updateUDPLastHarvestingDate(provider))
-        .doOnError(t -> LOG.error(t.getMessage()))
+        .doOnError(
+            t ->
+                logError(
+                    createTenantProviderMsg(
+                        token.getTenantId(), provider.getLabel(), "{}", t.getMessage())))
         .ignoreElement()
         .onErrorComplete()
         .subscribe();
@@ -512,12 +516,26 @@ public class WorkerVerticle extends AbstractVerticle {
             })
         .flatMapObservable(listObservable -> listObservable)
         .flatMap(Observable::fromIterable)
-        .doOnNext(cr -> LOG.info("Received: {}", counterReportToString(cr)))
+        .doOnNext(
+            cr ->
+                logInfo(
+                    createTenantProviderMsg(
+                        token.getTenantId(),
+                        provider.getLabel(),
+                        "Received: {}",
+                        counterReportToString(cr))))
         .flatMapCompletable(
             cr ->
                 wrapFuture(postReport(cr))
                     .ignoreElement()
-                    .doOnError(t -> LOG.error(t.getMessage()))
+                    .doOnError(
+                        t ->
+                            logError(
+                                createTenantProviderMsg(
+                                    token.getTenantId(),
+                                    provider.getLabel(),
+                                    "{}",
+                                    t.getMessage())))
                     .onErrorComplete());
   }
 
