@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester;
 
+import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
 import static org.olf.erm.usage.harvester.Messages.createErrMsgDecode;
 import static org.olf.erm.usage.harvester.Messages.createMsgStatus;
 import static org.olf.erm.usage.harvester.Messages.createProviderMsg;
@@ -424,7 +425,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                   token.getTenantId(),
                                   provider.getLabel(),
                                   "received {}",
-                                  t.getMessage()));
+                                  getMessageOrToString(t)));
                           if (!(t instanceof InvalidReportException)) {
                             // handle generic failues
                             List<CounterReport> counterReportList =
@@ -434,7 +435,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                         ym ->
                                             createCounterReport(
                                                     null, fetchItem.getReportType(), provider, ym)
-                                                .withFailedReason(t.getMessage()))
+                                                .withFailedReason(getMessageOrToString(t)))
                                     .collect(Collectors.toList());
                             return Observable.just(counterReportList);
                           }
@@ -454,7 +455,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                             fetchItem.getReportType(),
                                             provider,
                                             DateUtil.getYearMonthFromString(fetchItem.getBegin()))
-                                        .withFailedReason(t.getMessage())));
+                                        .withFailedReason(getMessageOrToString(t))));
                           } else {
                             // handle failes multiple months
                             logInfo(
