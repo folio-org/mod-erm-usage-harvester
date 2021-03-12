@@ -665,7 +665,7 @@ public class WorkerVerticle extends AbstractVerticle {
               if (resp.statusCode() == 200) {
                 return resp.bodyAsJson(UsageDataProvider.class);
               } else {
-                throw new Exception(
+                throw new WorkerVerticleException(
                     createProviderMsg(
                         providerId,
                         createMsgStatus(resp.statusCode(), resp.statusMessage(), providerPath)));
@@ -676,7 +676,7 @@ public class WorkerVerticle extends AbstractVerticle {
               if (udp.getHarvestingConfig().getHarvestingStatus().equals(HarvestingStatus.ACTIVE)) {
                 return udp;
               } else {
-                throw new Exception(
+                throw new WorkerVerticleException(
                     createProviderMsg(udp.getLabel(), "HarvestingStatus not ACTIVE"));
               }
             })
@@ -800,5 +800,12 @@ public class WorkerVerticle extends AbstractVerticle {
               }
             });
     return promise.future();
+  }
+
+  public static class WorkerVerticleException extends Exception {
+
+    public WorkerVerticleException(String message) {
+      super(message);
+    }
   }
 }
