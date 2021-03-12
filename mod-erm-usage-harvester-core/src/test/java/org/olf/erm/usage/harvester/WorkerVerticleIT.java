@@ -76,6 +76,11 @@ public class WorkerVerticleIT {
 
   private static final Vertx vertx = Vertx.vertx();
   private static final List<String> tenants = List.of("tenanta", "tenantb");
+
+  @ClassRule
+  public static EmbeddedPostgresRule embeddedPostgresRule =
+      new EmbeddedPostgresRule(vertx, tenants.toArray(String[]::new));
+
   private final JsonArray tenantsJsonArray =
       tenants.stream()
           .map(s -> new JsonObject().put("id", s))
@@ -103,10 +108,6 @@ public class WorkerVerticleIT {
   public WireMockRule serviceProviderBRule =
       new WireMockRule(
           wireMockConfig().extensions(new ServiceProviderResponseTransformer()).dynamicPort());
-
-  @ClassRule
-  public static EmbeddedPostgresRule embeddedPostgresRule =
-      new EmbeddedPostgresRule(vertx, tenants.toArray(String[]::new));
 
   private String okapiUrl;
 
@@ -604,6 +605,49 @@ public class WorkerVerticleIT {
         });
 
     async.await(10000);
+  }
+
+  @Test
+  public void testFailedReasonIsExceptionToStringIfGetMessageIsNull(TestContext context) {
+    tenantUDPMap
+        .get("tenanta")
+        .forEach(
+            udp -> {
+              HarvestingConfig harvestingConfig = udp.getHarvestingConfig();
+              harvestingConfig.getSushiConfig().setServiceType("wvitpfail");
+              harvestingConfig
+                  .withRequestedReports(List.of("TR"))
+                  .withReportRelease(5)
+                  .withHarvestingStart("2021-01")
+                  .withHarvestingEnd("2021-01");
+            });
+
+    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
+    given()
+        .headers(XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+        .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
+
+    Async async = context.async();
+    vertx.setPeriodic(
+        1000,
+        id -> {
+          if (vertx.deploymentIDs().size() <= 1) {
+            context.verify(
+                v ->
+                    baseRule.verify(
+                        1,
+                        postRequestedFor(urlEqualTo(reportsPath))
+                            .withRequestBody(matchingJsonPath("$.report", absent()))
+                            .withRequestBody(matchingJsonPath("$.yearMonth", equalTo("2021-01")))
+                            .withRequestBody(
+                                matchingJsonPath(
+                                    "$.failedReason", equalTo(new Exception().toString())))));
+            vertx.cancelTimer(id);
+            async.complete();
+          }
+        });
   }
 
   static class ServiceProviderResponseTransformer extends ResponseDefinitionTransformer {
