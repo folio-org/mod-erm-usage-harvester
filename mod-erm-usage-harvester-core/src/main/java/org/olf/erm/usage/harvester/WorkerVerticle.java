@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester;
 
+import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
 import static org.olf.erm.usage.harvester.Messages.createErrMsgDecode;
 import static org.olf.erm.usage.harvester.Messages.createMsgStatus;
 import static org.olf.erm.usage.harvester.Messages.createProviderMsg;
@@ -424,7 +425,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                   token.getTenantId(),
                                   provider.getLabel(),
                                   "received {}",
-                                  t.getMessage()));
+                                  getMessageOrToString(t)));
                           if (!(t instanceof InvalidReportException)) {
                             // handle generic failues
                             List<CounterReport> counterReportList =
@@ -434,7 +435,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                         ym ->
                                             createCounterReport(
                                                     null, fetchItem.getReportType(), provider, ym)
-                                                .withFailedReason(t.getMessage()))
+                                                .withFailedReason(getMessageOrToString(t)))
                                     .collect(Collectors.toList());
                             return Observable.just(counterReportList);
                           }
@@ -454,7 +455,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                             fetchItem.getReportType(),
                                             provider,
                                             DateUtil.getYearMonthFromString(fetchItem.getBegin()))
-                                        .withFailedReason(t.getMessage())));
+                                        .withFailedReason(getMessageOrToString(t))));
                           } else {
                             // handle failes multiple months
                             logInfo(
@@ -478,7 +479,11 @@ public class WorkerVerticle extends AbstractVerticle {
         () -> createTenantMsg(token.getTenantId(), "processing provider: {}", provider.getLabel()));
 
     wrapFuture(updateUDPLastHarvestingDate(provider))
-        .doOnError(t -> LOG.error(t.getMessage()))
+        .doOnError(
+            t ->
+                logError(
+                    createTenantProviderMsg(
+                        token.getTenantId(), provider.getLabel(), "{}", t.getMessage())))
         .ignoreElement()
         .onErrorComplete()
         .subscribe();
@@ -511,12 +516,26 @@ public class WorkerVerticle extends AbstractVerticle {
             })
         .flatMapObservable(listObservable -> listObservable)
         .flatMap(Observable::fromIterable)
-        .doOnNext(cr -> LOG.info("Received: {}", counterReportToString(cr)))
+        .doOnNext(
+            cr ->
+                logInfo(
+                    createTenantProviderMsg(
+                        token.getTenantId(),
+                        provider.getLabel(),
+                        "Received: {}",
+                        counterReportToString(cr))))
         .flatMapCompletable(
             cr ->
                 wrapFuture(postReport(cr))
                     .ignoreElement()
-                    .doOnError(t -> LOG.error(t.getMessage()))
+                    .doOnError(
+                        t ->
+                            logError(
+                                createTenantProviderMsg(
+                                    token.getTenantId(),
+                                    provider.getLabel(),
+                                    "{}",
+                                    t.getMessage())))
                     .onErrorComplete());
   }
 
@@ -646,7 +665,7 @@ public class WorkerVerticle extends AbstractVerticle {
               if (resp.statusCode() == 200) {
                 return resp.bodyAsJson(UsageDataProvider.class);
               } else {
-                throw new Exception(
+                throw new WorkerVerticleException(
                     createProviderMsg(
                         providerId,
                         createMsgStatus(resp.statusCode(), resp.statusMessage(), providerPath)));
@@ -657,7 +676,7 @@ public class WorkerVerticle extends AbstractVerticle {
               if (udp.getHarvestingConfig().getHarvestingStatus().equals(HarvestingStatus.ACTIVE)) {
                 return udp;
               } else {
-                throw new Exception(
+                throw new WorkerVerticleException(
                     createProviderMsg(udp.getLabel(), "HarvestingStatus not ACTIVE"));
               }
             })
@@ -781,5 +800,12 @@ public class WorkerVerticle extends AbstractVerticle {
               }
             });
     return promise.future();
+  }
+
+  public static class WorkerVerticleException extends Exception {
+
+    public WorkerVerticleException(String message) {
+      super(message);
+    }
   }
 }
