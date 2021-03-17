@@ -1,3 +1,9 @@
+# 3.0.0 (2021-03-17)
+* Use ApiKey when connecting to Counter5 provider (MODEUSHARV-24)
+* Increase-container-memory (MODEUSHARV-21)
+* Upgrade to RMB 32 (MODEUSHARV-18)
+* Add support for harvesting multiple months in a single request (MODEUSHARV-12)
+
 # 2.0.2 (2020-11-04)
 * Upgrade to RMB 31.1.5 and Vert.x 3.9.4 (MODEUSHARV-16)
 
