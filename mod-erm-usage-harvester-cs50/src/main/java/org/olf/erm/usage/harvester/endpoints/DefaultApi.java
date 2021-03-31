@@ -28,7 +28,7 @@ public interface DefaultApi {
       @Query("platform") String platform,
       @Query("search") String search);
 
-  @GET("reports/dr")
+  @GET("reports/dr?attributes_to_show=data_type|access_method")
   Observable<COUNTERDatabaseReport> getReportsDR(
       @Query("customer_id") String customerId,
       @Query("begin_date") String beginDate,
@@ -49,7 +49,13 @@ public interface DefaultApi {
       @Query("end_date") String endDate,
       @Query("platform") String platform);
 
-  @GET("reports/ir")
+  // TODO:
+  // there are more optionals defined
+  // https://www.projectcounter.org/code-of-practice-five-sections/4-1-usage-reports/
+  // including parent_* ones return invalid
+  @GET(
+      "reports/ir?attributes_to_show=author|publication_date|article_version|"
+          + "data_type|yop|access_type|access_method")
   Observable<COUNTERItemReport> getReportsIR(
       @Query("customer_id") String customerId,
       @Query("begin_date") String beginDate,
@@ -70,7 +76,7 @@ public interface DefaultApi {
       @Query("end_date") String endDate,
       @Query("platform") String platform);
 
-  @GET("reports/pr")
+  @GET("reports/pr?attributes_to_show=data_type|access_method")
   Observable<COUNTERPlatformReport> getReportsPR(
       @Query("customer_id") String customerId,
       @Query("begin_date") String beginDate,
@@ -84,12 +90,13 @@ public interface DefaultApi {
       @Query("end_date") String endDate,
       @Query("platform") String platform);
 
-  @GET("reports/tr")
+  @GET("reports/tr?attributes_to_show=data_type|section_type|yop|access_type|access_method")
   Observable<COUNTERTitleReport> getReportsTR(
       @Query("customer_id") String customerId,
       @Query("begin_date") String beginDate,
       @Query("end_date") String endDate,
       @Query("platform") String platform);
+  // @Query("data_type") String dataType);
 
   @GET("reports/tr_b1")
   Observable<COUNTERTitleReport> getReportsTRB1(
