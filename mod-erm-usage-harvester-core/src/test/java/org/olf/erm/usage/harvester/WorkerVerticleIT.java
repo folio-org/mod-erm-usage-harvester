@@ -562,6 +562,59 @@ public class WorkerVerticleIT {
   }
 
   @Test
+  public void testServiceProviderFailsInitialization(TestContext context) {
+    Async async = context.async();
+
+    UsageDataProvider udp = tenantUDPMap.get("tenanta").get(0);
+    HarvestingConfig harvestingConfig = udp.getHarvestingConfig();
+    harvestingConfig.getSushiConfig().setServiceType("wvitpfailinit");
+    harvestingConfig
+        .withRequestedReports(List.of("TR"))
+        .withReportRelease(5)
+        .withHarvestingStart("2021-01")
+        .withHarvestingEnd("2021-03");
+
+    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
+    ValidatableResponse then =
+        given()
+            .headers(
+                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .get(okapiUrl + "/erm-usage-harvester/start/" + udp.getId())
+            .then();
+    then.statusCode(200);
+
+    vertx.setPeriodic(
+        1000,
+        id -> {
+          if (vertx.deploymentIDs().size() <= 1) {
+            context.verify(
+                v -> {
+                  serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
+                  serviceProviderBRule.verify(0, getRequestedFor(urlPathEqualTo("/")));
+                  baseRule.verify(
+                      3,
+                      postRequestedFor(urlEqualTo(reportsPath))
+                          .withRequestBody(
+                              matchingJsonPath(
+                                  "$.failedReason",
+                                  equalTo(
+                                      "Failed getting ServiceEndpoint: "
+                                          + "java.lang.RuntimeException: Initialization error"))));
+                  baseRule.verify(
+                      1,
+                      postRequestedFor(urlEqualTo(reportsPath))
+                          .withRequestBody(matchingJsonPath("$.yearMonth", equalTo("2021-03"))));
+                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
+                });
+            vertx.cancelTimer(id);
+            async.complete();
+          }
+        });
+
+    async.await(10000);
+  }
+
+  @Test
   public void testNumberOfRequestsMadeForProvider(TestContext context) {
     Async async = context.async();
 
