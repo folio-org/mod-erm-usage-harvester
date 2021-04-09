@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester;
 
+import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
 import static org.olf.erm.usage.harvester.Messages.createErrMsgDecode;
 import static org.olf.erm.usage.harvester.Messages.createMsgStatus;
@@ -31,6 +32,7 @@ import io.vertx.reactivex.ext.web.client.WebClient;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -323,7 +325,7 @@ public class WorkerVerticle extends AbstractVerticle {
     // TODO: check for date Strings to not be empty
     // TODO: check for nulls
     YearMonth startMonth =
-        DateUtil.getYearMonthFromString(provider.getHarvestingConfig().getHarvestingStart());
+        getYearMonthFromString(provider.getHarvestingConfig().getHarvestingStart());
     YearMonth endMonth =
         DateUtil.getYearMonthFromStringWithLimit(
             provider.getHarvestingConfig().getHarvestingEnd(), YearMonth.now().minusMonths(1));
@@ -454,7 +456,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                             null,
                                             fetchItem.getReportType(),
                                             provider,
-                                            DateUtil.getYearMonthFromString(fetchItem.getBegin()))
+                                            getYearMonthFromString(fetchItem.getBegin()))
                                         .withFailedReason(getMessageOrToString(t))));
                           } else {
                             // handle failes multiple months
@@ -472,6 +474,23 @@ public class WorkerVerticle extends AbstractVerticle {
 
   private String counterReportToString(CounterReport cr) {
     return cr.getReportName() + " " + cr.getYearMonth();
+  }
+
+  private List<CounterReport> createFailedCounterReports(
+      UsageDataProvider provider, String failedReason, List<FetchItem> list) {
+    List<FetchItem> expandedList =
+        list.stream()
+            .map(FetchListUtil::expand)
+            .flatMap(Collection::stream)
+            .distinct()
+            .collect(Collectors.toList());
+    return expandedList.stream()
+        .map(
+            fi ->
+                createCounterReport(
+                        null, fi.getReportType(), provider, getYearMonthFromString(fi.getBegin()))
+                    .withFailedReason(failedReason))
+        .collect(Collectors.toList());
   }
 
   public Completable fetchAndPostReportsRx(UsageDataProvider provider) {
@@ -506,14 +525,27 @@ public class WorkerVerticle extends AbstractVerticle {
             .map(FetchListUtil::collapse);
 
     return sepSingle
-        .zipWith(
-            fetchListSingle,
-            (s, l) -> {
+        .flatMap(
+            sep -> {
               ThreadPoolExecutor threadPoolExecutor =
                   new ThreadPoolExecutor(4, 4, 1, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
-              return processItems(
-                  provider, s, l, Schedulers.from(threadPoolExecutor), threadPoolExecutor);
+              return fetchListSingle.map(
+                  list ->
+                      processItems(
+                          provider,
+                          sep,
+                          list,
+                          Schedulers.from(threadPoolExecutor),
+                          threadPoolExecutor));
             })
+        .onErrorReturn(
+            t ->
+                fetchListSingle
+                    .map(
+                        list ->
+                            createFailedCounterReports(
+                                provider, "Failed getting ServiceEndpoint: " + t.toString(), list))
+                    .toObservable())
         .flatMapObservable(listObservable -> listObservable)
         .flatMap(Observable::fromIterable)
         .doOnNext(
