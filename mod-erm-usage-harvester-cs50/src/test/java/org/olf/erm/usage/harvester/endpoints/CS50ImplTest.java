@@ -25,7 +25,6 @@ import java.net.ProxySelector;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -39,7 +38,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.openapitools.client.model.COUNTERTitleReport;
-import org.openapitools.client.model.SUSHIErrorModel;
 import org.openapitools.client.model.SUSHIReportHeader;
 import retrofit2.HttpException;
 
@@ -299,17 +297,8 @@ public class CS50ImplTest {
   public void testFetchReportErrorWithStatus200(TestContext context) throws IOException {
     String errStr = Resources.toString(Resources.getResource("error.json"), StandardCharsets.UTF_8);
 
-    SUSHIReportHeader header = new SUSHIReportHeader();
-    header.setExceptions(
-        Arrays.asList(
-            gson.fromJson(errStr, SUSHIErrorModel.class),
-            gson.fromJson(errStr, SUSHIErrorModel.class)));
-    COUNTERTitleReport report = new COUNTERTitleReport();
-    report.setReportHeader(header);
-
     wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(200).withBody(gson.toJson(report))));
+        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(200).withBody(errStr)));
 
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
