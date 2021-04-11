@@ -212,6 +212,23 @@ public class CS50ImplTest {
   }
 
   @Test
+  public void testFetchReportErrorArrayWithStatus202(TestContext context) throws IOException {
+    String errStr =
+        Resources.toString(Resources.getResource("errorarray.json"), StandardCharsets.UTF_8);
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(202).withBody(errStr)));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).hasMessageContaining("api_key Invalid");
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
   public void testFetchReportErrorArrayWithStatus400(TestContext context) throws IOException {
     String errStr =
         Resources.toString(Resources.getResource("errorarray.json"), StandardCharsets.UTF_8);
