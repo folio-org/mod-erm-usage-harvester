@@ -179,7 +179,7 @@ public class CS50ImplTest {
   }
 
   @Test
-  public void testFetchReportError(TestContext context) throws IOException {
+  public void testFetchReportErrorWithStatus400(TestContext context) throws IOException {
     String errStr = Resources.toString(Resources.getResource("error.json"), StandardCharsets.UTF_8);
     wmRule.stubFor(
         get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(400).withBody(errStr)));
@@ -197,9 +197,9 @@ public class CS50ImplTest {
   }
 
   @Test
-  public void testFetchReportErrorArray(TestContext context) throws IOException {
+  public void testFetchReportErrorArrayWithStatus400(TestContext context) throws IOException {
     String errStr =
-        Resources.toString(Resources.getResource("error2.json"), StandardCharsets.UTF_8);
+        Resources.toString(Resources.getResource("errorarray.json"), StandardCharsets.UTF_8);
     wmRule.stubFor(
         get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(400).withBody(errStr)));
 
@@ -263,7 +263,7 @@ public class CS50ImplTest {
   }
 
   @Test
-  public void testFetchReportError202(TestContext context) throws IOException {
+  public void testFetchReportErrorWithStatus202(TestContext context) throws IOException {
     String errStr = Resources.toString(Resources.getResource("error.json"), StandardCharsets.UTF_8);
     wmRule.stubFor(
         get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(202).withBody(errStr)));
@@ -279,7 +279,7 @@ public class CS50ImplTest {
   }
 
   @Test
-  public void testFetchReportError200WithError(TestContext context) throws IOException {
+  public void testFetchReportErrorWithStatus200(TestContext context) throws IOException {
     String errStr = Resources.toString(Resources.getResource("error.json"), StandardCharsets.UTF_8);
 
     SUSHIReportHeader header = new SUSHIReportHeader();
