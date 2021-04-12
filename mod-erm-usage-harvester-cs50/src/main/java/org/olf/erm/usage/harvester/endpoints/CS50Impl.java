@@ -1,5 +1,7 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import static org.olf.erm.usage.harvester.endpoints.JsonUtil.isOfType;
+
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
 import io.reactivex.Observable;
@@ -15,14 +17,20 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.Response.Builder;
 import okhttp3.ResponseBody;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter50.Counter5Utils;
 import org.olf.erm.usage.counter50.Counter5Utils.Counter5UtilsException;
 import org.openapitools.client.ApiClient;
+import org.openapitools.client.model.COUNTERDatabaseReport;
+import org.openapitools.client.model.COUNTERItemReport;
+import org.openapitools.client.model.COUNTERPlatformReport;
+import org.openapitools.client.model.COUNTERTitleReport;
 import org.openapitools.client.model.SUSHIReportHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,15 +66,32 @@ public class CS50Impl implements ServiceEndpoint {
     apiClient.getOkBuilder().readTimeout(60, TimeUnit.SECONDS);
     // apiClient.getOkBuilder().addInterceptor(new HttpLoggingInterceptor().setLevel(Level.BODY));
 
-    // workaround: route 201-299 codes to 400 (error)
     apiClient
         .getOkBuilder()
         .addInterceptor(
             chain -> {
               Request request = chain.request();
               Response response = chain.proceed(request);
-              if (response.code() > 200 && response.code() < 300) {
-                return response.newBuilder().code(400).build();
+
+              // intercept response body if status code 2xx
+              if (response.code() / 100 == 2) {
+                ResponseBody responseBody =
+                    Objects.requireNonNull(response.body(), "Response body is null");
+                String body = responseBody.string();
+                MediaType mediaType = responseBody.contentType();
+                Builder respBuilder =
+                    response.newBuilder().body(ResponseBody.create(body, mediaType));
+
+                // pass through if its a report
+                if (isOfType(body, COUNTERTitleReport.class)
+                    || isOfType(body, COUNTERItemReport.class)
+                    || isOfType(body, COUNTERPlatformReport.class)
+                    || isOfType(body, COUNTERDatabaseReport.class)) {
+                  return respBuilder.build();
+                } else {
+                  // otherwise route to 400
+                  return respBuilder.code(400).message("Bad Request").build();
+                }
               }
               return response;
             });
