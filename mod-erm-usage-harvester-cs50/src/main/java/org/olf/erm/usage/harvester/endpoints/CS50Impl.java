@@ -13,6 +13,7 @@ import java.net.Proxy;
 import java.net.URI;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -107,6 +108,9 @@ public class CS50Impl implements ServiceEndpoint {
   }
 
   private Throwable getSushiError(Throwable e) {
+    if (e instanceof NoSuchElementException) {
+      return new InvalidReportException(e.getMessage());
+    }
     if (e instanceof HttpException) {
       HttpException ex = (HttpException) e;
       try {

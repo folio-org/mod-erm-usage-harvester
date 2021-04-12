@@ -38,7 +38,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.openapitools.client.model.COUNTERTitleReport;
-import org.openapitools.client.model.SUSHIErrorModel;
 import org.openapitools.client.model.SUSHIReportHeader;
 import retrofit2.HttpException;
 
@@ -376,6 +375,27 @@ public class CS50ImplTest {
             context.asyncAssertFailure(
                 t -> {
                   assertThat(t).hasMessageContaining("api_key Invalid");
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
+  public void testFetchReportNullWithStatus200(TestContext context) throws IOException {
+    String reportStr =
+        Resources.toString(Resources.getResource("SampleReportNull.json"), StandardCharsets.UTF_8);
+
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH))
+            .willReturn(aResponse().withStatus(200).withBody(reportStr)));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t)
+                      .isInstanceOf(InvalidReportException.class)
+                      .hasMessage("Report not valid: null");
                   verifyApiCall();
                 }));
   }
