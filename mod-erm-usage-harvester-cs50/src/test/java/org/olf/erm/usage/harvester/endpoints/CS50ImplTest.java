@@ -150,7 +150,7 @@ public class CS50ImplTest {
   }
 
   @Test
-  public void testFetchReportOk(TestContext context) throws IOException {
+  public void testFetchReportOkWithStatus200(TestContext context) throws IOException {
     String expectedReportStr =
         Resources.toString(Resources.getResource("SampleReport.json"), StandardCharsets.UTF_8);
     wmRule.stubFor(
@@ -174,6 +174,46 @@ public class CS50ImplTest {
                       .isEqualTo(expectedReport);
                   verifyApiCall();
                 }));
+  }
+
+  @Test
+  public void testFetchReportOkWithStatus202(TestContext context) throws IOException {
+    String expectedReportStr =
+        Resources.toString(Resources.getResource("SampleReport.json"), StandardCharsets.UTF_8);
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH))
+            .willReturn(aResponse().withStatus(202).withBody(expectedReportStr)));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertSuccess(
+                list -> {
+                  assertThat(list).hasSize(1);
+                  Report receivedReport = list.get(0).getReport();
+                  Report expectedReport =
+                      Json.decodeValue(
+                          gson.toJson(gson.fromJson(expectedReportStr, COUNTERTitleReport.class)),
+                          Report.class);
+                  assertThat(receivedReport)
+                      .usingRecursiveComparison()
+                      .ignoringCollectionOrder()
+                      .isEqualTo(expectedReport);
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
+  public void testFetchReportOkWithStatus400(TestContext context) throws IOException {
+    String expectedReportStr =
+        Resources.toString(Resources.getResource("SampleReport.json"), StandardCharsets.UTF_8);
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH))
+            .willReturn(aResponse().withStatus(400).withBody(expectedReportStr)));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(context.asyncAssertFailure());
   }
 
   @Test
@@ -234,6 +274,25 @@ public class CS50ImplTest {
         Resources.toString(Resources.getResource("errorarray.json"), StandardCharsets.UTF_8);
     wmRule.stubFor(
         get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(400).withBody(errStr)));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).hasMessageContaining("api_key Invalid");
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
+  public void testFetchReportErrorAvailableReportsArrayWithStatus200(TestContext context)
+      throws IOException {
+    String errStr =
+        Resources.toString(
+            Resources.getResource("erroravailablereports.json"), StandardCharsets.UTF_8);
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(200).withBody(errStr)));
 
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
