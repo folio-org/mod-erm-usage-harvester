@@ -38,6 +38,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.openapitools.client.model.COUNTERTitleReport;
+import org.openapitools.client.model.SUSHIErrorModel;
 import org.openapitools.client.model.SUSHIReportHeader;
 import retrofit2.HttpException;
 
@@ -227,9 +228,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t)
-                      .isNotInstanceOf(InvalidReportException.class)
-                      .hasMessageContaining("api_key Invalid");
+                  assertThat(t).hasMessageContaining("api_key Invalid");
                   verifyApiCall();
                 }));
   }
@@ -296,12 +295,7 @@ public class CS50ImplTest {
 
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
-        .onComplete(
-            context.asyncAssertFailure(
-                t -> {
-                  assertThat(t).hasMessageContaining("api_key Invalid");
-                  verifyApiCall();
-                }));
+        .onComplete(context.asyncAssertFailure(t -> assertThat(t.getMessage()).isEqualTo(errStr)));
   }
 
   @Test
