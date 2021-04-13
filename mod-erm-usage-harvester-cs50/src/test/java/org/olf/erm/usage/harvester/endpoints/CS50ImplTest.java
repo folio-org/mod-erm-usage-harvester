@@ -213,7 +213,12 @@ public class CS50ImplTest {
 
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
-        .onComplete(context.asyncAssertFailure());
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).hasMessage(expectedReportStr);
+                  verifyApiCall();
+                }));
   }
 
   @Test
@@ -227,7 +232,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessageContaining("api_key Invalid");
+                  assertThat(t).hasMessage(errStr);
                   verifyApiCall();
                 }));
   }
@@ -244,7 +249,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessageContaining("api_key Invalid");
+                  assertThat(t).hasMessage(errStr);
                   verifyApiCall();
                 }));
   }
@@ -261,7 +266,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessageContaining("api_key Invalid");
+                  assertThat(t).hasMessage(errStr);
                   verifyApiCall();
                 }));
   }
@@ -278,7 +283,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessageContaining("api_key Invalid");
+                  assertThat(t).hasMessage(errStr);
                   verifyApiCall();
                 }));
   }
@@ -294,7 +299,12 @@ public class CS50ImplTest {
 
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
-        .onComplete(context.asyncAssertFailure(t -> assertThat(t.getMessage()).isEqualTo(errStr)));
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).hasMessage(errStr);
+                  verifyApiCall();
+                }));
   }
 
   @Test
@@ -357,7 +367,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessageContaining("api_key Invalid");
+                  assertThat(t).hasMessage(errStr);
                   verifyApiCall();
                 }));
   }
@@ -374,7 +384,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessageContaining("api_key Invalid");
+                  assertThat(t).hasMessage(errStr);
                   verifyApiCall();
                 }));
   }
