@@ -1,0 +1,16 @@
+[
+  {
+    "Report_Name": "Platform Master Report",
+    "Report_ID": "pr",
+    "Release": "5",
+    "Report_Description": "A customizable report summarizing activity across a content provider’s platforms that allows the user to apply filters and select configuration options",
+    "Path": "/reports/pr"
+  },
+  {
+    "Report_Name": "Platform Usage",
+    "Report_ID": "pr_p1",
+    "Release": "5",
+    "Report_Description": "Platform-level usage summarized by Metric_Type",
+    "Path": "/reports/pr_p1"
+  }
+]
