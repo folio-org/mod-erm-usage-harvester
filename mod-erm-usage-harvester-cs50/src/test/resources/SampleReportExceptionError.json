@@ -1,0 +1,55 @@
+{
+  "Report_Header": {
+    "Created": "2020-11-30T09:47:31-08:00",
+    "Created_By": "HighWire Press Inc.",
+    "Report_ID": "TR_J1",
+    "Release": "5",
+    "Report_Name": "Journal Requests (Excluding OA_Gold)",
+    "Institution_Name": "instName",
+    "Institution_ID": [
+      {
+        "Type": "Proprietary",
+        "Value": "HighWire:custId"
+      }
+    ],
+    "Report_Filters": [
+      {
+        "Name": "Begin_Date",
+        "Value": "2018-10-01"
+      },
+      {
+        "Name": "End_Date",
+        "Value": "2018-10-31"
+      },
+      {
+        "Name": "Metric_Type",
+        "Value": "Total_Item_Requests"
+      },
+      {
+        "Name": "Metric_Type",
+        "Value": "Unique_Item_Requests"
+      },
+      {
+        "Name": "Access_Type",
+        "Value": "Controlled"
+      },
+      {
+        "Name": "Data_Type",
+        "Value": "Journal"
+      },
+      {
+        "Name": "Access_Method",
+        "Value": "Regular"
+      }
+    ],
+    "Report_Attributes": [],
+    "Exceptions": [
+      {
+        "Message": "Invalid Customer Id",
+        "Severity": "Fatal",
+        "Code": 1030
+      }
+    ]
+  },
+  "Report_Items": []
+}

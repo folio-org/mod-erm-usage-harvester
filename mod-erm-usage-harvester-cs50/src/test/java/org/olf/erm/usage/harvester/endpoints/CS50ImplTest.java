@@ -197,6 +197,28 @@ public class CS50ImplTest {
   }
 
   @Test
+  public void testFetchReportWithException(TestContext context) throws IOException {
+    String reportStr =
+        Resources.toString(
+            Resources.getResource("SampleReportExceptionError.json"), StandardCharsets.UTF_8);
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH))
+            .willReturn(aResponse().withStatus(200).withBody(reportStr)));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  System.out.println(t.toString());
+                  assertThat(t)
+                      .isInstanceOf(InvalidReportException.class)
+                      .hasMessageContaining("Invalid Customer Id");
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
   public void testFetchReportOkWithStatus200(TestContext context) throws IOException {
     String expectedReportStr =
         Resources.toString(Resources.getResource("SampleReport.json"), StandardCharsets.UTF_8);
