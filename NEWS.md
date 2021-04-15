@@ -1,3 +1,9 @@
+# 3.0.1
+* [MODEUSHARV-29](https://issues.folio.org/browse/MODEUSHARV-29) No reports created if ServiceEndpoint fails to initialize
+* [MODEUSHARV-31](https://issues.folio.org/browse/MODEUSHARV-31) Exceptions while fetching unsupported reports
+* [MODEUSHARV-32](https://issues.folio.org/browse/MODEUSHARV-32) Reports without report items should be considered as failed
+* Bump guava from 26.0-jre to 29.0-jre in /mod-erm-usage-harvester-spi
+
 # 3.0.0 (2021-03-17)
 * Use ApiKey when connecting to Counter5 provider (MODEUSHARV-24)
 * Increase-container-memory (MODEUSHARV-21)
