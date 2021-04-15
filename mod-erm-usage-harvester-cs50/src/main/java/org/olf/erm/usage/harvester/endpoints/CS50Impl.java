@@ -144,6 +144,30 @@ public class CS50Impl implements ServiceEndpoint {
         .collect(Collectors.toList());
   }
 
+  private boolean hasReportItems(Object report) {
+    return gson.toJsonTree(report).getAsJsonObject().getAsJsonArray("Report_Items").size() > 0;
+  }
+
+  private Object failIfInvalidReport(Object report)
+      throws InvalidReportException, Counter5UtilsException {
+    String content = gson.toJson(report);
+    SUSHIReportHeader reportHeader = Counter5Utils.getSushiReportHeader(content);
+
+    if (reportHeader == null) {
+      throw new InvalidReportException("Report is missing Report_Header");
+    }
+
+    if (!reportHeader.getExceptions().isEmpty()) {
+      throw new InvalidReportException(gson.toJson(reportHeader.getExceptions()));
+    }
+
+    if (!hasReportItems(report)) {
+      throw new InvalidReportException("Report is missing Report_Items");
+    }
+
+    return report;
+  }
+
   @Override
   public Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate) {
     String reportID = report.replace("_", "").toUpperCase();
@@ -168,23 +192,9 @@ public class CS50Impl implements ServiceEndpoint {
       ((Observable<?>) method.invoke(client, customerId, beginDate, endDate, platform))
           .singleOrError()
           .subscribeOn(Schedulers.io())
-          .subscribe(
-              r -> {
-                String content = gson.toJson(r);
-                SUSHIReportHeader reportHeader = Counter5Utils.getSushiReportHeader(content);
-                if (reportHeader == null) {
-                  promise.fail("Unkown Error - 200 Response is missing reportHeader");
-                } else if (reportHeader.getExceptions() != null
-                    && !reportHeader.getExceptions().isEmpty()) {
-                  promise.fail(
-                      new InvalidReportException(gson.toJson(reportHeader.getExceptions())));
-                } else {
-                  List<CounterReport> counterReportList =
-                      createCounterReportList(r, report, provider);
-                  promise.complete(counterReportList);
-                }
-              },
-              e -> promise.fail(getSushiError(e)));
+          .map(this::failIfInvalidReport)
+          .map(r -> createCounterReportList(r, report, provider))
+          .subscribe(promise::complete, e -> promise.fail(getSushiError(e)));
     } catch (Exception e) {
       promise.fail(e);
     }
