@@ -134,7 +134,7 @@ public class ErmUsageHarvesterPeriodicAPIIT {
     assertThat(scheduler.checkExists(jobKey)).isFalse();
     assertThat(scheduler.checkExists(triggerKey)).isFalse();
 
-    PostgresClient.stopEmbeddedPostgres();
+    PostgresClient.stopPostgresTester();
     given().spec(baseReq).body(periodicConfig).post().then().statusCode(500);
     given().spec(baseReq).get().then().statusCode(500);
     given().spec(baseReq).delete().then().statusCode(500);

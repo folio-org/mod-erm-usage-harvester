@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.impl.TenantAPI;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.rules.TestRule;
@@ -28,6 +29,7 @@ public class EmbeddedPostgresRule implements TestRule {
 
   public EmbeddedPostgresRule(Vertx vertx) {
     this.vertx = vertx;
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
   }
 
   private Future<List<String>> createSchema(String tenant) {
@@ -66,8 +68,6 @@ public class EmbeddedPostgresRule implements TestRule {
   @Override
   public Statement apply(Statement base, Description description) {
     try {
-      PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-
       CompletableFuture<List<String>> future = new CompletableFuture<>();
       createSchemas(Future.succeededFuture(), new ArrayList<>(tenants))
           .onComplete(
@@ -94,7 +94,7 @@ public class EmbeddedPostgresRule implements TestRule {
         try {
           base.evaluate();
         } finally {
-          PostgresClient.stopEmbeddedPostgres();
+          PostgresClient.stopPostgresTester();
         }
       }
     };
