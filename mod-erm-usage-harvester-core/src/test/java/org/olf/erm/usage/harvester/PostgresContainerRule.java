@@ -16,18 +16,18 @@ import org.junit.runners.model.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class EmbeddedPostgresRule implements TestRule {
+public class PostgresContainerRule implements TestRule {
 
-  private static final Logger log = LoggerFactory.getLogger(EmbeddedPostgresRule.class);
+  private static final Logger log = LoggerFactory.getLogger(PostgresContainerRule.class);
   Vertx vertx;
   List<String> tenants = new ArrayList<>();
 
-  public EmbeddedPostgresRule(Vertx vertx, String... tenants) {
+  public PostgresContainerRule(Vertx vertx, String... tenants) {
     this(vertx);
     this.tenants = Arrays.asList(tenants);
   }
 
-  public EmbeddedPostgresRule(Vertx vertx) {
+  public PostgresContainerRule(Vertx vertx) {
     this.vertx = vertx;
     PostgresClient.setPostgresTester(new PostgresTesterContainer());
   }
