@@ -132,10 +132,54 @@ by `2019-02-28`, `2019-03-31`, `2019-04-30`, ... .
 
 ## ServiceEndpoint implementations
 
-### mod-erm-usage-harvester-cs50
+The [ServiceEndpoint](mod-erm-usage-harvester-spi/src/main/java/org/olf/erm/usage/harvester/endpoints/ServiceEndpoint.java)
+implementation defines how reports are fetched for a provider. To provide additional implementations
+you will need to implement the
+[ServiceEndpointProvider](mod-erm-usage-harvester-spi/src/main/java/org/olf/erm/usage/harvester/endpoints/ServiceEndpointProvider.java)
+interface and make it available on the classpath.
 
-Implementation for fetching reports
-via [Counter Sushi 5.0 API](https://app.swaggerhub.com/apis/COUNTER/counter-sushi_5_0_api/1.0.0).
+So far 3 implementations are provided:
+
+* `mod-erm-usage-harvester-cs41`
+  – [Counter Sushi 4.1](https://www.projectcounter.org/code-of-practice-sections/sushi/)
+* `mod-erm-usage-harvester-cs50`
+  – [Counter Sushi 5.0 API](https://app.swaggerhub.com/apis/COUNTER/counter-sushi_5_0_api/1.0.0)
+* `mod-erm-usage-harvester-nss` – [Germanys National Statistics Server](https://statistik.hebis.de/)
+
+Implementations available at runtime can be listed at `/erm-usage-harvester/impl`.
+
+```
+{
+  "implementations": [
+    {
+      "name": "Counter-Sushi 4.1",
+      "description": "SOAP-based implementation for CounterSushi 4.1",
+      "type": "cs41",
+      "isAggregator": false
+    },
+    {
+      "name": "Counter-Sushi 5.0",
+      "description": "Implementation for Counter/Sushi 5",
+      "type": "cs50",
+      "isAggregator": false
+    },
+    {
+      "name": "Nationaler Statistikserver",
+      "description": "Implementation for Germanys National Statistics Server (https://sushi.redi-bw.de).",
+      "type": "NSS",
+      "isAggregator": true,
+      "configurationParameters": [
+        "apiKey",
+        "requestorId",
+        "customerId",
+        "reportRelease"
+      ]
+    }
+  ]
+}
+```
+
+### mod-erm-usage-harvester-cs50
 
 Due to providers responding in various ways the provider response is intercepted and adjusted before
 processing.  
