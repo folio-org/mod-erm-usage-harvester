@@ -49,13 +49,9 @@ public interface DefaultApi {
       @Query("end_date") String endDate,
       @Query("platform") String platform);
 
-  // TODO:
-  // there are more optionals defined
-  // https://www.projectcounter.org/code-of-practice-five-sections/4-1-usage-reports/
-  // including parent_* ones return invalid
   @GET(
       "reports/ir?attributes_to_show=Author|Publication_Date|Article_Version|"
-          + "Data_Type|YOP|Access_Type|Access_Method")
+          + "Data_Type|YOP|Access_Type|Access_Method&Include_Parent_Details=True")
   Observable<COUNTERItemReport> getReportsIR(
       @Query("customer_id") String customerId,
       @Query("begin_date") String beginDate,
