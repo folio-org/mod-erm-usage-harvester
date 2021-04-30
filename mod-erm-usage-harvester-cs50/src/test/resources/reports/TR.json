@@ -1,0 +1,336 @@
+{
+  "Report_Header": {
+    "Customer_ID": "uuid-1234",
+    "Institution_Name": "MY INSTITUION",
+    "Institution_ID": [
+      {
+        "Type": "Proprietary",
+        "Value": "mit:1234"
+      }
+    ],
+    "Report_Filters": [
+      {
+        "Name": "Begin_Date",
+        "Value": "2019-09-01"
+      },
+      {
+        "Name": "End_Date",
+        "Value": "2019-09-30"
+      }
+    ],
+    "Created": "2020-03-27T11:10:11Z",
+    "Created_By": "FooBar Systems",
+    "Release": "5",
+    "Report_Name": "Title Master Report",
+    "Report_ID": "TR"
+  },
+  "Report_Items": [
+    {
+      "Platform": "My Journals",
+      "Performance": [
+        {
+          "Period": {
+            "Begin_Date": "2019-09-01",
+            "End_Date": "2019-09-30"
+          },
+          "Instance": [
+            {
+              "Metric_Type": "Unique_Item_Requests",
+              "Count": 1
+            },
+            {
+              "Metric_Type": "Total_Item_Requests",
+              "Count": 3
+            },
+            {
+              "Metric_Type": "Unique_Item_Investigations",
+              "Count": 1
+            },
+            {
+              "Metric_Type": "Total_Item_Investigations",
+              "Count": 3
+            }
+          ]
+        }
+      ],
+      "Item_ID": [
+        {
+          "Type": "DOI",
+          "Value": "8910.DOI"
+        },
+        {
+          "Type": "Proprietary",
+          "Value": "my:foo"
+        },
+        {
+          "Type": "Online_ISSN",
+          "Value": "0123-4567"
+        },
+        {
+          "Type": "Print_ISSN",
+          "Value": "0011-1122"
+        }
+      ],
+      "Title": "Title 1",
+      "Publisher_ID": [
+        {
+          "Type": "Proprietary",
+          "Value": "my:mypress; mym"
+        }
+      ],
+      "Publisher": "My Press MyM",
+      "Section_Type": "Book"
+    },
+    {
+      "Platform": "My Journals",
+      "Performance": [
+        {
+          "Period": {
+            "Begin_Date": "2019-09-01",
+            "End_Date": "2019-09-30"
+          },
+          "Instance": [
+            {
+              "Metric_Type": "Unique_Item_Requests",
+              "Count": 1
+            },
+            {
+              "Metric_Type": "Total_Item_Requests",
+              "Count": 1
+            },
+            {
+              "Metric_Type": "Unique_Item_Investigations",
+              "Count": 1
+            },
+            {
+              "Metric_Type": "Total_Item_Investigations",
+              "Count": 1
+            }
+          ]
+        }
+      ],
+      "Item_ID": [
+        {
+          "Type": "DOI",
+          "Value": "91011.DOI"
+        },
+        {
+          "Type": "Proprietary",
+          "Value": "my:bar"
+        }
+      ],
+      "Title": "Title 2",
+      "Publisher_ID": [
+        {
+          "Type": "Proprietary",
+          "Value": "my:mypress"
+        }
+      ],
+      "Publisher": "My Press"
+    },
+    {
+      "Platform": "My Journals",
+      "Performance": [
+        {
+          "Period": {
+            "Begin_Date": "2019-09-01",
+            "End_Date": "2019-09-30"
+          },
+          "Instance": [
+            {
+              "Metric_Type": "Unique_Item_Requests",
+              "Count": 2
+            },
+            {
+              "Metric_Type": "Total_Item_Requests",
+              "Count": 3
+            },
+            {
+              "Metric_Type": "Unique_Item_Investigations",
+              "Count": 2
+            },
+            {
+              "Metric_Type": "Total_Item_Investigations",
+              "Count": 3
+            }
+          ]
+        }
+      ],
+      "Item_ID": [
+        {
+          "Type": "DOI",
+          "Value": "101112.DOI"
+        },
+        {
+          "Type": "Proprietary",
+          "Value": "my:ab"
+        },
+        {
+          "Type": "Online_ISSN",
+          "Value": "1111-2222"
+        },
+        {
+          "Type": "Print_ISSN",
+          "Value": "0000-1111"
+        }
+      ],
+      "Title": "Title 3",
+      "Publisher_ID": [
+        {
+          "Type": "Proprietary",
+          "Value": "my:mypress"
+        }
+      ],
+      "Publisher": "My Press"
+    },
+    {
+      "Platform": "My Journals",
+      "Performance": [
+        {
+          "Period": {
+            "Begin_Date": "2019-09-01",
+            "End_Date": "2019-09-30"
+          },
+          "Instance": [
+            {
+              "Metric_Type": "Unique_Item_Investigations",
+              "Count": 1
+            },
+            {
+              "Metric_Type": "Total_Item_Investigations",
+              "Count": 1
+            }
+          ]
+        }
+      ],
+      "Item_ID": [
+        {
+          "Type": "DOI",
+          "Value": "111213.DOI"
+        },
+        {
+          "Type": "Proprietary",
+          "Value": "my:abc"
+        },
+        {
+          "Type": "Online_ISSN",
+          "Value": "2222-3333"
+        },
+        {
+          "Type": "Print_ISSN",
+          "Value": "0001-1112"
+        }
+      ],
+      "Title": "Title 4",
+      "Publisher_ID": [
+        {
+          "Type": "Proprietary",
+          "Value": "my:mypress"
+        }
+      ],
+      "Publisher": "My Press"
+    },
+    {
+      "Platform": "My Journals",
+      "Performance": [
+        {
+          "Period": {
+            "Begin_Date": "2019-09-01",
+            "End_Date": "2019-09-30"
+          },
+          "Instance": [
+            {
+              "Metric_Type": "Unique_Item_Requests",
+              "Count": 1
+            },
+            {
+              "Metric_Type": "Total_Item_Requests",
+              "Count": 2
+            },
+            {
+              "Metric_Type": "No_License",
+              "Count": 5
+            },
+            {
+              "Metric_Type": "Unique_Item_Investigations",
+              "Count": 4
+            },
+            {
+              "Metric_Type": "Total_Item_Investigations",
+              "Count": 6
+            }
+          ]
+        }
+      ],
+      "Item_ID": [
+        {
+          "Type": "DOI",
+          "Value": "121314.DOI"
+        },
+        {
+          "Type": "Proprietary",
+          "Value": "my:abcd"
+        },
+        {
+          "Type": "Online_ISSN",
+          "Value": "3333-4444"
+        },
+        {
+          "Type": "Print_ISSN",
+          "Value": "0002-1113"
+        }
+      ],
+      "Title": "Title 5",
+      "Publisher_ID": [
+        {
+          "Type": "Proprietary",
+          "Value": "my:mypress"
+        }
+      ],
+      "Publisher": "My Press"
+    },
+    {
+      "Platform": "My Journals",
+      "Performance": [
+        {
+          "Period": {
+            "Begin_Date": "2019-09-01",
+            "End_Date": "2019-09-30"
+          },
+          "Instance": [
+            {
+              "Metric_Type": "Unique_Item_Investigations",
+              "Count": 1
+            },
+            {
+              "Metric_Type": "Total_Item_Investigations",
+              "Count": 1
+            }
+          ]
+        }
+      ],
+      "Item_ID": [
+        {
+          "Type": "DOI",
+          "Value": "131415.DOI"
+        },
+        {
+          "Type": "Proprietary",
+          "Value": "my:abcde"
+        },
+        {
+          "Type": "Online_ISSN",
+          "Value": "0003-1114"
+        }
+      ],
+      "Title": "Title 6",
+      "Publisher_ID": [
+        {
+          "Type": "Proprietary",
+          "Value": "my:mypress"
+        }
+      ],
+      "Publisher": "My Press"
+    }
+  ]
+}
