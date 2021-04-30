@@ -33,7 +33,7 @@
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <vertx.version>4.0.0</vertx.version>
     <erm.usage.version>3.0.0</erm.usage.version>
-    <erm.usage.counter.version>2.0.1</erm.usage.counter.version>
+    <erm.usage.counter.version>2.0.2</erm.usage.counter.version>
     <slf4j.version>1.7.30</slf4j.version>
     <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
   </properties>
