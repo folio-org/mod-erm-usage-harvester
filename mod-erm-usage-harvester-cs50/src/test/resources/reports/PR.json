@@ -1,0 +1,62 @@
+{
+  "Report_Header": {
+    "Customer_ID": "uuid-1234",
+    "Institution_Name": "MY INSTITUION",
+    "Institution_ID": [
+      {
+        "Type": "Proprietary",
+        "Value": "mit:1234"
+      }
+    ],
+    "Report_Filters": [
+      {
+        "Name": "Begin_Date",
+        "Value": "2019-09-01"
+      },
+      {
+        "Name": "End_Date",
+        "Value": "2019-09-30"
+      }
+    ],
+    "Created": "2020-03-27T10:54:24Z",
+    "Created_By": "FooBar Systems",
+    "Release": "5",
+    "Report_Name": "Platform Master Report",
+    "Report_ID": "PR"
+  },
+  "Report_Items": [
+    {
+      "Platform": "My Journals",
+      "Performance": [
+        {
+          "Period": {
+            "Begin_Date": "2019-09-01",
+            "End_Date": "2019-09-30"
+          },
+          "Instance": [
+            {
+              "Metric_Type": "Unique_Item_Requests",
+              "Count": 111
+            },
+            {
+              "Metric_Type": "Total_Item_Requests",
+              "Count": 141
+            },
+            {
+              "Metric_Type": "Unique_Item_Investigations",
+              "Count": 159
+            },
+            {
+              "Metric_Type": "Total_Item_Investigations",
+              "Count": 221
+            },
+            {
+              "Metric_Type": "Searches_Platform",
+              "Count": 4
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
