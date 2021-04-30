@@ -1,3 +1,6 @@
+# 3.0.2
+* [MODEUSHARV-36](https://issues.folio.org/browse/MODEUSHARV-36) Unable to parse item and database reports
+
 # 3.0.1
 * [MODEUSHARV-29](https://issues.folio.org/browse/MODEUSHARV-29) No reports created if ServiceEndpoint fails to initialize
 * [MODEUSHARV-31](https://issues.folio.org/browse/MODEUSHARV-31) Exceptions while fetching unsupported reports
