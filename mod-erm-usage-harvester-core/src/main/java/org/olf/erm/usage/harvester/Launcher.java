@@ -11,10 +11,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import org.apache.commons.io.FileUtils;
+import org.folio.rest.RestLauncher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Launcher extends io.vertx.core.Launcher {
+public class Launcher extends RestLauncher {
 
   private static final Logger LOG = LoggerFactory.getLogger(Launcher.class);
 

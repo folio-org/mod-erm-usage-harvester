@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.impl.TenantAPI;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.rules.TestRule;
@@ -15,19 +16,20 @@ import org.junit.runners.model.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class EmbeddedPostgresRule implements TestRule {
+public class PostgresContainerRule implements TestRule {
 
-  private static final Logger log = LoggerFactory.getLogger(EmbeddedPostgresRule.class);
+  private static final Logger log = LoggerFactory.getLogger(PostgresContainerRule.class);
   Vertx vertx;
   List<String> tenants = new ArrayList<>();
 
-  public EmbeddedPostgresRule(Vertx vertx, String... tenants) {
+  public PostgresContainerRule(Vertx vertx, String... tenants) {
     this(vertx);
     this.tenants = Arrays.asList(tenants);
   }
 
-  public EmbeddedPostgresRule(Vertx vertx) {
+  public PostgresContainerRule(Vertx vertx) {
     this.vertx = vertx;
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
   }
 
   private Future<List<String>> createSchema(String tenant) {
@@ -66,8 +68,6 @@ public class EmbeddedPostgresRule implements TestRule {
   @Override
   public Statement apply(Statement base, Description description) {
     try {
-      PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-
       CompletableFuture<List<String>> future = new CompletableFuture<>();
       createSchemas(Future.succeededFuture(), new ArrayList<>(tenants))
           .onComplete(
@@ -94,7 +94,7 @@ public class EmbeddedPostgresRule implements TestRule {
         try {
           base.evaluate();
         } finally {
-          PostgresClient.stopEmbeddedPostgres();
+          PostgresClient.stopPostgresTester();
         }
       }
     };

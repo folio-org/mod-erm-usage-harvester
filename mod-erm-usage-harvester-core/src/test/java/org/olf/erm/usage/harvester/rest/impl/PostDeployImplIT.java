@@ -25,7 +25,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.olf.erm.usage.harvester.EmbeddedPostgresRule;
+import org.olf.erm.usage.harvester.PostgresContainerRule;
 import org.olf.erm.usage.harvester.periodic.PeriodicConfigPgUtil;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
@@ -45,7 +45,7 @@ public class PostDeployImplIT {
   public static WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
 
   @ClassRule
-  public static EmbeddedPostgresRule pgRule = new EmbeddedPostgresRule(vertx, TENANT, TENANT2);
+  public static PostgresContainerRule pgRule = new PostgresContainerRule(vertx, TENANT, TENANT2);
 
   private static DeploymentOptions options = new DeploymentOptions();
 

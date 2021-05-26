@@ -28,7 +28,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.olf.erm.usage.harvester.EmbeddedPostgresRule;
+import org.olf.erm.usage.harvester.PostgresContainerRule;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -42,7 +42,7 @@ public class ErmUsageHarvesterPeriodicAPIIT {
   private static Vertx vertx = Vertx.vertx();
   private static int port;
 
-  @ClassRule public static EmbeddedPostgresRule pgRule = new EmbeddedPostgresRule(vertx, TENANT);
+  @ClassRule public static PostgresContainerRule pgRule = new PostgresContainerRule(vertx, TENANT);
 
   @BeforeClass
   public static void beforeClass(TestContext context) {
@@ -134,7 +134,7 @@ public class ErmUsageHarvesterPeriodicAPIIT {
     assertThat(scheduler.checkExists(jobKey)).isFalse();
     assertThat(scheduler.checkExists(triggerKey)).isFalse();
 
-    PostgresClient.stopEmbeddedPostgres();
+    PostgresClient.stopPostgresTester();
     given().spec(baseReq).body(periodicConfig).post().then().statusCode(500);
     given().spec(baseReq).get().then().statusCode(500);
     given().spec(baseReq).delete().then().statusCode(500);

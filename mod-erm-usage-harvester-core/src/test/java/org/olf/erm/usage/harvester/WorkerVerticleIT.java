@@ -78,8 +78,8 @@ public class WorkerVerticleIT {
   private static final List<String> tenants = List.of("tenanta", "tenantb");
 
   @ClassRule
-  public static EmbeddedPostgresRule embeddedPostgresRule =
-      new EmbeddedPostgresRule(vertx, tenants.toArray(String[]::new));
+  public static PostgresContainerRule pgContainerRule =
+      new PostgresContainerRule(vertx, tenants.toArray(String[]::new));
 
   private final JsonArray tenantsJsonArray =
       tenants.stream()

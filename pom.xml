@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.olf</groupId>
@@ -29,9 +31,9 @@
     <maven.compiler.release>11</maven.compiler.release>
     <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
 
-    <raml-module-builder.version>32.1.0</raml-module-builder.version>
+    <raml-module-builder.version>33.0.0</raml-module-builder.version>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
-    <vertx.version>4.0.0</vertx.version>
+    <vertx.version>4.1.0.CR1</vertx.version>
     <erm.usage.version>3.0.0</erm.usage.version>
     <erm.usage.counter.version>2.0.2</erm.usage.counter.version>
     <slf4j.version>1.7.30</slf4j.version>
@@ -45,6 +47,13 @@
       <url>https://repository.folio.org/repository/maven-folio</url>
     </repository>
   </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>folio-nexus</id>
+      <name>FOLIO Maven repository</name>
+      <url>https://repository.folio.org/repository/maven-folio</url>
+    </pluginRepository>
+  </pluginRepositories>
 
   <dependencyManagement>
     <dependencies>
@@ -131,6 +140,11 @@
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>exec-maven-plugin</artifactId>
           <version>3.0.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.folio</groupId>
+          <artifactId>domain-models-maven-plugin</artifactId>
+          <version>${raml-module-builder.version}</version>
         </plugin>
       </plugins>
     </pluginManagement>
