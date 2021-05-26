@@ -28,7 +28,7 @@ public interface DefaultApi {
       @Query("platform") String platform,
       @Query("search") String search);
 
-  @GET("reports/dr")
+  @GET("reports/dr?attributes_to_show=Data_Type|Access_Method")
   Observable<COUNTERDatabaseReport> getReportsDR(
       @Query("customer_id") String customerId,
       @Query("begin_date") String beginDate,
@@ -49,7 +49,9 @@ public interface DefaultApi {
       @Query("end_date") String endDate,
       @Query("platform") String platform);
 
-  @GET("reports/ir")
+  @GET(
+      "reports/ir?attributes_to_show=Author|Publication_Date|Article_Version|"
+          + "Data_Type|YOP|Access_Type|Access_Method&Include_Parent_Details=True")
   Observable<COUNTERItemReport> getReportsIR(
       @Query("customer_id") String customerId,
       @Query("begin_date") String beginDate,
@@ -70,7 +72,7 @@ public interface DefaultApi {
       @Query("end_date") String endDate,
       @Query("platform") String platform);
 
-  @GET("reports/pr")
+  @GET("reports/pr?attributes_to_show=Data_Type|Access_Method")
   Observable<COUNTERPlatformReport> getReportsPR(
       @Query("customer_id") String customerId,
       @Query("begin_date") String beginDate,
@@ -84,12 +86,13 @@ public interface DefaultApi {
       @Query("end_date") String endDate,
       @Query("platform") String platform);
 
-  @GET("reports/tr")
+  @GET("reports/tr?attributes_to_show=Data_Type|Section_Type|YOP|Access_Type|Access_Method")
   Observable<COUNTERTitleReport> getReportsTR(
       @Query("customer_id") String customerId,
       @Query("begin_date") String beginDate,
       @Query("end_date") String endDate,
       @Query("platform") String platform);
+  // @Query("data_type") String dataType);
 
   @GET("reports/tr_b1")
   Observable<COUNTERTitleReport> getReportsTRB1(
