@@ -1,3 +1,8 @@
+# 3.1.0
+* [MODEUSHARV-35](https://issues.folio.org/browse/MODEUSHARV-35) Fetch master reports with additional attributes
+* [MODEUSHARV-34](https://issues.folio.org/browse/MODEUSHARV-34) Upgrade RMB to v33
+* [MODEUSHARV-38](https://issues.folio.org/browse/MODEUSHARV-38) Fix Guava Security Vulnerability CVE-2020-8908
+
 # 3.0.2
 * [MODEUSHARV-36](https://issues.folio.org/browse/MODEUSHARV-36) Unable to parse item and database reports
 
