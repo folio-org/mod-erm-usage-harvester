@@ -6,6 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.endpoints.CS50Impl.MAX_ERROR_BODY_LENGTH;
 
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
@@ -28,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.SushiConfig;
@@ -285,7 +287,8 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessage(expectedReportStr);
+                  assertThat(t)
+                      .hasMessage(StringUtils.abbreviate(expectedReportStr, MAX_ERROR_BODY_LENGTH));
                   verifyApiCall();
                 }));
   }
