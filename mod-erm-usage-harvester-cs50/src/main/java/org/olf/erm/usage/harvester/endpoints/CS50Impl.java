@@ -23,6 +23,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.Response.Builder;
 import okhttp3.ResponseBody;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter50.Counter5Utils;
@@ -39,10 +40,11 @@ import retrofit2.HttpException;
 
 public class CS50Impl implements ServiceEndpoint {
 
-  private final UsageDataProvider provider;
-  private final DefaultApi client;
+  public static final int MAX_ERROR_BODY_LENGTH = 2000;
   private static final Gson gson = new Gson();
   private static final Logger LOG = LoggerFactory.getLogger(CS50Impl.class);
+  private final UsageDataProvider provider;
+  private final DefaultApi client;
 
   CS50Impl(UsageDataProvider provider) {
     Objects.requireNonNull(provider.getSushiCredentials());
@@ -117,7 +119,7 @@ public class CS50Impl implements ServiceEndpoint {
         ResponseBody responseBody = ex.response().errorBody();
         String errorBody = Objects.requireNonNull(responseBody).string();
         if (!Strings.isNullOrEmpty(errorBody)) {
-          return new Throwable(errorBody, ex);
+          return new Throwable(StringUtils.abbreviate(errorBody, MAX_ERROR_BODY_LENGTH), ex);
         }
       } catch (Exception exc) {
         return new Throwable("Error parsing error response: " + exc.getMessage(), ex);

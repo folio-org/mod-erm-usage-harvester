@@ -1,0 +1,135 @@
+{
+  "Report_Header": {
+    "Created": "2020-11-30T09:47:31-08:00",
+    "Created_By": "HighWire Press Inc.",
+    "Customer_ID": "custId",
+    "Report_ID": "TR_J1",
+    "Release": "5",
+    "Report_Name": "Journal Requests (Excluding OA_Gold)",
+    "Institution_Name": "instName",
+    "Institution_ID": [
+      {
+        "Type": "Proprietary",
+        "Value": "HighWire:custId"
+      }
+    ],
+    "Report_Filters": [
+      {
+        "Name": "Begin_Date",
+        "Value": "2018-10-01"
+      },
+      {
+        "Name": "End_Date",
+        "Value": "2018-10-31"
+      },
+      {
+        "Name": "Metric_Type",
+        "Value": "Total_Item_Requests"
+      },
+      {
+        "Name": "Metric_Type",
+        "Value": "Unique_Item_Requests"
+      },
+      {
+        "Name": "Access_Type",
+        "Value": "Controlled"
+      },
+      {
+        "Name": "Data_Type",
+        "Value": "Journal"
+      },
+      {
+        "Name": "Access_Method",
+        "Value": "Regular"
+      }
+    ],
+    "Report_Attributes": [],
+    "Exceptions": []
+  },
+  "Report_Items": [
+    {
+      "Title": "Antimicrobial Agents and Chemotherapy",
+      "Item_ID": [
+        {
+          "Type": "DOI",
+          "Value": "10.1128/eissn.1098-6596"
+        },
+        {
+          "Type": "Online_ISSN",
+          "Value": "1098-6596"
+        },
+        {
+          "Type": "Print_ISSN",
+          "Value": "0066-4804"
+        },
+        {
+          "Type": "URI",
+          "Value": "http://aac.asm.org"
+        }
+      ],
+      "Platform": "HighWire Press",
+      "Publisher": "American Society for Microbiology",
+      "Publisher_ID": [],
+      "Performance": [
+        {
+          "Period": {
+            "Begin_Date": "2018-10-01",
+            "End_Date": "2018-10-31"
+          },
+          "Instance": [
+            {
+              "Metric_Type": "Total_Chapter_Request",
+              "Count": 28
+            },
+            {
+              "Metric_Type": "Unique_Item_Requests",
+              "Count": 20
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Title": "Applied and Environmental Microbiology",
+      "Item_ID": [
+        {
+          "Type": "DOI",
+          "Value": "10.1128/eissn.1098-5336"
+        },
+        {
+          "Type": "Online_ISSN",
+          "Value": "1098-5336"
+        },
+        {
+          "Type": "Print_ISSN",
+          "Value": "0099-2240"
+        },
+        {
+          "Type": "URI",
+          "Value": "http://aem.asm.org"
+        }
+      ],
+      "Platform": "HighWire Press",
+      "Publisher": "American Society for Microbiology",
+      "Publisher_ID": [],
+      "Performance": [
+        {
+          "Period": {
+            "Begin_Date": "2018-10-01",
+            "End_Date": "2018-10-31"
+          },
+          "Instance": [
+            {
+              "Metric_Type": "Total_Chapter_Request",
+              "Count": 68
+            },
+            {
+              "Metric_Type": "Unique_Item_Requests",
+              "Count": 61
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
