@@ -294,6 +294,26 @@ public class CS50ImplTest {
   }
 
   @Test
+  public void testFetchReportWithInvalidMetricType(TestContext context) throws IOException {
+    String expectedReportStr =
+        Resources.toString(
+            Resources.getResource("SampleReportInvalidMetricType.json"), StandardCharsets.UTF_8);
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH))
+            .willReturn(aResponse().withStatus(200).withBody(expectedReportStr)));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t)
+                      .hasMessage(StringUtils.abbreviate(expectedReportStr, MAX_ERROR_BODY_LENGTH));
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
   public void testFetchReportErrorWithStatus400(TestContext context) throws IOException {
     String errStr = Resources.toString(Resources.getResource("error.json"), StandardCharsets.UTF_8);
     wmRule.stubFor(
