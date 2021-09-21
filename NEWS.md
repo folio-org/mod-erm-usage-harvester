@@ -1,3 +1,6 @@
+# 3.1.2
+* [MODEUSHARV-48](https://issues.folio.org/browse/MODEUSHARV-48) Error when harvesting (large) TR report, increase default container memory
+
 # 3.1.1
 * [MODEUSHARV-46](https://issues.folio.org/browse/MODEUSHARV-42) Passing long strings as message for Throwable causes application to hang
 
