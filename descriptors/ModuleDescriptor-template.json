@@ -11,7 +11,9 @@
             "GET"
           ],
           "pathPattern": "/erm-usage-harvester/start",
-          "permissionsRequired": [],
+          "permissionsRequired": [
+            "ermusageharvester.start"
+          ],
           "modulePermissions": [
             "usagedataproviders.collection.get",
             "usagedataproviders.item.get",
@@ -127,6 +129,14 @@
   ],
   "permissionSets": [
     {
+      "permissionName": "ermusageharvester.start",
+      "displayName": "erm-usage-harvester start harvesting all providers",
+      "description": "Start harvesting for all providers",
+      "subPermissions": [
+        "ermusageharvester.start.single"
+      ]
+    },
+    {
       "permissionName": "ermusageharvester.start.single",
       "displayName": "erm-usage-harvester start harvesting single provider",
       "description": "Start harvesting for a single provider"
@@ -156,6 +166,7 @@
       "displayName": "erm-usage-harvester all",
       "description": "All permissions for the mod-erm-harvester module",
       "subPermissions": [
+        "ermusageharvester.start",
         "ermusageharvester.start.single",
         "ermusageharvester.impl.get",
         "ermusageharvester.periodic.get",
