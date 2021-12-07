@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -13,14 +14,15 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.WebClient;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +31,7 @@ import org.slf4j.LoggerFactory;
 public class OkapiClientTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(OkapiClientTest.class);
+  private static final SystemUser SYSTEM_USER = new SystemUser("user", "pass");
 
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
   @Rule public Timeout timeoutRule = Timeout.seconds(5);
@@ -61,6 +64,22 @@ public class OkapiClientTest {
   @After
   public void after(TestContext context) {
     vertx.close(context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void testLoginSuccess(TestContext context) {
+    stubFor(
+        post(urlEqualTo("/authn/login"))
+            .willReturn(aResponse().withStatus(201).withHeader(XOkapiHeaders.TOKEN, "someToken")));
+    okapiClient
+        .loginSystemUser(tenantId, SYSTEM_USER)
+        .onComplete(context.asyncAssertSuccess(s -> assertThat(s).isEqualTo("someToken")));
+  }
+
+  @Test
+  public void testLoginFailure(TestContext context) {
+    stubFor(post(urlEqualTo("/authn/login")).willReturn(aResponse().withStatus(422)));
+    okapiClient.loginSystemUser(tenantId, SYSTEM_USER).onComplete(context.asyncAssertFailure());
   }
 
   @Test
