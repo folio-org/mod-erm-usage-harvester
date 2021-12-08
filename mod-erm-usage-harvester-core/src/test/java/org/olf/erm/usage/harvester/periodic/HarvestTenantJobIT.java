@@ -5,6 +5,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -24,6 +25,7 @@ import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.sql.Date;
 import java.time.Instant;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval;
 import org.junit.Before;
@@ -85,6 +87,9 @@ public class HarvestTenantJobIT {
 
   @Before
   public void before() throws SchedulerException {
+    stubFor(
+        post("/authn/login")
+            .willReturn(aResponse().withStatus(201).withHeader(XOkapiHeaders.TOKEN, "someToken")));
     WireMock.resetAllRequests();
     scheduler = StdSchedulerFactory.getDefaultScheduler();
     scheduler.clear();
@@ -115,6 +120,30 @@ public class HarvestTenantJobIT {
   }
 
   @Test
+  public void testStartFailedLogin(TestContext context) throws SchedulerException {
+    stubFor(post("/authn/login").willReturn(aResponse().withStatus(422)));
+    Async async = context.async();
+    scheduler
+        .getListenerManager()
+        .addJobListener(
+            new JobWasExecutedListener(
+                ar -> {
+                  if (ar.failed()) {
+                    context.verify(
+                        v -> {
+                          assertThat(ar.cause().getMessage()).contains("error starting");
+                          wireMockRule.verify(0, getRequestedFor(urlPathEqualTo(START_PATH)));
+                        });
+                    async.complete();
+                  } else {
+                    context.fail(ar.cause());
+                  }
+                }),
+            KeyMatcher.keyEquals(jobKey));
+    scheduler.triggerJob(jobKey);
+  }
+
+  @Test
   public void testStartNoConnection(TestContext context) throws SchedulerException {
     stubFor(
         get(urlPathEqualTo(START_PATH))
@@ -128,7 +157,7 @@ public class HarvestTenantJobIT {
                   if (ar.failed()) {
                     context.verify(
                         v -> {
-                          assertThat(ar.cause().getMessage()).contains("error connecting");
+                          assertThat(ar.cause().getMessage()).contains("error starting");
                           wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH)));
                         });
                     async.complete();
