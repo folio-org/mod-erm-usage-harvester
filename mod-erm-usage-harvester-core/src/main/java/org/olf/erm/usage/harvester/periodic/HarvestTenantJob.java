@@ -5,7 +5,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.ext.web.client.WebClient;
 import java.util.Date;
-import org.folio.okapi.common.XOkapiHeaders;
+import org.olf.erm.usage.harvester.OkapiClient;
+import org.olf.erm.usage.harvester.SystemUser;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
@@ -52,46 +53,43 @@ public class HarvestTenantJob implements Job {
       return;
     }
 
-    String okapiUrl = vertxContext.config().getString("okapiUrl");
-    WebClient.create(vertxContext.owner())
-        .getAbs(okapiUrl + "/erm-usage-harvester/start")
-        .putHeader(XOkapiHeaders.TENANT, tenantId)
-        .send(
-            ar -> {
-              if (ar.succeeded()) {
-                if (ar.result().statusCode() != 200) {
-                  failAndLog(
-                      promise,
-                      String.format(
-                          "Tenant: %s, error starting job, received %s %s from start interface: %s",
-                          tenantId,
-                          ar.result().statusCode(),
-                          ar.result().statusMessage(),
-                          ar.result().bodyAsString()));
-                } else {
-                  log.info("Tenant: {}, job started", tenantId);
-                  updateLastTriggeredAt(vertxContext, context.getFireTime())
-                      .onComplete(
-                          ar2 -> {
-                            if (ar2.succeeded()) {
-                              promise.complete();
-                            } else {
-                              failAndLog(
-                                  promise,
-                                  String.format(
-                                      "Tenant: %s, failed updating lastTriggeredAt: %s",
-                                      tenantId, ar2.cause().getMessage()));
-                            }
-                          });
-                }
-              } else {
+    WebClient webClient = WebClient.create(vertxContext.owner());
+    OkapiClient okapiClient = new OkapiClient(webClient, vertxContext.config());
+
+    okapiClient
+        .loginSystemUser(tenantId, new SystemUser(tenantId))
+        .compose(token -> okapiClient.startHarvester(tenantId, token))
+        .onSuccess(
+            resp -> {
+              if (resp.statusCode() != 200) {
                 failAndLog(
                     promise,
                     String.format(
-                        "Tenant: %s, error connecting to start interface: %s",
-                        tenantId, ar.cause().getMessage()));
+                        "Tenant: %s, error starting job, received %s %s from start interface: %s",
+                        tenantId, resp.statusCode(), resp.statusMessage(), resp.bodyAsString()));
+              } else {
+                log.info("Tenant: {}, job started", tenantId);
+                updateLastTriggeredAt(vertxContext, context.getFireTime())
+                    .onComplete(
+                        ar2 -> {
+                          if (ar2.succeeded()) {
+                            promise.complete();
+                          } else {
+                            failAndLog(
+                                promise,
+                                String.format(
+                                    "Tenant: %s, failed updating lastTriggeredAt: %s",
+                                    tenantId, ar2.cause().getMessage()));
+                          }
+                        });
               }
-            });
+            })
+        .onFailure(
+            t ->
+                failAndLog(
+                    promise,
+                    String.format(
+                        "Tenant: %s, error starting harvester: %s", tenantId, t.getMessage())));
   }
 
   public void setTenantId(String tenantId) {
