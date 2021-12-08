@@ -97,7 +97,8 @@ properties by `run-java.sh`.
 
 Periodic harvesting requires the module to login as a user. User credentials are set separately for
 each tenant through the environment variables `{tenant}_USER_NAME` and `{tenant}_USER_PASS`,
-where `{tenant}` is a placeholder for the tenant id.
+where `{tenant}` is a placeholder for the tenant id. The user needs to have
+the `ermusageharvester.start` permission.
 
 Example:
 
