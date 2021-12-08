@@ -6,8 +6,10 @@ import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
 import com.google.common.net.HttpHeaders;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import java.util.List;
 import java.util.Objects;
@@ -50,6 +52,15 @@ public class OkapiClient {
                         ERR_MSG_STATUS, resp.statusCode(), resp.statusMessage(), loginUrl));
               }
             });
+  }
+
+  public Future<HttpResponse<Buffer>> startHarvester(String tenantId, String token) {
+    String startUrl = okapiUrl + "/erm-usage-harvester/start";
+    return client
+        .getAbs(startUrl)
+        .putHeader(XOkapiHeaders.TENANT, tenantId)
+        .putHeader(XOkapiHeaders.TOKEN, token)
+        .send();
   }
 
   public Future<List<String>> getTenants() {
