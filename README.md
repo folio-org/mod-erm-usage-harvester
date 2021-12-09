@@ -11,7 +11,8 @@ Module for harvesting counter reports.
 
 ## Requirements
 
-Module needs to know about the Okapi URL ([see here](#setting-the-okapi-url)).
+* The module needs to know about the Okapi URL ([see here](#setting-the-okapi-url)).
+* For scheduled harvesting you need to provide user credentials ([see here](#periodic-harvesting)).
 
 ## Installation
 
@@ -94,9 +95,20 @@ properties by `run-java.sh`.
 
 ## Periodic harvesting
 
-Module can be set up to start harvesting regularly at defined intervals through
-the `erm-usage-harvester/periodic` API. Configuration is done for each tenant separately by using
-the `X-Okapi-Tenant` header. See [PeriodicConfig](ramls/schemas/periodicConfig.json)
+Periodic harvesting requires the module to login as a user. User credentials are set separately for
+each tenant through the environment variables `{tenant}_USER_NAME` and `{tenant}_USER_PASS`,
+where `{tenant}` is a placeholder for the tenant id.
+
+Example:
+
+```
+DIKU_USER_NAME=mod-erm-usage-harvester
+DIKU_USER_PASS=password123
+```
+
+Periodic harvesting is set up through the `erm-usage-harvester/periodic` API. Configuration is done
+for each tenant separately by using the `X-Okapi-Tenant` header.
+See [PeriodicConfig](ramls/schemas/periodicConfig.json)
 and [periodic.raml](ramls/periodic.raml).
 
 Example:
@@ -112,8 +124,8 @@ curl --request POST \
 }'
 ```
 
-Will create a schedule which triggers harvesting for tenant `diku`  each day at 8am UTC starting
-on `2019-01-01`.
+This request will create a schedule which triggers harvesting for tenant `diku` each day at 8am UTC
+starting on `2019-01-01`.
 
 __Note:__ Using `"periodicInterval: "monthly"`  and `startAt` with days > 28 will result in a _'last
 day of month'_ schedule.
@@ -127,8 +139,9 @@ Example 2:
 }
 ```
 
-Will trigger harvesting every last day of month at 8am UTC starting on `2019-01-31` followed
-by `2019-02-28`, `2019-03-31`, `2019-04-30`, ... .
+This configuration will trigger harvesting every last day of month at 8am UTC starting
+on `2019-01-31`
+followed by `2019-02-28`, `2019-03-31`, `2019-04-30`, ... .
 
 ## ServiceEndpoint implementations
 
