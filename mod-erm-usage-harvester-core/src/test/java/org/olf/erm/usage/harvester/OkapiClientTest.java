@@ -10,7 +10,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -154,96 +153,6 @@ public class OkapiClientTest {
         .onComplete(
             ar -> {
               context.assertTrue(ar.failed());
-              async.complete();
-            });
-  }
-
-  @Test
-  public void hasEnabledModuleNo(TestContext context) {
-    stubFor(
-        get(urlEqualTo(tenantsPath + "/" + tenantId + "/interfaces"))
-            .willReturn(aResponse().withBody("[]")));
-
-    Async async = context.async();
-    okapiClient
-        .hasHarvesterInterface(tenantId)
-        .onComplete(
-            ar -> {
-              assertThat(ar.succeeded()).isFalse();
-              assertThat(ar.cause()).hasMessageContaining("not found");
-              async.complete();
-            });
-  }
-
-  @Test
-  public void hasEnabledModuleResponseInvalid(TestContext context) {
-    stubFor(
-        get(urlEqualTo(tenantsPath + "/" + tenantId + "/interfaces"))
-            .willReturn(aResponse().withBody("{}")));
-
-    Async async = context.async();
-    okapiClient
-        .hasHarvesterInterface(tenantId)
-        .onComplete(
-            ar -> {
-              context.assertTrue(ar.failed());
-              context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
-              async.complete();
-            });
-  }
-
-  @Test
-  public void hasEnabledModule404(TestContext context) {
-    stubFor(
-        get(urlEqualTo(tenantsPath + "/" + tenantId + "/interfaces"))
-            .willReturn(aResponse().withStatus(404)));
-
-    Async async = context.async();
-    okapiClient
-        .hasHarvesterInterface(tenantId)
-        .onComplete(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause())
-                  .hasMessageContaining("failed retrieving")
-                  .hasMessageContaining("status code");
-              async.complete();
-            });
-  }
-
-  @Test
-  public void hasEnabledModuleNoService(TestContext context) {
-    wireMockRule.stop();
-
-    Async async = context.async();
-    okapiClient
-        .hasHarvesterInterface(tenantId)
-        .onComplete(
-            ar -> {
-              assertThat(ar.failed()).isTrue();
-              assertThat(ar.cause()).hasMessageContaining("failed retrieving");
-              async.complete();
-            });
-  }
-
-  @Test
-  public void hasEnabledModuleYes(TestContext context) {
-    JsonArray response = new JsonArray();
-    response.add(
-        new JsonObject()
-            .put("id", OkapiClient.INTERFACE_NAME)
-            .put("version", OkapiClient.INTERFACE_VER));
-
-    stubFor(
-        get(urlEqualTo(tenantsPath + "/" + tenantId + "/interfaces"))
-            .willReturn(aResponse().withBody(response.toString())));
-
-    Async async = context.async();
-    okapiClient
-        .hasHarvesterInterface(tenantId)
-        .onComplete(
-            ar -> {
-              context.assertTrue(ar.succeeded());
               async.complete();
             });
   }

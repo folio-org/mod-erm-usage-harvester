@@ -87,32 +87,6 @@
       ]
     },
     {
-      "id": "_start",
-      "version": "1.0",
-      "interfaceType": "system",
-      "handlers": [
-        {
-          "methods": [
-            "GET"
-          ],
-          "pathPattern": "/_/start",
-          "modulePermissions": [
-            "usagedataproviders.collection.get",
-            "usagedataproviders.item.get",
-            "usagedataproviders.item.put",
-            "aggregatorsettings.collection.get",
-            "aggregatorsettings.item.get",
-            "counterreports.collection.get",
-            "counterreports.item.get",
-            "counterreports.item.post",
-            "counterreports.item.put",
-            "counterreports.item.delete",
-            "configuration.entries.collection.get"
-          ]
-        }
-      ]
-    },
-    {
       "id": "_tenant",
       "version": "2.0",
       "interfaceType": "system",
