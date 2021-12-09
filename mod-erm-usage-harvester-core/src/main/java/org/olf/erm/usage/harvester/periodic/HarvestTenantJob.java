@@ -26,7 +26,7 @@ public class HarvestTenantJob implements Job {
                     vertxContext, tenantId, pc.withLastTriggeredAt(fireTime)));
   }
 
-  private void failAndLog(Promise promise, String message) {
+  private void failAndLog(Promise<?> promise, String message) {
     log.error(message);
     promise.fail(message);
   }
