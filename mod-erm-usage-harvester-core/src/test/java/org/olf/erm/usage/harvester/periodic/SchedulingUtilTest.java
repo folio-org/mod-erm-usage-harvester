@@ -141,7 +141,7 @@ public class SchedulingUtilTest {
   }
 
   @Test
-  public void testLastTriggeredAtAfterStart() throws SchedulerException {
+  public void testLastTriggeredIsAfterStart() throws SchedulerException {
     Date startDate = toDate(2019, 1, 1);
     Date lastTriggered = toDate(2019, 3, 24);
     PeriodicConfig config =
@@ -151,9 +151,11 @@ public class SchedulingUtilTest {
             .withPeriodicInterval(PeriodicInterval.DAILY);
 
     assertCreateOrUpdateJob(config);
-    assertThat(getTrigger().getStartTime()).isEqualTo(lastTriggered);
-    assertThat(getTrigger().getFireTimeAfter(toDate(2018, 1, 1))).isEqualTo(lastTriggered);
-    assertThat(getTrigger().getFireTimeAfter(startDate)).isEqualTo(lastTriggered);
+    assertThat(getTrigger().getStartTime())
+        .isEqualTo(toDate(LocalDateTime.of(2019, 3, 24, 8, 0, 1)));
+    assertThat(getTrigger().getNextFireTime()).isEqualTo(toDate(2019, 3, 25));
+    assertThat(getTrigger().getFireTimeAfter(toDate(2018, 1, 1))).isEqualTo(toDate(2019, 3, 25));
+    assertThat(getTrigger().getFireTimeAfter(startDate)).isEqualTo(toDate(2019, 3, 25));
     assertThat(getTrigger().getFireTimeAfter(lastTriggered)).isEqualTo(toDate(2019, 3, 25));
     assertThat(getTrigger().getFireTimeAfter(toDate(2019, 4, 1))).isEqualTo(toDate(2019, 4, 2));
     assertThat(getTrigger().getFireTimeAfter(toDate(2019, 4, 1, 7, 0)))
@@ -161,7 +163,28 @@ public class SchedulingUtilTest {
   }
 
   @Test
-  public void testLastTriggeredAtBeforeStart() throws SchedulerException {
+  public void testLastTriggeredIsEqualStart() throws SchedulerException {
+    Date startDate = toDate(2019, 1, 1);
+    Date lastTriggered = toDate(2019, 1, 1);
+    PeriodicConfig config =
+        new PeriodicConfig()
+            .withStartAt(startDate)
+            .withLastTriggeredAt(lastTriggered)
+            .withPeriodicInterval(PeriodicInterval.DAILY);
+
+    assertCreateOrUpdateJob(config);
+    assertThat(getTrigger().getStartTime())
+        .isEqualTo(toDate(LocalDateTime.of(2019, 1, 1, 8, 0, 1)));
+    assertThat(getTrigger().getNextFireTime()).isEqualTo(toDate(2019, 1, 2));
+    assertThat(getTrigger().getFireTimeAfter(toDate(2018, 1, 1))).isEqualTo(toDate(2019, 1, 2));
+    assertThat(getTrigger().getFireTimeAfter(startDate)).isEqualTo(toDate(2019, 1, 2));
+    assertThat(getTrigger().getFireTimeAfter(toDate(2019, 4, 1))).isEqualTo(toDate(2019, 4, 2));
+    assertThat(getTrigger().getFireTimeAfter(toDate(2019, 4, 1, 7, 0)))
+        .isEqualTo(toDate(2019, 4, 1));
+  }
+
+  @Test
+  public void testLastTriggeredIsBeforeStart() throws SchedulerException {
     Date startDate = toDate(2019, 1, 1);
     Date lastTriggered = toDate(2018, 3, 24);
     PeriodicConfig config =
@@ -172,6 +195,7 @@ public class SchedulingUtilTest {
 
     assertCreateOrUpdateJob(config);
     assertThat(getTrigger().getStartTime()).isEqualTo(startDate);
+    assertThat(getTrigger().getNextFireTime()).isEqualTo(startDate);
     assertThat(getTrigger().getFireTimeAfter(toDate(2018, 1, 1))).isEqualTo(startDate);
     assertThat(getTrigger().getFireTimeAfter(startDate)).isEqualTo(toDate(2019, 1, 2));
   }

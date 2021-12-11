@@ -5,6 +5,7 @@ import java.time.ZoneId;
 import java.util.Date;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.quartz.CronScheduleBuilder;
+import org.quartz.DateBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
@@ -115,15 +116,14 @@ public class SchedulingUtil {
         return null;
     }
 
-    Date startTrigger =
-        Date.from(start.withSecond(0).withNano(0).atZone(ZoneId.systemDefault()).toInstant());
-    if (config.getLastTriggeredAt() != null
-        && config.getLastTriggeredAt().compareTo(startTrigger) > 0) {
-      startTrigger = config.getLastTriggeredAt();
-    }
+    Date startAt =
+        (config.getLastTriggeredAt() != null
+                && config.getLastTriggeredAt().compareTo(config.getStartAt()) >= 0)
+            ? DateBuilder.nextGivenSecondDate(config.getLastTriggeredAt(), 1)
+            : config.getStartAt();
 
     return TriggerBuilder.newTrigger()
-        .startAt(startTrigger)
+        .startAt(startAt)
         .withIdentity(new TriggerKey(tenantId))
         .withSchedule(cronScheduleBuilder.withMisfireHandlingInstructionFireAndProceed())
         .build();
