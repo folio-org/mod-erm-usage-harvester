@@ -1,3 +1,7 @@
+# 3.1.3
+* [MODEUSHARV-54](https://issues.folio.org/browse/MODEUSHARV-54) RMB 33.2.2 fixing remote execution (CVE-2021-44228)
+* [MODEUSHARV-53](https://issues.folio.org/browse/MODEUSHARV-53) RMB 33.2.1 fixing remote execution (CVE-2021-44228)
+
 # 3.1.2
 * [MODEUSHARV-48](https://issues.folio.org/browse/MODEUSHARV-48) Error when harvesting (large) TR report, increase default container memory
 
