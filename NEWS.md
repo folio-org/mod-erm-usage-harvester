@@ -1,3 +1,6 @@
+# 3.0.3
+* [MODEUSHARV-56](https://issues.folio.org/browse/MODEUSHARV-56) Iris R1 2021 Log4j vulnerability
+
 # 3.0.2
 * [MODEUSHARV-36](https://issues.folio.org/browse/MODEUSHARV-36) Unable to parse item and database reports
 
