@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.olf</groupId>
     <artifactId>mod-erm-usage-harvester</artifactId>
-    <version>3.0.3-SNAPSHOT</version>
+    <version>3.0.3</version>
   </parent>
   <artifactId>mod-erm-usage-harvester-bundle</artifactId>
 
@@ -121,15 +121,12 @@
             </goals>
             <configuration>
               <transformers>
-                <transformer
-                  implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                   <resource>META-INF/cxf/bus-extensions.txt</resource>
                 </transformer>
                 <!-- merge services -->
-                <transformer
-                  implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                <transformer
-                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
                     <Main-Class>org.olf.erm.usage.harvester.Launcher</Main-Class>
                     <!-- <Main-Verticle>org.olf.erm.usage.harvester.HarvesterVerticle</Main-Verticle>
