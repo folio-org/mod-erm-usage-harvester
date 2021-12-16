@@ -50,7 +50,7 @@ public interface DefaultApi {
       @Query("platform") String platform);
 
   @GET(
-      "reports/ir?attributes_to_show=Author|Publication_Date|Article_Version|"
+      "reports/ir?attributes_to_show=Authors|Publication_Date|Article_Version|"
           + "Data_Type|YOP|Access_Type|Access_Method&Include_Parent_Details=True")
   Observable<COUNTERItemReport> getReportsIR(
       @Query("customer_id") String customerId,
