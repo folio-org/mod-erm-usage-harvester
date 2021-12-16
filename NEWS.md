@@ -1,3 +1,6 @@
+# 3.1.4
+* [MODEUSHARV-55](https://issues.folio.org/browse/MODEUSHARV-55) Use correct values for attributes_to_show
+
 # 3.1.3
 * [MODEUSHARV-54](https://issues.folio.org/browse/MODEUSHARV-54) RMB 33.2.2 fixing remote execution (CVE-2021-44228)
 * [MODEUSHARV-53](https://issues.folio.org/browse/MODEUSHARV-53) RMB 33.2.1 fixing remote execution (CVE-2021-44228)
