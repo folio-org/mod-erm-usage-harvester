@@ -1,3 +1,13 @@
+# 4.0.0
+* [MODEUSHARV-47](https://issues.folio.org/browse/MODEUSHARV-47) Endpoint w/o required permissions
+* [MODEUSHARV-50](https://issues.folio.org/browse/MODEUSHARV-50) Use system user for scheduled harvesting
+* [MODEUSHARV-51](https://issues.folio.org/browse/MODEUSHARV-51) Cleanup unused code artifacts
+* [MODEUSHARV-52](https://issues.folio.org/browse/MODEUSHARV-52) Scheduled harvesting triggers may execute twice
+* [MODEUSHARV-53](https://issues.folio.org/browse/MODEUSHARV-53) RMB 33.2.1 fixing remote execution (CVE-2021-44228)
+* [MODEUSHARV-54](https://issues.folio.org/browse/MODEUSHARV-54) Kiwi R3 2021 - Log4j vulnerability verification and correction
+* [MODEUSHARV-55](https://issues.folio.org/browse/MODEUSHARV-55) Use correct values for attributes_to_show
+* [MODEUSHARV-60](https://issues.folio.org/browse/MODEUSHARV-60) Update to the latest RMB 33.* release
+
 # 3.1.2
 * [MODEUSHARV-48](https://issues.folio.org/browse/MODEUSHARV-48) Error when harvesting (large) TR report, increase default container memory
 
