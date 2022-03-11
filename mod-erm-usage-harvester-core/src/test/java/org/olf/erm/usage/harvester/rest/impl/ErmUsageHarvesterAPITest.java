@@ -75,7 +75,7 @@ public class ErmUsageHarvesterAPITest {
 
   @Test
   public void startHarvesterNoTenant() {
-    when().get("/start").then().statusCode(400).body(containsString(TENANT_ERR_MSG));
+    given().get("/start").then().statusCode(400).body(containsString(TENANT_ERR_MSG));
   }
 
   @Test
@@ -89,8 +89,7 @@ public class ErmUsageHarvesterAPITest {
             .statusCode(500)
             .extract()
             .as(org.folio.rest.jaxrs.model.Error.class);
-    assertThat(response)
-        .isEqualToComparingFieldByFieldRecursively(ErmUsageHarvesterAPI.ERR_NO_TOKEN);
+    assertThat(response).usingRecursiveComparison().isEqualTo(ErmUsageHarvesterAPI.ERR_NO_TOKEN);
   }
 
   @Test
@@ -124,8 +123,7 @@ public class ErmUsageHarvesterAPITest {
             .statusCode(500)
             .extract()
             .as(Error.class);
-    assertThat(response)
-        .isEqualToComparingFieldByFieldRecursively(ErmUsageHarvesterAPI.ERR_NO_TOKEN);
+    assertThat(response).usingRecursiveComparison().isEqualTo(ErmUsageHarvesterAPI.ERR_NO_TOKEN);
   }
 
   @Test

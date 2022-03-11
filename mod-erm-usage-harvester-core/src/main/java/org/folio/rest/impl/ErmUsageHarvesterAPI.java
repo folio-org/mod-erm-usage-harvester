@@ -27,9 +27,9 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
   private static final Logger log = LoggerFactory.getLogger(ErmUsageHarvesterAPI.class);
   public static final Error ERR_NO_TOKEN =
-      new Error().withType("Error").withMessage("No Okapi Token provided");
+      new Error().withType("Error").withMessage("No X-Okapi-Token provided");
 
-  public Future<String> deployWorkerVerticle(
+  private Future<String> deployWorkerVerticle(
       Context vertxContext, Map<String, String> okapiHeaders, String providerId) {
     return vertxContext
         .owner()
@@ -54,7 +54,8 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     String tokenStr = okapiHeaders.get(XOkapiHeaders.TOKEN);
     if (tokenStr == null) {
       asyncResultHandler.handle(
-          Future.succeededFuture(Response.serverError().entity(ERR_NO_TOKEN).build()));
+          Future.succeededFuture(
+              GetErmUsageHarvesterStartResponse.respond500WithApplicationJson(ERR_NO_TOKEN)));
       return;
     }
 
@@ -78,7 +79,8 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     String tokenStr = okapiHeaders.get(XOkapiHeaders.TOKEN);
     if (tokenStr == null) {
       asyncResultHandler.handle(
-          Future.succeededFuture(Response.serverError().entity(ERR_NO_TOKEN).build()));
+          Future.succeededFuture(
+              GetErmUsageHarvesterStartByIdResponse.respond500WithApplicationJson(ERR_NO_TOKEN)));
       return;
     }
 
@@ -111,6 +113,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
             .collect(Collectors.toList());
     String result = new JsonObject().put("implementations", new JsonArray(collect)).toString();
     asyncResultHandler.handle(
-        Future.succeededFuture(Response.ok(result, MediaType.APPLICATION_JSON_TYPE).build()));
+        Future.succeededFuture(
+            GetErmUsageHarvesterImplResponse.respond200WithApplicationJson(result)));
   }
 }
