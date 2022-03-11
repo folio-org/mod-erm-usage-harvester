@@ -45,10 +45,12 @@ import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.CounterReports;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
@@ -73,9 +75,8 @@ public class WorkerVerticleTest {
   @Rule public Timeout timeoutRule = Timeout.seconds(10);
 
   private static final String tenantId = "diku";
-  private static final Token token =
-      Token.createDummy(tenantId, "6bf2a318-17a9-4fd9-a889-8baf665ab3c8", tenantId);
-  private static final WorkerVerticle harvester = new WorkerVerticle(token);
+  private static final WorkerVerticle harvester =
+      new WorkerVerticle(Map.of(XOkapiHeaders.TENANT, tenantId, XOkapiHeaders.TOKEN, "someToken"));
   private static final String UDP_ID = "eff7063d-9ab9-49e9-8bca-5e40863455d4";
 
   private static CounterReport cr;

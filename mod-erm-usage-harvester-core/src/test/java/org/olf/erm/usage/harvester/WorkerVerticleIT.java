@@ -75,7 +75,10 @@ import org.slf4j.LoggerFactory;
 public class WorkerVerticleIT {
 
   private static final Vertx vertx = Vertx.vertx();
-  private static final List<String> tenants = List.of("tenanta", "tenantb");
+  private static final String TENANTA = "tenanta";
+  private static final Map<String, String> OKAPI_HEADERS =
+      Map.of(XOkapiHeaders.TENANT, TENANTA, XOkapiHeaders.TOKEN, "someToken");
+  private static final List<String> tenants = List.of(TENANTA, "tenantb");
 
   @ClassRule
   public static PostgresContainerRule pgContainerRule =
@@ -155,7 +158,7 @@ public class WorkerVerticleIT {
                     .withApiKey("apiKey")
                     .withCustomerId("custId")
                     .withRequestorId("reqId"));
-    tenantUDPMap.put("tenanta", new ArrayList<>(List.of(udp1, udp2)));
+    tenantUDPMap.put(TENANTA, new ArrayList<>(List.of(udp1, udp2)));
   }
 
   @Before
@@ -194,8 +197,8 @@ public class WorkerVerticleIT {
                     .withBody(
                         Json.encodePrettily(
                             new UsageDataProviders()
-                                .withUsageDataProviders(tenantUDPMap.get("tenanta"))
-                                .withTotalRecords(tenantUDPMap.get("tenanta").size())))));
+                                .withUsageDataProviders(tenantUDPMap.get(TENANTA))
+                                .withTotalRecords(tenantUDPMap.get(TENANTA).size())))));
 
     baseRule.stubFor(
         get(urlMatching(providerPath + "/.*"))
@@ -240,13 +243,8 @@ public class WorkerVerticleIT {
   public void testNumberOfRequestsMadeForTenant(TestContext context) {
     Async async = context.async();
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
     ValidatableResponse then =
-        given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-            .get(okapiUrl + "/erm-usage-harvester/start")
-            .then();
+        given().headers(OKAPI_HEADERS).get(okapiUrl + "/erm-usage-harvester/start").then();
     System.out.println(
         then.extract().statusCode()
             + then.extract().statusLine()
@@ -291,14 +289,12 @@ public class WorkerVerticleIT {
   @Test
   public void testNumberOfRequestsMadeForProviderWithErrors(TestContext context) {
     tenantUDPMap
-        .get("tenanta")
+        .get(TENANTA)
         .forEach(udp -> udp.getHarvestingConfig().getSushiConfig().setServiceType("wvitp2"));
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
     ValidatableResponse then =
         given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .headers(OKAPI_HEADERS)
             .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
             .then();
     System.out.println(
@@ -347,7 +343,7 @@ public class WorkerVerticleIT {
   @Test
   public void testNumberOfThreadsUsedAfterTooManyRequestsError(TestContext context) {
     tenantUDPMap
-        .get("tenanta")
+        .get(TENANTA)
         .forEach(udp -> udp.getHarvestingConfig().getSushiConfig().setServiceType("wvitp3"));
 
     LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
@@ -357,11 +353,9 @@ public class WorkerVerticleIT {
     logger.addAppender(newAppender);
     newAppender.start();
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
     ValidatableResponse then =
         given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .headers(OKAPI_HEADERS)
             .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
             .then();
     System.out.println(
@@ -420,11 +414,9 @@ public class WorkerVerticleIT {
     serviceProviderARule.stubFor(
         get(anyUrl()).willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
     ValidatableResponse then =
         given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .headers(OKAPI_HEADERS)
             .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
             .then();
     System.out.println(
@@ -466,9 +458,9 @@ public class WorkerVerticleIT {
 
   @Test
   public void testLogMessageHarvestingNotActive(TestContext context) {
-    tenantUDPMap.get("tenanta").remove(1);
+    tenantUDPMap.get(TENANTA).remove(1);
     tenantUDPMap
-        .get("tenanta")
+        .get(TENANTA)
         .get(0)
         .getHarvestingConfig()
         .setHarvestingStatus(HarvestingStatus.INACTIVE);
@@ -481,11 +473,9 @@ public class WorkerVerticleIT {
     newAppender.start();
 
     Async async = context.async();
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
     ValidatableResponse then =
         given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .headers(OKAPI_HEADERS)
             .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
             .then();
     System.out.println(
@@ -527,11 +517,9 @@ public class WorkerVerticleIT {
     newAppender.start();
 
     Async async = context.async();
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
     ValidatableResponse then =
         given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .headers(OKAPI_HEADERS)
             .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
             .then();
     System.out.println(
@@ -567,7 +555,7 @@ public class WorkerVerticleIT {
   public void testServiceProviderFailsInitialization(TestContext context) {
     Async async = context.async();
 
-    UsageDataProvider udp = tenantUDPMap.get("tenanta").get(0);
+    UsageDataProvider udp = tenantUDPMap.get(TENANTA).get(0);
     HarvestingConfig harvestingConfig = udp.getHarvestingConfig();
     harvestingConfig.getSushiConfig().setServiceType("wvitpfailinit");
     harvestingConfig
@@ -576,11 +564,9 @@ public class WorkerVerticleIT {
         .withHarvestingStart("2021-01")
         .withHarvestingEnd("2021-03");
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
     ValidatableResponse then =
         given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .headers(OKAPI_HEADERS)
             .get(okapiUrl + "/erm-usage-harvester/start/" + udp.getId())
             .then();
     then.statusCode(200);
@@ -620,11 +606,9 @@ public class WorkerVerticleIT {
   public void testNumberOfRequestsMadeForProvider(TestContext context) {
     Async async = context.async();
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
     ValidatableResponse then =
         given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+            .headers(OKAPI_HEADERS)
             .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
             .then();
     System.out.println(
@@ -665,7 +649,7 @@ public class WorkerVerticleIT {
   @Test
   public void testFailedReasonIsExceptionToStringIfGetMessageIsNull(TestContext context) {
     tenantUDPMap
-        .get("tenanta")
+        .get(TENANTA)
         .forEach(
             udp -> {
               HarvestingConfig harvestingConfig = udp.getHarvestingConfig();
@@ -677,9 +661,8 @@ public class WorkerVerticleIT {
                   .withHarvestingEnd("2021-01");
             });
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
     given()
-        .headers(XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
+        .headers(OKAPI_HEADERS)
         .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
         .then()
         .statusCode(200);

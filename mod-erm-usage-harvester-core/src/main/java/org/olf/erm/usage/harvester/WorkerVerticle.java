@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -69,8 +70,9 @@ public class WorkerVerticle extends AbstractVerticle {
   private String providerPath;
   private String aggregatorPath;
   private String modConfigPath;
-  private Token token;
-  private String providerId = null;
+  private String token;
+  private String tenantId;
+  private String providerId;
   private int maxFailedAttempts = 5;
   private WebClient client;
 
@@ -96,40 +98,38 @@ public class WorkerVerticle extends AbstractVerticle {
     return new DisposableCompletableObserver() {
       @Override
       public void onComplete() {
-        logInfo(() -> createTenantMsg(token.getTenantId(), "Processing completed"));
+        logInfo(() -> createTenantMsg(tenantId, "Processing completed"));
       }
 
       @Override
       public void onError(Throwable e) {
-        logError(
-            () ->
-                createTenantMsg(token.getTenantId(), "Error during processing, {}", e.getMessage()),
-            e);
+        logError(() -> createTenantMsg(tenantId, "Error during processing, {}", e.getMessage()), e);
       }
     };
   }
 
-  public WorkerVerticle(Token token) {
-    this.token = token;
+  public WorkerVerticle(Map<String, String> okapiHeaders, String providerId) {
+    this.token = okapiHeaders.get(XOkapiHeaders.TOKEN);
+    this.tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
+    this.providerId = providerId;
   }
 
-  public WorkerVerticle(Token token, String providerId) {
-    this.token = token;
-    this.providerId = providerId;
+  public WorkerVerticle(Map<String, String> okapiHeaders) {
+    this(okapiHeaders, null);
   }
 
   public Future<UsageDataProviders> getActiveProviders() {
     final String url = okapiUrl + providerPath;
     final String queryStr =
         String.format("(harvestingConfig.harvestingStatus=%s)", HarvestingStatus.ACTIVE);
-    logInfo(() -> createTenantMsg(token.getTenantId(), "getting providers"));
+    logInfo(() -> createTenantMsg(tenantId, "getting providers"));
 
     Promise<UsageDataProviders> promise = Promise.promise();
 
     client
         .requestAbs(HttpMethod.GET, url)
-        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
-        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
+        .putHeader(XOkapiHeaders.TOKEN, token)
+        .putHeader(XOkapiHeaders.TENANT, tenantId)
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
         .setQueryParam("limit", String.valueOf(Integer.MAX_VALUE))
         .setQueryParam("offset", "0")
@@ -144,25 +144,21 @@ public class WorkerVerticle extends AbstractVerticle {
                     logInfo(
                         () ->
                             createTenantMsg(
-                                token.getTenantId(),
-                                "total providers: {}",
-                                entity.getTotalRecords()));
+                                tenantId, "total providers: {}", entity.getTotalRecords()));
                     promise.complete(entity);
                   } catch (Exception e) {
                     promise.fail(
-                        createTenantMsg(
-                            token.getTenantId(), createErrMsgDecode(url, e.getMessage())));
+                        createTenantMsg(tenantId, createErrMsgDecode(url, e.getMessage())));
                   }
                 } else {
                   promise.fail(
                       createTenantMsg(
-                          token.getTenantId(),
+                          tenantId,
                           createMsgStatus(
                               ar.result().statusCode(), ar.result().statusMessage(), url)));
                 }
               } else {
-                promise.fail(
-                    createTenantMsg(token.getTenantId(), "error: {}", ar.cause().getMessage()));
+                promise.fail(createTenantMsg(tenantId, "error: {}", ar.cause().getMessage()));
               }
             });
     return promise.future();
@@ -174,15 +170,14 @@ public class WorkerVerticle extends AbstractVerticle {
     Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
     if (aggregator == null || aggregator.getId() == null) {
       return Future.failedFuture(
-          createTenantMsg(
-              token.getTenantId(), "no aggregator found for provider {}", provider.getLabel()));
+          createTenantMsg(tenantId, "no aggregator found for provider {}", provider.getLabel()));
     }
 
     final String aggrUrl = okapiUrl + aggregatorPath + "/" + aggregator.getId();
     client
         .requestAbs(HttpMethod.GET, aggrUrl)
-        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
-        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
+        .putHeader(XOkapiHeaders.TOKEN, token)
+        .putHeader(XOkapiHeaders.TENANT, tenantId)
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
         .send(
             ar -> {
@@ -193,26 +188,23 @@ public class WorkerVerticle extends AbstractVerticle {
                     logInfo(
                         () ->
                             createTenantMsg(
-                                token.getTenantId(),
-                                "got AggregatorSetting for id: {}",
-                                aggregator.getId()));
+                                tenantId, "got AggregatorSetting for id: {}", aggregator.getId()));
                     promise.complete(setting);
                   } catch (Exception e) {
                     promise.fail(
-                        createTenantMsg(
-                            token.getTenantId(), createErrMsgDecode(aggrUrl, e.getMessage())));
+                        createTenantMsg(tenantId, createErrMsgDecode(aggrUrl, e.getMessage())));
                   }
                 } else {
                   promise.fail(
                       createTenantMsg(
-                          token.getTenantId(),
+                          tenantId,
                           createMsgStatus(
                               ar.result().statusCode(), ar.result().statusMessage(), aggrUrl)));
                 }
               } else {
                 promise.fail(
                     createTenantMsg(
-                        token.getTenantId(),
+                        tenantId,
                         "failed getting AggregatorSetting for id: {}, {}",
                         aggregator.getId(),
                         ar.cause().getMessage()));
@@ -245,7 +237,7 @@ public class WorkerVerticle extends AbstractVerticle {
               } else {
                 sepPromise.fail(
                     createTenantMsg(
-                        token.getTenantId(),
+                        tenantId,
                         createProviderMsg(
                             provider.getLabel(), "No service implementation available")));
               }
@@ -273,8 +265,8 @@ public class WorkerVerticle extends AbstractVerticle {
             providerId, maxFailedAttempts, reportName, start.toString(), end.toString());
     client
         .getAbs(okapiUrl + reportsPath)
-        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
-        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
+        .putHeader(XOkapiHeaders.TOKEN, token)
+        .putHeader(XOkapiHeaders.TENANT, tenantId)
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
         .setQueryParam(QUERY_PARAM, queryStr)
         .setQueryParam("tiny", "true")
@@ -316,7 +308,7 @@ public class WorkerVerticle extends AbstractVerticle {
       logInfo(
           () ->
               createTenantMsg(
-                  token.getTenantId(),
+                  tenantId,
                   "skipping {} as harvesting status is {}",
                   provider.getLabel(),
                   provider.getHarvestingConfig().getHarvestingStatus()));
@@ -395,7 +387,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                 l ->
                                     logInfo(
                                         createTenantProviderMsg(
-                                            token.getTenantId(),
+                                            tenantId,
                                             provider.getLabel(),
                                             "processing {}",
                                             fetchItem))),
@@ -415,7 +407,7 @@ public class WorkerVerticle extends AbstractVerticle {
                           if (t instanceof TooManyRequestsException) {
                             logInfo(
                                 createTenantProviderMsg(
-                                    token.getTenantId(),
+                                    tenantId,
                                     provider.getLabel(),
                                     "Too many requests.. retrying {}",
                                     fetchItem));
@@ -430,7 +422,7 @@ public class WorkerVerticle extends AbstractVerticle {
                         t -> {
                           logInfo(
                               createTenantProviderMsg(
-                                  token.getTenantId(),
+                                  tenantId,
                                   provider.getLabel(),
                                   "received {}",
                                   getMessageOrToString(t)));
@@ -452,7 +444,7 @@ public class WorkerVerticle extends AbstractVerticle {
                           if (expand.size() <= 1) {
                             logInfo(
                                 createTenantProviderMsg(
-                                    token.getTenantId(),
+                                    tenantId,
                                     provider.getLabel(),
                                     "Returning null for {}",
                                     fetchItem));
@@ -468,7 +460,7 @@ public class WorkerVerticle extends AbstractVerticle {
                             // handle failed multiple months
                             logInfo(
                                 createTenantProviderMsg(
-                                    token.getTenantId(),
+                                    tenantId,
                                     provider.getLabel(),
                                     "Expanded {} into {} FetchItems",
                                     fetchItem,
@@ -500,15 +492,13 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   public Completable fetchAndPostReportsRx(UsageDataProvider provider) {
-    logInfo(
-        () -> createTenantMsg(token.getTenantId(), "processing provider: {}", provider.getLabel()));
+    logInfo(() -> createTenantMsg(tenantId, "processing provider: {}", provider.getLabel()));
 
     wrapFuture(updateUDPLastHarvestingDate(provider))
         .doOnError(
             t ->
                 logError(
-                    createTenantProviderMsg(
-                        token.getTenantId(), provider.getLabel(), "{}", t.getMessage())))
+                    createTenantProviderMsg(tenantId, provider.getLabel(), "{}", t.getMessage())))
         .ignoreElement()
         .onErrorComplete()
         .subscribe();
@@ -522,7 +512,7 @@ public class WorkerVerticle extends AbstractVerticle {
                     logInfo(
                         () ->
                             createTenantMsg(
-                                token.getTenantId(),
+                                tenantId,
                                 createProviderMsg(
                                     provider.getLabel(), "No reports need to be fetched.")));
                   }
@@ -558,10 +548,7 @@ public class WorkerVerticle extends AbstractVerticle {
             cr ->
                 logInfo(
                     createTenantProviderMsg(
-                        token.getTenantId(),
-                        provider.getLabel(),
-                        "Received: {}",
-                        counterReportToString(cr))))
+                        tenantId, provider.getLabel(), "Received: {}", counterReportToString(cr))))
         .flatMapCompletable(
             cr ->
                 wrapFuture(postReport(cr))
@@ -570,10 +557,7 @@ public class WorkerVerticle extends AbstractVerticle {
                         t ->
                             logError(
                                 createTenantProviderMsg(
-                                    token.getTenantId(),
-                                    provider.getLabel(),
-                                    "{}",
-                                    t.getMessage())))
+                                    tenantId, provider.getLabel(), "{}", t.getMessage())))
                     .onErrorComplete());
   }
 
@@ -605,13 +589,12 @@ public class WorkerVerticle extends AbstractVerticle {
 
     final Promise<HttpResponse<Buffer>> promise = Promise.promise();
 
-    logInfo(
-        () -> createTenantMsg(token.getTenantId(), "posting report with id {}", report.getId()));
+    logInfo(() -> createTenantMsg(tenantId, "posting report with id {}", report.getId()));
 
     client
         .requestAbs(method, url)
-        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
-        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
+        .putHeader(XOkapiHeaders.TOKEN, token)
+        .putHeader(XOkapiHeaders.TENANT, tenantId)
         .putHeader(HttpHeaders.ACCEPT, MediaType.PLAIN_TEXT_UTF_8.toString())
         .sendJsonObject(
             JsonObject.mapFrom(report),
@@ -620,7 +603,7 @@ public class WorkerVerticle extends AbstractVerticle {
                 logInfo(
                     () ->
                         createTenantMsg(
-                            token.getTenantId(),
+                            tenantId,
                             createMsgStatus(
                                 ar.result().statusCode(), ar.result().statusMessage(), url)));
                 promise.complete(ar.result());
@@ -628,9 +611,7 @@ public class WorkerVerticle extends AbstractVerticle {
                 logError(
                     () ->
                         createTenantMsg(
-                            token.getTenantId(),
-                            "error posting report: {}",
-                            ar.cause().getMessage()),
+                            tenantId, "error posting report: {}", ar.cause().getMessage()),
                     ar.cause());
                 promise.fail(ar.cause());
               }
@@ -648,8 +629,8 @@ public class WorkerVerticle extends AbstractVerticle {
             "(providerId=%s AND yearMonth=%s AND reportName==%s)", providerId, month, reportName);
     client
         .getAbs(okapiUrl + reportsPath)
-        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
-        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
+        .putHeader(XOkapiHeaders.TOKEN, token)
+        .putHeader(XOkapiHeaders.TENANT, tenantId)
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
         .setQueryParam(QUERY_PARAM, queryStr)
         .setQueryParam("tiny", String.valueOf(tiny))
@@ -665,7 +646,7 @@ public class WorkerVerticle extends AbstractVerticle {
                   } else {
                     promise.fail(
                         createTenantMsg(
-                            token.getTenantId(),
+                            tenantId,
                             createProviderMsg(
                                 providerId,
                                 "Too many results for {}, {} not processed",
@@ -694,8 +675,8 @@ public class WorkerVerticle extends AbstractVerticle {
   public void runSingleProviderRx() {
     client
         .getAbs(okapiUrl + providerPath + "/" + providerId)
-        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
-        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
+        .putHeader(XOkapiHeaders.TOKEN, token)
+        .putHeader(XOkapiHeaders.TENANT, tenantId)
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
         .rxSend()
         .map(
@@ -726,7 +707,7 @@ public class WorkerVerticle extends AbstractVerticle {
   @Override
   public void stop() throws Exception {
     super.stop();
-    logInfo(() -> createTenantMsg(token.getTenantId(), "undeployed WorkerVerticle"));
+    logInfo(() -> createTenantMsg(tenantId, "undeployed WorkerVerticle"));
   }
 
   @Override
@@ -740,7 +721,7 @@ public class WorkerVerticle extends AbstractVerticle {
     modConfigPath = config().getString("modConfigurationPath");
     client = WebClient.create(vertx);
 
-    logInfo(() -> createTenantMsg(token.getTenantId(), "deployed WorkerVericle"));
+    logInfo(() -> createTenantMsg(tenantId, "deployed WorkerVericle"));
 
     Future<String> limit = getModConfigurationValue(CONFIG_MODULE, CONFIG_CODE, "5");
 
@@ -749,10 +730,7 @@ public class WorkerVerticle extends AbstractVerticle {
           if (ar.succeeded()) {
             maxFailedAttempts = Integer.parseInt(ar.result());
           }
-          logInfo(
-              () ->
-                  createTenantMsg(
-                      token.getTenantId(), "using maxFailedAttempts={}", maxFailedAttempts));
+          logInfo(() -> createTenantMsg(tenantId, "using maxFailedAttempts={}", maxFailedAttempts));
 
           boolean isTesting = config().getBoolean("testing", false);
           if (!isTesting) {
@@ -770,8 +748,8 @@ public class WorkerVerticle extends AbstractVerticle {
     client
         .getAbs(okapiUrl + modConfigPath)
         .setQueryParam(QUERY_PARAM, queryStr)
-        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
-        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
+        .putHeader(XOkapiHeaders.TENANT, tenantId)
+        .putHeader(XOkapiHeaders.TOKEN, token)
         .putHeader(HttpHeaders.ACCEPT, MediaType.JSON_UTF_8.toString())
         .timeout(5000)
         .send(
@@ -803,8 +781,8 @@ public class WorkerVerticle extends AbstractVerticle {
     String putUDPUrl = okapiUrl + providerPath + "/" + udp.getId();
     client
         .putAbs(putUDPUrl)
-        .putHeader(XOkapiHeaders.TENANT, token.getTenantId())
-        .putHeader(XOkapiHeaders.TOKEN, token.getToken())
+        .putHeader(XOkapiHeaders.TENANT, tenantId)
+        .putHeader(XOkapiHeaders.TOKEN, token)
         .putHeader(HttpHeaders.CONTENT_TYPE, MediaType.JSON_UTF_8.toString())
         .putHeader(HttpHeaders.ACCEPT, "text/plain")
         .timeout(5000)
@@ -816,7 +794,7 @@ public class WorkerVerticle extends AbstractVerticle {
                   logInfo(
                       () ->
                           createTenantMsg(
-                              token.getTenantId(),
+                              tenantId,
                               "Updated harvestingDate for UsageDataProvider {}[{}]",
                               udp.getId(),
                               udp.getLabel()));
