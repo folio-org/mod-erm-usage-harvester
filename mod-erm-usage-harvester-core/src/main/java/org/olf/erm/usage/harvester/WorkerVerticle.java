@@ -38,6 +38,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -60,6 +61,7 @@ import org.slf4j.LoggerFactory;
 
 public class WorkerVerticle extends AbstractVerticle {
 
+  public static final String MESSAGE_NO_TOKEN = "No " + XOkapiHeaders.TOKEN + " provided";
   private static final Logger LOG = LoggerFactory.getLogger(WorkerVerticle.class);
   private static final String QUERY_PARAM = "query";
   private static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
@@ -713,6 +715,8 @@ public class WorkerVerticle extends AbstractVerticle {
   @Override
   public void start() throws Exception {
     super.start();
+
+    Objects.requireNonNull(token, MESSAGE_NO_TOKEN);
 
     okapiUrl = config().getString("okapiUrl");
     reportsPath = config().getString("reportsPath");

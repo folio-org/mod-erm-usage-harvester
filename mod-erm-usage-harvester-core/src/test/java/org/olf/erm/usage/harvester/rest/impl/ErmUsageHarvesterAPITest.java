@@ -2,14 +2,15 @@ package org.olf.erm.usage.harvester.rest.impl;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
+import static org.olf.erm.usage.harvester.WorkerVerticle.MESSAGE_NO_TOKEN;
 
 import com.google.common.io.Resources;
 import io.restassured.RestAssured;
@@ -24,8 +25,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.rest.impl.ErmUsageHarvesterAPI;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -75,16 +74,13 @@ public class ErmUsageHarvesterAPITest {
 
   @Test
   public void startHarvesterNoToken() {
-    Error response =
-        given()
-            .header(new Header(XOkapiHeaders.TENANT, TENANT))
-            .when()
-            .get("/start")
-            .then()
-            .statusCode(500)
-            .extract()
-            .as(org.folio.rest.jaxrs.model.Error.class);
-    assertThat(response).usingRecursiveComparison().isEqualTo(ErmUsageHarvesterAPI.ERR_NO_TOKEN);
+    given()
+        .header(new Header(XOkapiHeaders.TENANT, TENANT))
+        .when()
+        .get("/start")
+        .then()
+        .statusCode(500)
+        .body(equalTo(MESSAGE_NO_TOKEN));
   }
 
   @Test
@@ -94,6 +90,8 @@ public class ErmUsageHarvesterAPITest {
         .when()
         .get("/start")
         .then()
+        .log()
+        .all()
         .statusCode(200)
         .body("message", containsString(TENANT));
   }
@@ -109,16 +107,13 @@ public class ErmUsageHarvesterAPITest {
 
   @Test
   public void startProviderNoToken() {
-    Error response =
-        given()
-            .header(new Header(XOkapiHeaders.TENANT, TENANT))
-            .when()
-            .get("/start")
-            .then()
-            .statusCode(500)
-            .extract()
-            .as(Error.class);
-    assertThat(response).usingRecursiveComparison().isEqualTo(ErmUsageHarvesterAPI.ERR_NO_TOKEN);
+    given()
+        .header(new Header(XOkapiHeaders.TENANT, TENANT))
+        .when()
+        .get("/start")
+        .then()
+        .statusCode(500)
+        .body(equalTo(MESSAGE_NO_TOKEN));
   }
 
   @Test
