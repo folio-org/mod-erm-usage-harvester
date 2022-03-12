@@ -41,6 +41,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.Collections;
@@ -49,7 +50,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.commons.lang3.StringUtils;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.CounterReports;
@@ -63,6 +63,7 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,65 +72,53 @@ import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 @RunWith(VertxUnitRunner.class)
 public class WorkerVerticleTest {
 
-  @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
+  @ClassRule
+  public static WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort(), false);
+
   @Rule public Timeout timeoutRule = Timeout.seconds(10);
 
   private static final String tenantId = "diku";
   private static final WorkerVerticle harvester =
       new WorkerVerticle(Map.of(XOkapiHeaders.TENANT, tenantId, XOkapiHeaders.TOKEN, "someToken"));
   private static final String UDP_ID = "eff7063d-9ab9-49e9-8bca-5e40863455d4";
+  private static final Vertx vertx = Vertx.vertx();
 
+  private static String reportsPath;
+  private static String providerPath;
+  private static String aggregatorPath;
+  private static String modConfigurationPath;
   private static CounterReport cr;
 
-  private static final String deployCfg =
-      "{\n"
-          + "  \"okapiUrl\": \"http://localhost\",\n"
-          + "  \"tenantsPath\": \"/_/proxy/tenants\",\n"
-          + "  \"reportsPath\": \"/counter-reports\",\n"
-          + "  \"providerPath\": \"/usage-data-providers\",\n"
-          + "  \"aggregatorPath\": \"/aggregator-settings\",\n"
-          + "  \"modConfigurationPath\": \"/configurations/entries\"\n"
-          + "}";
-
-  private static Vertx vertx;
-  private String reportsPath;
-  private String providerPath;
-  private String aggregatorPath;
-
   @BeforeClass
-  public static void beforeClass(TestContext context) {
-    try {
-      final String str =
-          Resources.toString(Resources.getResource("counterreport-sample.json"), Charsets.UTF_8);
-      cr = Json.decodeValue(str, CounterReport.class);
-    } catch (Exception e) {
-      context.fail(e);
-    }
+  public static void beforeClass(TestContext context) throws IOException {
+    String deployCfg =
+        Resources.toString(Resources.getResource("config.json"), StandardCharsets.UTF_8);
+    JsonObject cfg = new JsonObject(deployCfg);
+    cfg.put("okapiUrl", wireMockRule.baseUrl());
+    cfg.put("testing", true);
+    final String str =
+        Resources.toString(Resources.getResource("counterreport-sample.json"), Charsets.UTF_8);
+    cr = Json.decodeValue(str, CounterReport.class);
+
+    reportsPath = cfg.getString("reportsPath");
+    providerPath = cfg.getString("providerPath");
+    aggregatorPath = cfg.getString("aggregatorPath");
+    modConfigurationPath = cfg.getString("modConfigurationPath");
+
+    vertx.deployVerticle(
+        harvester, new DeploymentOptions().setConfig(cfg), context.asyncAssertSuccess());
   }
 
   @Before
-  public void setup(TestContext context) {
-    vertx = Vertx.vertx();
-    JsonObject cfg = new JsonObject(deployCfg);
-    cfg.put("okapiUrl", StringUtils.removeEnd(wireMockRule.url(""), "/"));
-    cfg.put("testing", true);
+  public void setUp() {
     stubFor(
-        get(urlPathEqualTo("/configurations/entries"))
+        get(urlPathEqualTo(modConfigurationPath))
             .willReturn(aResponse().withStatus(404).withFault(Fault.EMPTY_RESPONSE)));
-    vertx.deployVerticle(
-        harvester,
-        new DeploymentOptions().setConfig(cfg),
-        context.asyncAssertSuccess(
-            h -> {
-              reportsPath = harvester.config().getString("reportsPath");
-              providerPath = harvester.config().getString("providerPath");
-              aggregatorPath = harvester.config().getString("aggregatorPath");
-            }));
   }
 
   @After
-  public void after(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
+  public void tearDown() {
+    wireMockRule.resetAll();
   }
 
   @Test
@@ -165,7 +154,7 @@ public class WorkerVerticleTest {
 
   @Test
   public void getProvidersNoService(TestContext context) {
-    wireMockRule.stop();
+    wireMockRule.resetAll();
 
     harvester.getActiveProviders().onComplete(context.asyncAssertFailure());
   }
@@ -280,7 +269,7 @@ public class WorkerVerticleTest {
                 Resources.toString(
                     Resources.getResource("__files/usage-data-provider.json"), Charsets.UTF_8),
                 UsageDataProvider.class);
-    wireMockRule.stop();
+    wireMockRule.resetAll();
 
     harvester.getAggregatorSetting(provider).onComplete(context.asyncAssertFailure());
   }
@@ -439,8 +428,7 @@ public class WorkerVerticleTest {
   public void testGetValidMonths(TestContext context) {
     String encode = Json.encodePrettily(createCounterSampleReports());
     stubFor(
-        get(urlPathEqualTo("/counter-reports"))
-            .willReturn(aResponse().withStatus(200).withBody(encode)));
+        get(urlPathEqualTo(reportsPath)).willReturn(aResponse().withStatus(200).withBody(encode)));
 
     harvester
         .getValidMonths("providerId", "JR1", YearMonth.of(2017, 12), YearMonth.of(2018, 2))
@@ -457,7 +445,7 @@ public class WorkerVerticleTest {
 
   @Test
   public void testGetValidMonthsFail(TestContext context) {
-    stubFor(get(urlPathEqualTo("/counter-reports")).willReturn(aResponse().withStatus(500)));
+    stubFor(get(urlPathEqualTo(reportsPath)).willReturn(aResponse().withStatus(500)));
     harvester
         .getValidMonths("providerId", "JR1", YearMonth.of(2017, 12), YearMonth.of(2018, 2))
         .onComplete(
@@ -487,7 +475,7 @@ public class WorkerVerticleTest {
     provider.getHarvestingConfig().setHarvestingEnd("2018-03");
 
     stubFor(
-        get(urlPathEqualTo("/counter-reports"))
+        get(urlPathEqualTo(reportsPath))
             .willReturn(
                 aResponse()
                     .withStatus(200)
@@ -514,7 +502,7 @@ public class WorkerVerticleTest {
   public void testNumberOfRequestsMadeByFetchAndPostReportsRx(TestContext context) {
     StubMapping existingReportsStub =
         stubFor(
-            get(urlPathEqualTo("/counter-reports"))
+            get(urlPathEqualTo(reportsPath))
                 .withQueryParam("query", matching(".*failedAttempts.*"))
                 .willReturn(
                     aResponse()
@@ -523,7 +511,7 @@ public class WorkerVerticleTest {
 
     StubMapping additionalReportStub =
         stubFor(
-            get(urlPathEqualTo("/counter-reports"))
+            get(urlPathEqualTo(reportsPath))
                 .withQueryParam("query", matching("^(?!.*failedAttempts).*2018-03.*JR1.*"))
                 .willReturn(
                     aResponse()
@@ -535,17 +523,16 @@ public class WorkerVerticleTest {
                                         Collections.singletonList(new CounterReport()))))));
     StubMapping nonExistingReportsStub =
         stubFor(
-            get(urlPathEqualTo("/counter-reports"))
+            get(urlPathEqualTo(reportsPath))
                 .withQueryParam("query", notMatching(".*failedAttempts.*|.*2018-03.*JR1.*"))
                 .willReturn(
                     aResponse()
                         .withStatus(200)
                         .withBody(Json.encodePrettily(new CounterReports()))));
 
-    stubFor(post(urlPathEqualTo("/counter-reports")).willReturn(aResponse().withStatus(201)));
-    stubFor(put(urlPathMatching("/counter-reports/.*")).willReturn(aResponse().withStatus(204)));
-    stubFor(
-        put(urlPathMatching("/usage-data-providers/.*")).willReturn(aResponse().withStatus(204)));
+    stubFor(post(urlPathEqualTo(reportsPath)).willReturn(aResponse().withStatus(201)));
+    stubFor(put(urlPathMatching(reportsPath + "/.*")).willReturn(aResponse().withStatus(204)));
+    stubFor(put(urlPathMatching(providerPath + "/.*")).willReturn(aResponse().withStatus(204)));
 
     UsageDataProvider provider = createSampleUsageDataProvider();
     Async async = context.async();
@@ -558,11 +545,13 @@ public class WorkerVerticleTest {
                     verify(3, RequestPatternBuilder.like(existingReportsStub.getRequest()));
                     verify(1, RequestPatternBuilder.like(additionalReportStub.getRequest()));
                     verify(5, RequestPatternBuilder.like(nonExistingReportsStub.getRequest()));
-                    verify(5, postRequestedFor(urlPathEqualTo("/counter-reports")));
-                    verify(1, putRequestedFor(urlPathMatching("/counter-reports/.*")));
-                    verify(1, putRequestedFor(urlPathMatching("/usage-data-providers/.*")));
+                    verify(5, postRequestedFor(urlPathEqualTo(reportsPath)));
+                    verify(1, putRequestedFor(urlPathMatching(reportsPath + "/.*")));
+                    verify(1, putRequestedFor(urlPathMatching(providerPath + "/.*")));
                     List<LoggedRequest> all = wireMockRule.findAll(anyRequestedFor(anyUrl()));
-                    assertThat(all).hasSize(17); // 16 + 1 for configurations
+                    assertThat(all)
+                        .hasSize(
+                            16); // 16 (configuration call is only made during verticle deployment)
                   });
               async.complete();
             },
@@ -599,12 +588,12 @@ public class WorkerVerticleTest {
                             .put("confiName", "testing")
                             .put("value", "5")));
     stubFor(
-        get(urlPathEqualTo("/configurations/entries"))
+        get(urlPathEqualTo(modConfigurationPath))
             .withQueryParam("query", equalTo("(module = testmodule and configName = ok)"))
             .willReturn(aResponse().withStatus(200).withBody(response.encodePrettily())));
 
     stubFor(
-        get(urlPathEqualTo("/configurations/entries"))
+        get(urlPathEqualTo(modConfigurationPath))
             .withQueryParam("query", equalTo("(module = testmodule and configName = empty)"))
             .willReturn(aResponse().withStatus(200).withFault(Fault.EMPTY_RESPONSE)));
 
@@ -628,8 +617,7 @@ public class WorkerVerticleTest {
             });
 
     async.await();
-    wireMockRule.stop();
-
+    wireMockRule.resetAll();
     Async async2 = context.async();
     harvester
         .getModConfigurationValue("testmodule", "something", "2")
@@ -639,11 +627,13 @@ public class WorkerVerticleTest {
               context.verify(v -> assertThat(s).isEqualTo("2"));
               async2.countDown();
             });
+
+    async.await();
   }
 
   @Test
   public void testUpdateUDPLastHarvestingDateSuccess(TestContext context) {
-    String urlPath = "/usage-data-providers/" + UDP_ID;
+    String urlPath = providerPath + "/" + UDP_ID;
 
     stubFor(put(urlPath).willReturn(aResponse().withStatus(204)));
     harvester
@@ -660,7 +650,7 @@ public class WorkerVerticleTest {
 
   @Test
   public void testUpdateUDPLastHarvestingDateFail(TestContext context) {
-    String urlPath = "/usage-data-providers/" + UDP_ID;
+    String urlPath = providerPath + "/" + UDP_ID;
 
     stubFor(put(urlPath).willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
     harvester
@@ -672,7 +662,7 @@ public class WorkerVerticleTest {
 
   @Test
   public void testUpdateUDPLastHarvestingDateWrongStatusCode(TestContext context) {
-    String urlPath = "/usage-data-providers/" + UDP_ID;
+    String urlPath = providerPath + "/" + UDP_ID;
 
     stubFor(put(urlPath).willReturn(aResponse().withStatus(400)));
     harvester
