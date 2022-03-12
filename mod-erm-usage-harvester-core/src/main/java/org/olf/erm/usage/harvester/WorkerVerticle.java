@@ -737,7 +737,7 @@ public class WorkerVerticle extends AbstractVerticle {
             if (providerId == null) runRx();
             else runSingleProviderRx();
           } else {
-            LOG.info("TEST ENV");
+            LOG.info("Skipping harvesting (testing==true)");
           }
         });
   }

@@ -11,6 +11,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
 
+import com.google.common.io.Resources;
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
 import io.restassured.parsing.Parser;
@@ -19,6 +20,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.impl.ErmUsageHarvesterAPI;
@@ -39,21 +42,13 @@ public class ErmUsageHarvesterAPITest {
 
   private static Vertx vertx;
 
-  private static final String deployCfg =
-      "{\n"
-          + "  \"okapiUrl\": \"http://localhost:9130\",\n"
-          + "  \"tenantsPath\": \"/_/proxy/tenants\",\n"
-          + "  \"reportsPath\": \"/counter-reports\",\n"
-          + "  \"providerPath\": \"/usage-data-providers\",\n"
-          + "  \"aggregatorPath\": \"/aggregator-settings\"\n"
-          + "}\n"
-          + "";
-
   @BeforeClass
-  public static void setup(TestContext context) {
+  public static void setup(TestContext context) throws IOException {
     vertx = Vertx.vertx();
 
     int port = NetworkUtils.nextFreePort();
+    String deployCfg =
+        Resources.toString(Resources.getResource("config.json"), StandardCharsets.UTF_8);
     JsonObject cfg = new JsonObject(deployCfg);
     cfg.put("testing", true);
     cfg.put("http.port", port);

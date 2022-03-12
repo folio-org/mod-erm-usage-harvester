@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.google.common.io.Resources;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -17,6 +18,8 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.WebClient;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.junit.After;
@@ -37,24 +40,16 @@ public class OkapiClientTest {
   @Rule public Timeout timeoutRule = Timeout.seconds(5);
 
   private static final String tenantId = "diku";
-
-  private static final String deployCfg =
-      "{\n"
-          + "  \"okapiUrl\": \"http://localhost\",\n"
-          + "  \"tenantsPath\": \"/_/proxy/tenants\",\n"
-          + "  \"reportsPath\": \"/counter-reports\",\n"
-          + "  \"providerPath\": \"/usage-data-providers\",\n"
-          + "  \"aggregatorPath\": \"/aggregator-settings\"\n"
-          + "}";
-
   private static Vertx vertx;
   private String tenantsPath;
   private OkapiClient okapiClient;
 
   @Before
-  public void setup() {
+  public void setup() throws IOException {
     vertx = Vertx.vertx();
-    JsonObject cfg = new JsonObject(deployCfg);
+    JsonObject cfg =
+        new JsonObject(
+            Resources.toString(Resources.getResource("config.json"), StandardCharsets.UTF_8));
     cfg.put("okapiUrl", StringUtils.removeEnd(wireMockRule.url(""), "/"));
     cfg.put("testing", true);
     this.tenantsPath = cfg.getString("tenantsPath");
