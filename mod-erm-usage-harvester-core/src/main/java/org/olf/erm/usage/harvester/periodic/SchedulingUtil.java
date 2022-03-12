@@ -32,6 +32,10 @@ public class SchedulingUtil {
 
   public static void createOrUpdateJob(
       Scheduler scheduler, PeriodicConfig config, String tenantId) {
+    if (config == null) {
+      log.info("Tenant: {}, No PeriodicConfig present", tenantId);
+      return;
+    }
     JobDetail job =
         JobBuilder.newJob()
             .ofType(HarvestTenantJob.class)
