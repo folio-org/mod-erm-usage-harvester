@@ -79,19 +79,23 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
-
-    List<JsonObject> collect =
-        ServiceEndpoint.getAvailableProviders().stream()
-            .filter(
-                provider ->
-                    Strings.isNullOrEmpty(aggregator)
-                        || provider.isAggregator().equals(Boolean.valueOf(aggregator)))
-            .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))
-            .map(ServiceEndpointProvider::toJson)
-            .collect(Collectors.toList());
-    String result = new JsonObject().put("implementations", new JsonArray(collect)).toString();
-    asyncResultHandler.handle(
-        Future.succeededFuture(
-            GetErmUsageHarvesterImplResponse.respond200WithApplicationJson(result)));
+    try {
+      List<JsonObject> collect =
+          ServiceEndpoint.getAvailableProviders().stream()
+              .filter(
+                  provider ->
+                      Strings.isNullOrEmpty(aggregator)
+                          || provider.isAggregator().equals(Boolean.valueOf(aggregator)))
+              .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))
+              .map(ServiceEndpointProvider::toJson)
+              .collect(Collectors.toList());
+      String result = new JsonObject().put("implementations", new JsonArray(collect)).toString();
+      asyncResultHandler.handle(
+          succeededFuture(GetErmUsageHarvesterImplResponse.respond200WithApplicationJson(result)));
+    } catch (Exception e) {
+      asyncResultHandler.handle(
+          succeededFuture(
+              GetErmUsageHarvesterImplResponse.respond500WithTextPlain(e.getMessage())));
+    }
   }
 }
