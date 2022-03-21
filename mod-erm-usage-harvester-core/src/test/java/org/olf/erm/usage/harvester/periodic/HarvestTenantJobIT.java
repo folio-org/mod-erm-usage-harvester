@@ -28,6 +28,7 @@ import java.time.Instant;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -83,6 +84,11 @@ public class HarvestTenantJobIT {
 
     PeriodicConfigPgUtil.upsert(vertxContext, TENANT, config)
         .onComplete(context.asyncAssertSuccess());
+  }
+
+  @AfterClass
+  public static void afterClass() throws SchedulerException {
+    scheduler.shutdown();
   }
 
   @Before

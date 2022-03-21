@@ -39,14 +39,15 @@ import org.quartz.impl.StdSchedulerFactory;
 public class ErmUsageHarvesterPeriodicAPIIT {
 
   private static final String TENANT = "testtenant";
-  private static Vertx vertx = Vertx.vertx();
-  private static int port;
+  private static final Vertx vertx = Vertx.vertx();
+  private static Scheduler scheduler;
 
   @ClassRule public static PostgresContainerRule pgRule = new PostgresContainerRule(vertx, TENANT);
 
   @BeforeClass
-  public static void beforeClass(TestContext context) {
-    port = NetworkUtils.nextFreePort();
+  public static void beforeClass(TestContext context) throws SchedulerException {
+    scheduler = StdSchedulerFactory.getDefaultScheduler();
+    int port = NetworkUtils.nextFreePort();
 
     RestAssured.reset();
     RestAssured.port = port;
@@ -59,7 +60,8 @@ public class ErmUsageHarvesterPeriodicAPIIT {
   }
 
   @AfterClass
-  public static void afterClass() {
+  public static void afterClass() throws SchedulerException {
+    scheduler.shutdown();
     vertx.close();
     RestAssured.reset();
   }
@@ -84,7 +86,6 @@ public class ErmUsageHarvesterPeriodicAPIIT {
                     LocalDateTime.of(2019, 1, 1, 8, 5).atZone(ZoneId.systemDefault()).toInstant()))
             .withPeriodicInterval(PeriodicInterval.DAILY);
 
-    Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
     JobKey jobKey = new JobKey(TENANT);
     TriggerKey triggerKey = new TriggerKey(TENANT);
 
@@ -102,7 +103,8 @@ public class ErmUsageHarvesterPeriodicAPIIT {
                 .extract()
                 .as(PeriodicConfig.class)
                 .withId(null))
-        .isEqualToComparingFieldByFieldRecursively(periodicConfig);
+        .usingRecursiveComparison()
+        .isEqualTo(periodicConfig);
 
     assertThat(scheduler.checkExists(jobKey)).isTrue();
     assertThat(scheduler.checkExists(triggerKey)).isTrue();
@@ -120,7 +122,8 @@ public class ErmUsageHarvesterPeriodicAPIIT {
                 .extract()
                 .as(PeriodicConfig.class)
                 .withId(null))
-        .isEqualToComparingFieldByFieldRecursively(periodicConfig2);
+        .usingRecursiveComparison()
+        .isEqualTo(periodicConfig2);
 
     assertThat(scheduler.checkExists(jobKey)).isTrue();
     assertThat(scheduler.checkExists(triggerKey)).isTrue();

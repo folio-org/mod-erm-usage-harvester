@@ -8,7 +8,9 @@ import java.time.ZoneId;
 import java.util.Date;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.quartz.JobKey;
@@ -26,9 +28,18 @@ public class SchedulingUtilTest {
   private static final JobKey jobKey = new JobKey(TENANT);
   private static Scheduler defaultScheduler;
 
+  @BeforeClass
+  public static void beforeClass() throws SchedulerException {
+    defaultScheduler = StdSchedulerFactory.getDefaultScheduler();
+  }
+
+  @AfterClass
+  public static void afterClass() throws SchedulerException {
+    defaultScheduler.shutdown();
+  }
+
   @Before
   public void before() throws SchedulerException {
-    defaultScheduler = StdSchedulerFactory.getDefaultScheduler();
     defaultScheduler.clear();
   }
 
