@@ -21,6 +21,7 @@ import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -39,7 +40,8 @@ import org.quartz.listeners.SchedulerListenerSupport;
 public class PostDeployImplIT {
   private static final String TENANT = "testtenant";
   private static final String TENANT2 = "tenant2";
-  private static Vertx vertx = Vertx.vertx();
+  private static final Vertx vertx = Vertx.vertx();
+  private static Scheduler scheduler;
 
   @ClassRule
   public static WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
@@ -47,11 +49,11 @@ public class PostDeployImplIT {
   @ClassRule
   public static PostgresContainerRule pgRule = new PostgresContainerRule(vertx, TENANT, TENANT2);
 
-  private static DeploymentOptions options = new DeploymentOptions();
+  private static final DeploymentOptions options = new DeploymentOptions();
 
   @BeforeClass
-  public static void beforeClass(TestContext context) {
-    Async async = context.async();
+  public static void beforeClass(TestContext context) throws SchedulerException {
+    scheduler = StdSchedulerFactory.getDefaultScheduler();
 
     int port = NetworkUtils.nextFreePort();
     options.setConfig(
@@ -76,15 +78,12 @@ public class PostDeployImplIT {
 
     PeriodicConfigPgUtil.upsert(vertx.getOrCreateContext(), TENANT, config)
         .compose(s -> PeriodicConfigPgUtil.upsert(vertx.getOrCreateContext(), TENANT2, config))
-        .onComplete(
-            ar -> {
-              if (ar.succeeded()) {
-                async.complete();
-              } else {
-                context.fail(ar.cause());
-              }
-            });
-    async.awaitSuccess(2000);
+        .onComplete(context.asyncAssertSuccess());
+  }
+
+  @AfterClass
+  public static void afterClass() throws SchedulerException {
+    scheduler.shutdown();
   }
 
   @Test
@@ -92,19 +91,10 @@ public class PostDeployImplIT {
       throws SchedulerException {
     Async async = context.async(3);
 
-    Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
     scheduler.getListenerManager().addSchedulerListener(new SchedulerListenerAsyncCountdown(async));
     options.getConfig().put("testing", false);
     vertx.deployVerticle(
-        RestVerticle.class.getName(),
-        options,
-        ar -> {
-          if (ar.succeeded()) {
-            async.countDown();
-          } else {
-            context.fail(ar.cause());
-          }
-        });
+        RestVerticle.class.getName(), options, context.asyncAssertSuccess(s -> async.countDown()));
 
     async.awaitSuccess(5000);
     assertThat(scheduler.checkExists(new JobKey(TENANT))).isTrue();
@@ -114,7 +104,7 @@ public class PostDeployImplIT {
   }
 
   private static class SchedulerListenerAsyncCountdown extends SchedulerListenerSupport {
-    private Async async;
+    private final Async async;
 
     @Override
     public void jobAdded(JobDetail jobDetail) {
