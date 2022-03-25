@@ -1,7 +1,7 @@
 package org.olf.erm.usage.harvester;
 
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
-import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
+import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS_WITH_URL;
 
 import com.google.common.net.HttpHeaders;
 import io.vertx.core.Future;
@@ -45,7 +45,10 @@ public class OkapiClient {
               } else {
                 return Future.failedFuture(
                     String.format(
-                        ERR_MSG_STATUS, resp.statusCode(), resp.statusMessage(), loginUrl));
+                        ERR_MSG_STATUS_WITH_URL,
+                        resp.statusCode(),
+                        resp.statusMessage(),
+                        loginUrl));
               }
             });
   }
@@ -83,7 +86,7 @@ public class OkapiClient {
                 } else {
                   promise.fail(
                       String.format(
-                          ERR_MSG_STATUS,
+                          ERR_MSG_STATUS_WITH_URL,
                           ar.result().statusCode(),
                           ar.result().statusMessage(),
                           url));

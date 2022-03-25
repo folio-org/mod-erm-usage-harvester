@@ -5,12 +5,17 @@ import org.slf4j.helpers.MessageFormatter;
 
 public class Messages {
 
-  static final String ERR_MSG_STATUS = "Received status code %s, %s from %s";
-  static final String ERR_MSG_DECODE = "Error decoding response from %s, %s";
-  static final String MSG_RESPONSE_BODY_IS_NULL = "Response body is null";
+  public static final String ERR_MSG_STATUS = "Received status code %s, %s";
+  public static final String ERR_MSG_STATUS_WITH_URL = "Received status code %s, %s from %s";
+  public static final String ERR_MSG_DECODE = "Error decoding response from %s, %s";
+  public static final String MSG_RESPONSE_BODY_IS_NULL = "Response body is null";
+
+  public static String createMsgStatus(int statusCode, String statusMessage) {
+    return String.format(ERR_MSG_STATUS, statusCode, statusMessage);
+  }
 
   public static String createMsgStatus(int statusCode, String statusMessage, String url) {
-    return String.format(ERR_MSG_STATUS, statusCode, statusMessage, url);
+    return String.format(ERR_MSG_STATUS_WITH_URL, statusCode, statusMessage, url);
   }
 
   public static String createErrMsgDecode(String url, String message) {
