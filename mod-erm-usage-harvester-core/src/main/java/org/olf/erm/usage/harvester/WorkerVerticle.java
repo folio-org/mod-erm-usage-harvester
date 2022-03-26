@@ -141,7 +141,7 @@ public class WorkerVerticle extends AbstractVerticle {
             });
   }
 
-  private <T> Single<T> wrapFuture(Future<T> future) {
+  private <T> Single<T> toSingle(Future<T> future) {
     return SingleHelper.toSingle(future::onComplete);
   }
 
@@ -167,7 +167,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                             fetchItem))),
                         Single.defer(
                                 () ->
-                                    wrapFuture(
+                                    toSingle(
                                         sep.fetchReport(
                                             fetchItem.getReportType(),
                                             fetchItem.getBegin(),
@@ -268,7 +268,7 @@ public class WorkerVerticle extends AbstractVerticle {
   public Completable fetchAndPostReportsRx(UsageDataProvider provider) {
     logInfo(() -> createTenantMsg(tenantId, "processing provider: {}", provider.getLabel()));
 
-    wrapFuture(udpClient.updateUDPLastHarvestingDate(provider, Date.from(Instant.now())))
+    toSingle(udpClient.updateUDPLastHarvestingDate(provider, Date.from(Instant.now())))
         .doOnSuccess(
             v ->
                 logInfo(
@@ -282,9 +282,9 @@ public class WorkerVerticle extends AbstractVerticle {
         .onErrorComplete()
         .subscribe();
 
-    Single<ServiceEndpoint> sepSingle = wrapFuture(getServiceEndpoint(provider));
+    Single<ServiceEndpoint> sepSingle = toSingle(getServiceEndpoint(provider));
     Single<List<FetchItem>> fetchListSingle =
-        wrapFuture(counterReportsClient.getFetchList(provider, maxFailedAttempts))
+        toSingle(counterReportsClient.getFetchList(provider, maxFailedAttempts))
             .map(
                 list -> {
                   if (list.isEmpty()) {
@@ -334,7 +334,7 @@ public class WorkerVerticle extends AbstractVerticle {
                         tenantId, provider.getLabel(), "Received: {}", counterReportToString(cr))))
         .flatMapCompletable(
             cr ->
-                wrapFuture(counterReportsClient.upsertReport(cr))
+                toSingle(counterReportsClient.upsertReport(cr))
                     .doOnSuccess(
                         resp ->
                             logInfo(
@@ -358,7 +358,7 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   public void runRx() {
-    wrapFuture(udpClient.getActiveProviders())
+    toSingle(udpClient.getActiveProviders())
         .doOnSubscribe(d -> LOG.info("{}", createTenantMsg(tenantId, "getting active providers")))
         .doOnSuccess(
             udps ->
@@ -373,7 +373,7 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   public void runSingleProviderRx() {
-    wrapFuture(udpClient.getActiveProviderById(providerId))
+    toSingle(udpClient.getActiveProviderById(providerId))
         .flatMapCompletable(this::fetchAndPostReportsRx)
         .doFinally(() -> vertx.undeploy(this.deploymentID()))
         .subscribe(createCompletableObserver());
