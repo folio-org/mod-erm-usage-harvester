@@ -29,7 +29,8 @@ public interface ServiceEndpoint {
    * month in the requested range.
    *
    * <p>The returned Future should fail with {@link InvalidReportException} if the fetched report
-   * contains any COUNTER exceptions.
+   * contains any COUNTER exceptions. Use a {@link TooManyRequestsException} to signal that too
+   * many requests are made.
    *
    * <p>Use {@link ServiceEndpoint#createCounterReport(String, String, UsageDataProvider,
    * YearMonth)} for creating a {@link CounterReport}

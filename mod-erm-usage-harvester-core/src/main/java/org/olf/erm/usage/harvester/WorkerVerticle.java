@@ -51,6 +51,7 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
+import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -405,8 +406,7 @@ public class WorkerVerticle extends AbstractVerticle {
                     .retry(
                         3,
                         t -> {
-                          if ((t instanceof InvalidReportException)
-                              && t.getMessage().contains("requests")) {
+                          if (t instanceof TooManyRequestsException) {
                             logInfo(
                                 createTenantProviderMsg(
                                     token.getTenantId(),
@@ -429,7 +429,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                   "received {}",
                                   getMessageOrToString(t)));
                           if (!(t instanceof InvalidReportException)) {
-                            // handle generic failues
+                            // handle generic failures
                             List<CounterReport> counterReportList =
                                 DateUtil.getYearMonths(fetchItem.getBegin(), fetchItem.getEnd())
                                     .stream()
@@ -459,7 +459,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                             getYearMonthFromString(fetchItem.getBegin()))
                                         .withFailedReason(getMessageOrToString(t))));
                           } else {
-                            // handle failes multiple months
+                            // handle failed multiple months
                             logInfo(
                                 createTenantProviderMsg(
                                     token.getTenantId(),

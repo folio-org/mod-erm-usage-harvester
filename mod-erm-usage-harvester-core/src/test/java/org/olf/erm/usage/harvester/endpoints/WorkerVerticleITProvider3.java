@@ -1,10 +1,7 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import java.time.YearMonth;
 import java.util.List;
@@ -57,46 +54,38 @@ public class WorkerVerticleITProvider3 implements ServiceEndpointProvider {
           return Future.failedFuture(e);
         }
 
-        Promise<HttpResponse<Buffer>> promise = Promise.promise();
-        client
+        return client
             .getAbs(provider.getHarvestingConfig().getSushiConfig().getServiceUrl().concat("/"))
             .addQueryParam("report", report)
             .addQueryParam("begin", beginDate)
             .addQueryParam("end", endDate)
-            .send(promise);
-
-        Promise<List<CounterReport>> promise2 = Promise.promise();
-        promise
-            .future()
-            .onFailure(promise2::fail)
-            .onSuccess(
+            .send()
+            .map(
                 resp -> {
-                  if (counter.incrementAndGet() == 3) {
-                    promise2.fail(new InvalidReportException("Too many requests"));
-                  } else if (beginDate.equals("2018-01-01") && endDate.equals("2018-12-31")) {
-                    promise2.fail(new InvalidReportException("Missing data for Month 2018-03"));
-                  } else if (beginDate.equals("2018-03-01") && endDate.equals("2018-03-31")) {
-                    promise2.fail(new InvalidReportException("No data for Month 2018-03"));
-                  } else {
-                    List<YearMonth> months = DateUtil.getYearMonths(beginDate, endDate);
-                    List<CounterReport> resultList =
-                        months.stream()
-                            .map(
-                                ym ->
-                                    new CounterReport()
-                                        .withReportName(report)
-                                        .withReport(
-                                            new Report()
-                                                .withAdditionalProperty("month", ym.toString()))
-                                        .withRelease("4")
-                                        .withProviderId("providerId")
-                                        .withYearMonth(ym.toString()))
-                            .collect(Collectors.toList());
-                    promise2.complete(resultList);
+                  if (beginDate.equals("2020-01-01") && endDate.equals("2020-04-30")) {
+                    if (counter.incrementAndGet() <= 2) {
+                      throw new TooManyRequestsException();
+                    }
                   }
+                  if (beginDate.equals("2018-01-01") && endDate.equals("2018-12-31")) {
+                    throw new InvalidReportException("Missing data for Month 2018-03");
+                  }
+                  if (beginDate.equals("2018-03-01") && endDate.equals("2018-03-31")) {
+                    throw new InvalidReportException("No data for Month 2018-03");
+                  }
+                  List<YearMonth> months = DateUtil.getYearMonths(beginDate, endDate);
+                  return months.stream()
+                      .map(
+                          ym ->
+                              new CounterReport()
+                                  .withReportName(report)
+                                  .withReport(
+                                      new Report().withAdditionalProperty("month", ym.toString()))
+                                  .withRelease("4")
+                                  .withProviderId("providerId")
+                                  .withYearMonth(ym.toString()))
+                      .collect(Collectors.toList());
                 });
-
-        return promise2.future();
       }
     };
   }

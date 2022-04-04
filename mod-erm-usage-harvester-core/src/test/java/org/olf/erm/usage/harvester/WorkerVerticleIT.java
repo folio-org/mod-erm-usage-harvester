@@ -394,7 +394,9 @@ public class WorkerVerticleIT {
                           .filter(e -> e.getMessage().contains("Fetching report"))
                           .map(ILoggingEvent::getThreadName)
                           .collect(Collectors.toList());
-                  assertThat(threadNames).hasSizeGreaterThanOrEqualTo(3 + 12);
+                  assertThat(threadNames)
+                      .hasSizeGreaterThanOrEqualTo(3 + 12)
+                      .allMatch(s -> s.startsWith("pool"));
 
                   long first5ThreadCount = threadNames.subList(0, 5).stream().distinct().count();
                   assertThat(first5ThreadCount).isGreaterThanOrEqualTo(2);
@@ -410,7 +412,7 @@ public class WorkerVerticleIT {
           }
         });
 
-    async.await(10000);
+    async.await(30000);
   }
 
   @Test

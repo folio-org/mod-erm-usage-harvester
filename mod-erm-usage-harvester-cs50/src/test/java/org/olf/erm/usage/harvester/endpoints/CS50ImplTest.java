@@ -7,6 +7,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.olf.erm.usage.harvester.endpoints.CS50Impl.MAX_ERROR_BODY_LENGTH;
+import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
+import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
@@ -40,6 +42,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.openapitools.client.model.COUNTERTitleReport;
+import org.openapitools.client.model.SUSHIErrorModel;
 import org.openapitools.client.model.SUSHIReportHeader;
 import retrofit2.HttpException;
 
@@ -152,6 +155,68 @@ public class CS50ImplTest {
                   assertThat(t)
                       .isInstanceOf(InvalidReportException.class)
                       .hasMessageContaining("missing Report_Header");
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
+  public void testFetchReportTooManyRequestsByErrorCode(TestContext context) throws IOException {
+    String reportStr =
+        Resources.toString(
+            Resources.getResource("SampleReportEmptyItems.json"), StandardCharsets.UTF_8);
+    COUNTERTitleReport tr = gson.fromJson(reportStr, COUNTERTitleReport.class);
+    SUSHIErrorModel error = new SUSHIErrorModel();
+    error.setCode(TOO_MANY_REQUEST_ERROR_CODE);
+    error.setMessage("");
+    tr.getReportHeader().setExceptions(List.of(error));
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH))
+            .willReturn(aResponse().withStatus(200).withBody(gson.toJson(tr))));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).isInstanceOf(TooManyRequestsException.class);
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
+  public void testFetchReportTooManyRequestsByErrorMessage(TestContext context) throws IOException {
+    String reportStr =
+        Resources.toString(
+            Resources.getResource("SampleReportEmptyItems.json"), StandardCharsets.UTF_8);
+    COUNTERTitleReport tr = gson.fromJson(reportStr, COUNTERTitleReport.class);
+    SUSHIErrorModel error = new SUSHIErrorModel();
+    error.setCode(1);
+    error.setMessage(TOO_MANY_REQUEST_STR);
+    tr.getReportHeader().setExceptions(List.of(error));
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH))
+            .willReturn(aResponse().withStatus(200).withBody(gson.toJson(tr))));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).isInstanceOf(TooManyRequestsException.class);
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
+  public void testFetchReportTooManyRequestsByHttpStatusCode(TestContext context) {
+    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(429)));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).isInstanceOf(TooManyRequestsException.class);
                   verifyApiCall();
                 }));
   }
@@ -408,7 +473,9 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).isInstanceOf(HttpException.class).hasMessageContaining("Not Found");
+                  assertThat(t.getCause())
+                      .isInstanceOf(HttpException.class)
+                      .hasMessageContaining("Not Found");
                   verifyApiCall();
                 }));
   }
