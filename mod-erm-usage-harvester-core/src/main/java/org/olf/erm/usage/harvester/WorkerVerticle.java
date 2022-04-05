@@ -1,5 +1,7 @@
 package org.olf.erm.usage.harvester;
 
+import static io.reactivex.schedulers.Schedulers.trampoline;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
 import static org.olf.erm.usage.harvester.Messages.createErrMsgDecode;
@@ -385,23 +387,27 @@ public class WorkerVerticle extends AbstractVerticle {
       ThreadPoolExecutor executor) {
 
     return Observable.fromIterable(items)
-        .doOnNext(
-            fetchItem ->
-                logInfo(
-                    createTenantProviderMsg(
-                        token.getTenantId(), provider.getLabel(), "processing {}", fetchItem)))
         .flatMap(
             fetchItem ->
-                Observable.defer(
-                        () ->
-                            SingleHelper.<List<CounterReport>>toSingle(
-                                    h ->
+                Observable.zip(
+                        Observable.timer(1, SECONDS, trampoline())
+                            .doOnNext(
+                                l ->
+                                    logInfo(
+                                        createTenantProviderMsg(
+                                            token.getTenantId(),
+                                            provider.getLabel(),
+                                            "processing {}",
+                                            fetchItem))),
+                        Single.defer(
+                                () ->
+                                    wrapFuture(
                                         sep.fetchReport(
-                                                fetchItem.getReportType(),
-                                                fetchItem.getBegin(),
-                                                fetchItem.getEnd())
-                                            .onComplete(h))
-                                .toObservable())
+                                            fetchItem.getReportType(),
+                                            fetchItem.getBegin(),
+                                            fetchItem.getEnd())))
+                            .toObservable(),
+                        (f, s) -> s)
                     .subscribeOn(scheduler)
                     .retry(
                         3,

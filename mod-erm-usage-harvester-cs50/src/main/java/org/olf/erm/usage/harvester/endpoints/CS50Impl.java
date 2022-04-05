@@ -10,7 +10,6 @@ import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
 import io.reactivex.Observable;
-import io.reactivex.schedulers.Schedulers;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import java.lang.reflect.Method;
@@ -213,7 +212,6 @@ public class CS50Impl implements ServiceEndpoint {
     try {
       ((Observable<?>) method.invoke(client, customerId, beginDate, endDate, platform))
           .singleOrError()
-          .subscribeOn(Schedulers.io())
           .map(this::failIfInvalidReport)
           .map(r -> createCounterReportList(r, report, provider))
           .subscribe(promise::complete, e -> promise.fail(getSushiError(e)));
