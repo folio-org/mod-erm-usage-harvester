@@ -1,6 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
-public class InvalidReportException extends Exception {
+public class InvalidReportException extends RuntimeException {
 
   public InvalidReportException(Throwable cause) {
     super(cause);

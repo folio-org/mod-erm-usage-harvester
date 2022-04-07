@@ -1,11 +1,15 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import static java.util.Objects.nonNull;
+import static java.util.Objects.requireNonNull;
+import static org.apache.commons.lang3.StringUtils.abbreviate;
 import static org.olf.erm.usage.harvester.endpoints.JsonUtil.isOfType;
+import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
+import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
 import io.reactivex.Observable;
-import io.reactivex.schedulers.Schedulers;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import java.lang.reflect.Method;
@@ -14,7 +18,6 @@ import java.net.URI;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -23,7 +26,6 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.Response.Builder;
 import okhttp3.ResponseBody;
-import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter50.Counter5Utils;
@@ -33,6 +35,7 @@ import org.openapitools.client.model.COUNTERDatabaseReport;
 import org.openapitools.client.model.COUNTERItemReport;
 import org.openapitools.client.model.COUNTERPlatformReport;
 import org.openapitools.client.model.COUNTERTitleReport;
+import org.openapitools.client.model.SUSHIErrorModel;
 import org.openapitools.client.model.SUSHIReportHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +50,10 @@ public class CS50Impl implements ServiceEndpoint {
   private final DefaultApi client;
 
   CS50Impl(UsageDataProvider provider) {
-    Objects.requireNonNull(provider.getSushiCredentials());
-    Objects.requireNonNull(provider.getHarvestingConfig());
-    Objects.requireNonNull(provider.getHarvestingConfig().getSushiConfig());
-    Objects.requireNonNull(provider.getHarvestingConfig().getSushiConfig().getServiceUrl());
+    requireNonNull(provider.getSushiCredentials());
+    requireNonNull(provider.getHarvestingConfig());
+    requireNonNull(provider.getHarvestingConfig().getSushiConfig());
+    requireNonNull(provider.getHarvestingConfig().getSushiConfig().getServiceUrl());
     this.provider = provider;
 
     String baseUrl = provider.getHarvestingConfig().getSushiConfig().getServiceUrl();
@@ -79,7 +82,7 @@ public class CS50Impl implements ServiceEndpoint {
               // intercept response body if status code 2xx
               if (response.code() / 100 == 2) {
                 ResponseBody responseBody =
-                    Objects.requireNonNull(response.body(), "Response body is null");
+                    requireNonNull(response.body(), "Response body is null");
                 String body = responseBody.string();
                 MediaType mediaType = responseBody.contentType();
                 Builder respBuilder =
@@ -117,9 +120,12 @@ public class CS50Impl implements ServiceEndpoint {
       HttpException ex = (HttpException) e;
       try {
         ResponseBody responseBody = ex.response().errorBody();
-        String errorBody = Objects.requireNonNull(responseBody).string();
-        if (!Strings.isNullOrEmpty(errorBody)) {
-          return new Throwable(StringUtils.abbreviate(errorBody, MAX_ERROR_BODY_LENGTH), ex);
+        String errorBody = requireNonNull(responseBody).string();
+        String abbrStr = abbreviate(errorBody, MAX_ERROR_BODY_LENGTH);
+        if (ex.code() == 429) {
+          return new TooManyRequestsException(abbrStr, ex);
+        } else {
+          return new Throwable(abbrStr, ex);
         }
       } catch (Exception exc) {
         return new Throwable("Error parsing error response: " + exc.getMessage(), ex);
@@ -150,6 +156,14 @@ public class CS50Impl implements ServiceEndpoint {
     return gson.toJsonTree(report).getAsJsonObject().getAsJsonArray("Report_Items").size() > 0;
   }
 
+  private boolean containsTooManyRequestsError(List<SUSHIErrorModel> errors) {
+    return errors.stream()
+        .anyMatch(
+            em ->
+                (nonNull(em.getMessage()) && em.getMessage().contains(TOO_MANY_REQUEST_STR))
+                    || (nonNull(em.getCode()) && em.getCode().equals(TOO_MANY_REQUEST_ERROR_CODE)));
+  }
+
   private Object failIfInvalidReport(Object report)
       throws InvalidReportException, Counter5UtilsException {
     String content = gson.toJson(report);
@@ -160,7 +174,12 @@ public class CS50Impl implements ServiceEndpoint {
     }
 
     if (!reportHeader.getExceptions().isEmpty()) {
-      throw new InvalidReportException(gson.toJson(reportHeader.getExceptions()));
+      String exceptionMsg = gson.toJson(reportHeader.getExceptions());
+      if (containsTooManyRequestsError(reportHeader.getExceptions())) {
+        throw new TooManyRequestsException(exceptionMsg);
+      } else {
+        throw new InvalidReportException(exceptionMsg);
+      }
     }
 
     if (!hasReportItems(report)) {
@@ -193,7 +212,6 @@ public class CS50Impl implements ServiceEndpoint {
     try {
       ((Observable<?>) method.invoke(client, customerId, beginDate, endDate, platform))
           .singleOrError()
-          .subscribeOn(Schedulers.io())
           .map(this::failIfInvalidReport)
           .map(r -> createCounterReportList(r, report, provider))
           .subscribe(promise::complete, e -> promise.fail(getSushiError(e)));

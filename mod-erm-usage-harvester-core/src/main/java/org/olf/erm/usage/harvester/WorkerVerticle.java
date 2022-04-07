@@ -1,5 +1,7 @@
 package org.olf.erm.usage.harvester;
 
+import static io.reactivex.schedulers.Schedulers.trampoline;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
 import static org.olf.erm.usage.harvester.Messages.createErrMsgDecode;
@@ -51,6 +53,7 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
+import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -384,29 +387,32 @@ public class WorkerVerticle extends AbstractVerticle {
       ThreadPoolExecutor executor) {
 
     return Observable.fromIterable(items)
-        .doOnNext(
-            fetchItem ->
-                logInfo(
-                    createTenantProviderMsg(
-                        token.getTenantId(), provider.getLabel(), "processing {}", fetchItem)))
         .flatMap(
             fetchItem ->
-                Observable.defer(
-                        () ->
-                            SingleHelper.<List<CounterReport>>toSingle(
-                                    h ->
+                Observable.zip(
+                        Observable.timer(1, SECONDS, trampoline())
+                            .doOnNext(
+                                l ->
+                                    logInfo(
+                                        createTenantProviderMsg(
+                                            token.getTenantId(),
+                                            provider.getLabel(),
+                                            "processing {}",
+                                            fetchItem))),
+                        Single.defer(
+                                () ->
+                                    wrapFuture(
                                         sep.fetchReport(
-                                                fetchItem.getReportType(),
-                                                fetchItem.getBegin(),
-                                                fetchItem.getEnd())
-                                            .onComplete(h))
-                                .toObservable())
+                                            fetchItem.getReportType(),
+                                            fetchItem.getBegin(),
+                                            fetchItem.getEnd())))
+                            .toObservable(),
+                        (f, s) -> s)
                     .subscribeOn(scheduler)
                     .retry(
                         3,
                         t -> {
-                          if ((t instanceof InvalidReportException)
-                              && t.getMessage().contains("requests")) {
+                          if (t instanceof TooManyRequestsException) {
                             logInfo(
                                 createTenantProviderMsg(
                                     token.getTenantId(),
@@ -429,7 +435,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                   "received {}",
                                   getMessageOrToString(t)));
                           if (!(t instanceof InvalidReportException)) {
-                            // handle generic failues
+                            // handle generic failures
                             List<CounterReport> counterReportList =
                                 DateUtil.getYearMonths(fetchItem.getBegin(), fetchItem.getEnd())
                                     .stream()
@@ -459,7 +465,7 @@ public class WorkerVerticle extends AbstractVerticle {
                                             getYearMonthFromString(fetchItem.getBegin()))
                                         .withFailedReason(getMessageOrToString(t))));
                           } else {
-                            // handle failes multiple months
+                            // handle failed multiple months
                             logInfo(
                                 createTenantProviderMsg(
                                     token.getTenantId(),
