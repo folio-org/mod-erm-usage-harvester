@@ -1,3 +1,7 @@
+# 4.0.1
+* [MODEUSHARV-62](https://issues.folio.org/browse/MODEUSHARV-62) NPE in SchedulingUtil
+* [MODEUSHARV-64](https://issues.folio.org/browse/MODEUSHARV-64) Sequential requests for sushi5.scholarlyiq.com
+
 # 4.0.0
 * [MODEUSHARV-47](https://issues.folio.org/browse/MODEUSHARV-47) Endpoint w/o required permissions
 * [MODEUSHARV-50](https://issues.folio.org/browse/MODEUSHARV-50) Use system user for scheduled harvesting
