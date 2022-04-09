@@ -16,12 +16,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.MediaType;
 import org.folio.okapi.common.XOkapiHeaders;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class OkapiClient {
-
-  private static final Logger LOG = LoggerFactory.getLogger(OkapiClient.class);
 
   private final String okapiUrl;
   private final String tenantsPath;
@@ -80,7 +76,6 @@ public class OkapiClient {
                         jsonArray.stream()
                             .map(o -> ((JsonObject) o).getString("id"))
                             .collect(Collectors.toList());
-                    LOG.info("Found tenants: {}", tenants);
                     promise.complete(tenants);
                   } catch (Exception e) {
                     promise.fail(String.format(ERR_MSG_DECODE, url, e.getMessage()));

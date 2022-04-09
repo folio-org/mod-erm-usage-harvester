@@ -7,6 +7,7 @@ public class Messages {
 
   static final String ERR_MSG_STATUS = "Received status code %s, %s from %s";
   static final String ERR_MSG_DECODE = "Error decoding response from %s, %s";
+  static final String MSG_RESPONSE_BODY_IS_NULL = "Response body is null";
 
   public static String createMsgStatus(int statusCode, String statusMessage, String url) {
     return String.format(ERR_MSG_STATUS, statusCode, statusMessage, url);

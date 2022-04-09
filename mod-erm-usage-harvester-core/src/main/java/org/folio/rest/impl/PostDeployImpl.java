@@ -58,6 +58,7 @@ public class PostDeployImpl implements PostDeployVerticle {
           .onComplete(
               ar -> {
                 if (ar.succeeded()) {
+                  log.info("Found tenants: {}", ar.result());
                   processTenants(arg1, ar.result());
                 } else {
                   log.error("failed getting tenants");
