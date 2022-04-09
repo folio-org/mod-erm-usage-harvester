@@ -3,7 +3,7 @@ package org.olf.erm.usage.harvester;
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
-import static org.olf.erm.usage.harvester.Messages.MSG_RESPONSE_BODY_IS_NULL;
+import static org.olf.erm.usage.harvester.HttpResponseUtil.getResponseBodyIfStatus200;
 import static org.olf.erm.usage.harvester.Messages.createMsgStatus;
 
 import io.vertx.core.CompositeFuture;
@@ -15,7 +15,6 @@ import io.vertx.ext.web.client.WebClient;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import org.folio.rest.client.CounterReportsClient;
 import org.folio.rest.jaxrs.model.CounterReport;
@@ -41,21 +40,12 @@ public class ExtCounterReportsClient extends CounterReportsClient {
         String.format(
             "(providerId=%s AND yearMonth=%s AND reportName==%s)", providerId, month, reportName);
     return super.getCounterReports(tiny, queryStr, null, null, 0, 1, null)
+        .transform(ar -> getResponseBodyIfStatus200(ar, CounterReports.class))
         .flatMap(
-            resp -> {
-              if (resp.statusCode() == 200) {
-                CounterReports collection =
-                    Objects.requireNonNull(
-                        resp.bodyAsJson(CounterReports.class), MSG_RESPONSE_BODY_IS_NULL);
-                if (collection.getCounterReports().isEmpty()) {
-                  return succeededFuture(null);
-                } else {
-                  return succeededFuture(collection.getCounterReports().get(0));
-                }
-              } else {
-                return failedFuture(createMsgStatus(resp.statusCode(), resp.statusMessage(), PATH));
-              }
-            });
+            collection ->
+                (collection.getCounterReports().isEmpty())
+                    ? succeededFuture(null)
+                    : succeededFuture(collection.getCounterReports().get(0)));
   }
 
   public Future<HttpResponse<Buffer>> upsertReport(CounterReport report) {
@@ -70,7 +60,6 @@ public class ExtCounterReportsClient extends CounterReportsClient {
               } else {
                 requestUrl.updateAndGet(s -> s += "/" + existing.getId());
                 if (report.getFailedAttempts() != null) {
-                  // TODO: test for existing.gefFailedAttempts != null
                   report.setFailedAttempts(existing.getFailedAttempts() + 1);
                 }
                 report.setId(existing.getId());
@@ -160,19 +149,14 @@ public class ExtCounterReportsClient extends CounterReportsClient {
             providerId, maxFailedAttempts, reportName, start.toString(), end.toString());
 
     return super.getCounterReports(true, queryStr, null, null, 0, Integer.MAX_VALUE, null)
+        .transform(ar -> getResponseBodyIfStatus200(ar, CounterReports.class))
         .flatMap(
-            resp -> {
-              if (resp.statusCode() == 200) {
-                CounterReports result = resp.bodyAsJson(CounterReports.class);
-                List<YearMonth> availableMonths = new ArrayList<>();
-                result
-                    .getCounterReports()
-                    .forEach(r -> availableMonths.add(YearMonth.parse(r.getYearMonth())));
-                return succeededFuture(availableMonths);
-              } else {
-                return failedFuture(
-                    createMsgStatus(resp.statusCode(), resp.statusMessage(), okapiUrl + PATH));
-              }
+            result -> {
+              List<YearMonth> availableMonths = new ArrayList<>();
+              result
+                  .getCounterReports()
+                  .forEach(r -> availableMonths.add(YearMonth.parse(r.getYearMonth())));
+              return succeededFuture(availableMonths);
             });
   }
 }

@@ -1,11 +1,11 @@
 package org.olf.erm.usage.harvester;
 
+import static io.vertx.core.Future.succeededFuture;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS_WITH_URL;
 
 import com.google.common.net.HttpHeaders;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -41,7 +41,7 @@ public class OkapiClient {
         .compose(
             resp -> {
               if (resp.statusCode() == 201) {
-                return Future.succeededFuture(resp.headers().get(XOkapiHeaders.TOKEN));
+                return succeededFuture(resp.headers().get(XOkapiHeaders.TOKEN));
               } else {
                 return Future.failedFuture(
                     String.format(
@@ -63,12 +63,11 @@ public class OkapiClient {
   }
 
   public Future<List<String>> getTenants() {
-    Promise<List<String>> promise = Promise.promise();
-
-    final String url = okapiUrl + tenantsPath;
-    client
+    String url = okapiUrl + tenantsPath;
+    return client
         .getAbs(url)
-        .send(
+        .send()
+        .transform(
             ar -> {
               if (ar.succeeded()) {
                 if (ar.result().statusCode() == 200) {
@@ -79,12 +78,13 @@ public class OkapiClient {
                         jsonArray.stream()
                             .map(o -> ((JsonObject) o).getString("id"))
                             .collect(Collectors.toList());
-                    promise.complete(tenants);
+                    return Future.succeededFuture(tenants);
                   } catch (Exception e) {
-                    promise.fail(String.format(ERR_MSG_DECODE, url, e.getMessage()));
+                    return Future.failedFuture(
+                        String.format(ERR_MSG_DECODE, url, e.getMessage()));
                   }
                 } else {
-                  promise.fail(
+                  return Future.failedFuture(
                       String.format(
                           ERR_MSG_STATUS_WITH_URL,
                           ar.result().statusCode(),
@@ -92,9 +92,8 @@ public class OkapiClient {
                           url));
                 }
               } else {
-                promise.fail("Failed getting tenants: " + ar.cause());
+                return Future.failedFuture("Failed getting tenants: " + ar.cause());
               }
             });
-    return promise.future();
   }
 }

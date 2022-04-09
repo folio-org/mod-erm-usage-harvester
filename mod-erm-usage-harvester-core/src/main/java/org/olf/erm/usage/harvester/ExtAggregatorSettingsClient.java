@@ -3,6 +3,7 @@ package org.olf.erm.usage.harvester;
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
 import static java.lang.String.format;
+import static org.olf.erm.usage.harvester.HttpResponseUtil.getResponseBodyIfStatus200;
 import static org.olf.erm.usage.harvester.Messages.createMsgStatus;
 
 import io.vertx.core.Future;
@@ -29,25 +30,14 @@ public class ExtAggregatorSettingsClient extends AggregatorSettingsClient {
     }
 
     return super.getAggregatorSettingsById(aggregator.getId(), null)
-        .flatMap(
-            resp -> {
-              if (resp.statusCode() == 200) {
-                AggregatorSetting setting = resp.bodyAsJson(AggregatorSetting.class);
-                return succeededFuture(setting);
-              } else {
-                return failedFuture(createMsgStatus(resp.statusCode(), resp.statusMessage(), PATH));
-              }
-            })
+        .transform(ar -> getResponseBodyIfStatus200(ar, AggregatorSetting.class))
         .transform(
-            ar -> {
-              if (ar.succeeded()) {
-                return succeededFuture(ar.result());
-              } else {
-                return failedFuture(
-                    format(
-                        "Failed getting AggregatorSetting for id %s: %s",
-                        aggregator.getId(), ar.cause().getMessage()));
-              }
-            });
+            ar ->
+                (ar.succeeded())
+                    ? succeededFuture(ar.result())
+                    : failedFuture(
+                        format(
+                            "Failed getting AggregatorSetting for id %s: %s",
+                            aggregator.getId(), ar.cause().getMessage())));
   }
 }
