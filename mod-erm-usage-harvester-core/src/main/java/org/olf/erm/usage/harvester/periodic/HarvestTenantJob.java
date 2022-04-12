@@ -7,6 +7,7 @@ import io.vertx.ext.web.client.WebClient;
 import java.util.Date;
 import org.olf.erm.usage.harvester.client.OkapiClient;
 import org.olf.erm.usage.harvester.SystemUser;
+import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
@@ -54,7 +55,7 @@ public class HarvestTenantJob implements Job {
     }
 
     WebClient webClient = WebClient.create(vertxContext.owner());
-    OkapiClient okapiClient = new OkapiClient(webClient, vertxContext.config());
+    OkapiClient okapiClient = new OkapiClientImpl(webClient, vertxContext.config());
 
     okapiClient
         .loginSystemUser(tenantId, new SystemUser(tenantId))

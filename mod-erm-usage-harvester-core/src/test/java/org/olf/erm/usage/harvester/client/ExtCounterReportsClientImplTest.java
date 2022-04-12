@@ -14,7 +14,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.olf.erm.usage.harvester.TestUtil.createSampleUsageDataProvider;
-import static org.olf.erm.usage.harvester.client.ExtCounterReportsClient.PATH;
+import static org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl.PATH;
 
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
@@ -44,7 +44,7 @@ import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.FetchItem;
 
 @RunWith(VertxUnitRunner.class)
-public class ExtCounterReportsClientTest {
+public class ExtCounterReportsClientImplTest {
 
   @Rule
   public WireMockRule wireMockRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
@@ -62,7 +62,7 @@ public class ExtCounterReportsClientTest {
   @Before
   public void setUp() {
     counterReportsClient =
-        new ExtCounterReportsClient(wireMockRule.baseUrl(), "someTenant", "someToken");
+        new ExtCounterReportsClientImpl(wireMockRule.baseUrl(), "someTenant", "someToken");
   }
 
   private CounterReports createCounterSampleReports() {

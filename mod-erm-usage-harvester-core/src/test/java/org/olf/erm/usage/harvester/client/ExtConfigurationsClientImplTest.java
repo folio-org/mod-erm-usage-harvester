@@ -6,6 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl.PATH;
 
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
@@ -21,9 +22,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
-public class ExtConfigurationsClientTest {
-
-  private static final String MOD_CONFIGURATION_PATH = "/configurations/entries";
+public class ExtConfigurationsClientImplTest {
 
   @Rule
   public WireMockRule wireMockRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
@@ -33,7 +32,7 @@ public class ExtConfigurationsClientTest {
   @Before
   public void setUp() {
     configurationsClient =
-        new ExtConfigurationsClient(wireMockRule.baseUrl(), "someTenant", "someToken");
+        new ExtConfigurationsClientImpl(wireMockRule.baseUrl(), "someTenant", "someToken");
   }
 
   @Test
@@ -45,7 +44,7 @@ public class ExtConfigurationsClientTest {
                 List.of(
                     new Config().withModule("testmodule").withConfigName("test").withValue("5")));
     stubFor(
-        get(urlPathEqualTo(MOD_CONFIGURATION_PATH))
+        get(urlPathEqualTo(PATH))
             .withQueryParam("query", equalTo("(module = testmodule and configName = test)"))
             .willReturn(aResponse().withStatus(200).withBody(Json.encode(configs))));
 
@@ -57,7 +56,7 @@ public class ExtConfigurationsClientTest {
   @Test
   public void testGetModConfigurationValueResponseNoEntry(TestContext context) {
     stubFor(
-        get(urlPathEqualTo(MOD_CONFIGURATION_PATH))
+        get(urlPathEqualTo(PATH))
             .withQueryParam("query", equalTo("(module = testmodule and configName = test)"))
             .willReturn(
                 aResponse()
@@ -72,7 +71,7 @@ public class ExtConfigurationsClientTest {
   @Test
   public void testGetModConfigurationValueResponseNull(TestContext context) {
     stubFor(
-        get(urlPathEqualTo(MOD_CONFIGURATION_PATH))
+        get(urlPathEqualTo(PATH))
             .withQueryParam("query", equalTo("(module = testmodule and configName = test)"))
             .willReturn(aResponse().withStatus(200).withBody("")));
 
@@ -84,7 +83,7 @@ public class ExtConfigurationsClientTest {
   @Test
   public void testGetModConfigurationValueResponse404(TestContext context) {
     stubFor(
-        get(urlPathEqualTo(MOD_CONFIGURATION_PATH))
+        get(urlPathEqualTo(PATH))
             .withQueryParam("query", equalTo("(module = testmodule and configName = test)"))
             .willReturn(aResponse().withStatus(404)));
 

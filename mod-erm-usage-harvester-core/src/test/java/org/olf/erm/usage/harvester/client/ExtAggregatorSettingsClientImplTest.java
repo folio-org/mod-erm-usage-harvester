@@ -5,7 +5,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClient.PATH;
+import static org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClientImpl.PATH;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -23,7 +23,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
-public class ExtAggregatorSettingsClientTest {
+public class ExtAggregatorSettingsClientImplTest {
 
   @Rule
   public WireMockRule wireMockRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
@@ -33,7 +33,7 @@ public class ExtAggregatorSettingsClientTest {
   @Before
   public void setUp() {
     aggregatorSettingsClient =
-        new ExtAggregatorSettingsClient(wireMockRule.baseUrl(), "someTenant", "someToken");
+        new ExtAggregatorSettingsClientImpl(wireMockRule.baseUrl(), "someTenant", "someToken");
   }
 
   @Test

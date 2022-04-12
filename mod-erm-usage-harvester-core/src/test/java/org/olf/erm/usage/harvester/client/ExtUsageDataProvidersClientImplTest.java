@@ -11,6 +11,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl.PATH;
 
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
@@ -26,11 +27,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
-public class ExtUsageDataProvidersClientTest {
+public class ExtUsageDataProvidersClientImplTest {
 
   private static final String UDP_ID = "b4aca312-f769-4988-8040-b31234679f7b";
-  private static final String UDP_PATH = "/usage-data-providers";
-  private static final String UDP_PATH_WITH_ID = UDP_PATH + "/" + UDP_ID;
+  private static final String UDP_PATH_WITH_ID = PATH + "/" + UDP_ID;
   private static final Date DATE_NOW = Date.from(Instant.now());
 
   @Rule
@@ -40,7 +40,8 @@ public class ExtUsageDataProvidersClientTest {
 
   @Before
   public void setUp() {
-    udpClient = new ExtUsageDataProvidersClient(wireMockRule.baseUrl(), "someTenant", "someToken");
+    udpClient =
+        new ExtUsageDataProvidersClientImpl(wireMockRule.baseUrl(), "someTenant", "someToken");
   }
 
   @Test
@@ -88,7 +89,7 @@ public class ExtUsageDataProvidersClientTest {
   @Test
   public void getActiveProvidersResponseIsValid(TestContext context) {
     stubFor(
-        get(urlPathMatching(UDP_PATH))
+        get(urlPathMatching(PATH))
             .willReturn(aResponse().withBodyFile("usage-data-providers.json")));
 
     udpClient
@@ -99,7 +100,7 @@ public class ExtUsageDataProvidersClientTest {
 
   @Test
   public void getActiveProvidersResponseBodyIsNull(TestContext context) {
-    stubFor(get(urlPathMatching(UDP_PATH)).willReturn(aResponse().withBody("")));
+    stubFor(get(urlPathMatching(PATH)).willReturn(aResponse().withBody("")));
 
     udpClient
         .getActiveProviders()
@@ -110,14 +111,14 @@ public class ExtUsageDataProvidersClientTest {
 
   @Test
   public void getActiveProvidersResponseBodyIsInvalid(TestContext context) {
-    stubFor(get(urlPathMatching(UDP_PATH)).willReturn(aResponse().withBody("someBody")));
+    stubFor(get(urlPathMatching(PATH)).willReturn(aResponse().withBody("someBody")));
 
     udpClient.getActiveProviders().onComplete(context.asyncAssertFailure());
   }
 
   @Test
   public void getActiveProvidersResponseIsInvalid(TestContext context) {
-    stubFor(get(urlPathMatching(UDP_PATH)).willReturn(aResponse().withStatus(404)));
+    stubFor(get(urlPathMatching(PATH)).willReturn(aResponse().withStatus(404)));
 
     udpClient
         .getActiveProviders()

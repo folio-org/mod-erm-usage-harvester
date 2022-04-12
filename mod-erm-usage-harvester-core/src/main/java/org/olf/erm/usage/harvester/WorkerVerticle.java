@@ -40,9 +40,13 @@ import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClient;
+import org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtConfigurationsClient;
+import org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
+import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
+import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
@@ -397,11 +401,11 @@ public class WorkerVerticle extends AbstractVerticle {
     String okapiUrl =
         Objects.requireNonNull(config().getString("okapiUrl"), "No okapiUrl configured");
 
-    udpClient = new ExtUsageDataProvidersClient(okapiUrl, tenantId, token);
+    udpClient = new ExtUsageDataProvidersClientImpl(okapiUrl, tenantId, token);
     ExtConfigurationsClient configurationsClient =
-        new ExtConfigurationsClient(okapiUrl, tenantId, token);
-    aggregatorSettingsClient = new ExtAggregatorSettingsClient(okapiUrl, tenantId, token);
-    counterReportsClient = new ExtCounterReportsClient(okapiUrl, tenantId, token);
+        new ExtConfigurationsClientImpl(okapiUrl, tenantId, token);
+    aggregatorSettingsClient = new ExtAggregatorSettingsClientImpl(okapiUrl, tenantId, token);
+    counterReportsClient = new ExtCounterReportsClientImpl(okapiUrl, tenantId, token);
 
     logInfo(() -> createTenantMsg(tenantId, "deployed WorkerVericle"));
 
