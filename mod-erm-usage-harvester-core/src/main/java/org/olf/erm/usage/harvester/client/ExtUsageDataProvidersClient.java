@@ -1,4 +1,4 @@
-package org.olf.erm.usage.harvester;
+package org.olf.erm.usage.harvester.client;
 
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;

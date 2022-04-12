@@ -9,7 +9,7 @@ import io.vertx.ext.web.client.WebClient;
 import java.util.List;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.resource.interfaces.PostDeployVerticle;
-import org.olf.erm.usage.harvester.OkapiClient;
+import org.olf.erm.usage.harvester.client.OkapiClient;
 import org.olf.erm.usage.harvester.periodic.PeriodicConfigPgUtil;
 import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
 import org.quartz.Scheduler;

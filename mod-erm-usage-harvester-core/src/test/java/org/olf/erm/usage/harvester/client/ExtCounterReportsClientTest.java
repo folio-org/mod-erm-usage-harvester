@@ -1,4 +1,4 @@
-package org.olf.erm.usage.harvester;
+package org.olf.erm.usage.harvester.client;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
@@ -13,8 +13,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.ExtCounterReportsClient.PATH;
 import static org.olf.erm.usage.harvester.TestUtil.createSampleUsageDataProvider;
+import static org.olf.erm.usage.harvester.client.ExtCounterReportsClient.PATH;
 
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
@@ -41,6 +41,7 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.olf.erm.usage.harvester.FetchItem;
 
 @RunWith(VertxUnitRunner.class)
 public class ExtCounterReportsClientTest {

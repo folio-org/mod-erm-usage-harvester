@@ -1,4 +1,4 @@
-package org.olf.erm.usage.harvester;
+package org.olf.erm.usage.harvester.client;
 
 import static io.vertx.core.Future.succeededFuture;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
@@ -16,6 +16,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.MediaType;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.olf.erm.usage.harvester.SystemUser;
 
 public class OkapiClient {
 
@@ -80,8 +81,7 @@ public class OkapiClient {
                             .collect(Collectors.toList());
                     return Future.succeededFuture(tenants);
                   } catch (Exception e) {
-                    return Future.failedFuture(
-                        String.format(ERR_MSG_DECODE, url, e.getMessage()));
+                    return Future.failedFuture(String.format(ERR_MSG_DECODE, url, e.getMessage()));
                   }
                 } else {
                   return Future.failedFuture(

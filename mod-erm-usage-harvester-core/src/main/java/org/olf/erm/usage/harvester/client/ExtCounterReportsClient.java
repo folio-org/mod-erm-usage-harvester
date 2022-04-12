@@ -1,4 +1,4 @@
-package org.olf.erm.usage.harvester;
+package org.olf.erm.usage.harvester.client;
 
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
@@ -22,6 +22,8 @@ import org.folio.rest.jaxrs.model.CounterReports;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.olf.erm.usage.harvester.DateUtil;
+import org.olf.erm.usage.harvester.FetchItem;
 
 public class ExtCounterReportsClient extends CounterReportsClient {
 

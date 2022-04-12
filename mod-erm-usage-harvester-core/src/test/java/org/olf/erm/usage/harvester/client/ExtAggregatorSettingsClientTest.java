@@ -1,11 +1,11 @@
-package org.olf.erm.usage.harvester;
+package org.olf.erm.usage.harvester.client;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.ExtAggregatorSettingsClient.PATH;
+import static org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClient.PATH;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;

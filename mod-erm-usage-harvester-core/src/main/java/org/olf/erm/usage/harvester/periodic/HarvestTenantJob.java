@@ -5,7 +5,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.ext.web.client.WebClient;
 import java.util.Date;
-import org.olf.erm.usage.harvester.OkapiClient;
+import org.olf.erm.usage.harvester.client.OkapiClient;
 import org.olf.erm.usage.harvester.SystemUser;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
