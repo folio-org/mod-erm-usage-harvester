@@ -9,7 +9,7 @@ import io.vertx.ext.web.client.WebClient;
 import java.util.List;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.resource.interfaces.PostDeployVerticle;
-import org.olf.erm.usage.harvester.OkapiClient;
+import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.olf.erm.usage.harvester.periodic.PeriodicConfigPgUtil;
 import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
 import org.quartz.Scheduler;
@@ -53,11 +53,12 @@ public class PostDeployImpl implements PostDeployVerticle {
       scheduler.getContext().put("vertxContext", arg1);
       scheduler.start();
 
-      new OkapiClient(WebClient.create(arg0), arg1.config())
+      new OkapiClientImpl(WebClient.create(arg0), arg1.config())
           .getTenants()
           .onComplete(
               ar -> {
                 if (ar.succeeded()) {
+                  log.info("Found tenants: {}", ar.result());
                   processTenants(arg1, ar.result());
                 } else {
                   log.error("failed getting tenants");

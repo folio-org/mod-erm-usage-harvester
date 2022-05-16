@@ -2,7 +2,6 @@ package org.olf.erm.usage.harvester.periodic;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import java.util.Map;
@@ -16,9 +15,7 @@ public class PeriodicConfigPgUtil {
   private static final String UUID = "8bf5fe33-5ec8-420c-a86d-6320c55ba554";
 
   public static Future<RowSet<Row>> delete(Context vertxContext, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-    PostgresClient.getInstance(vertxContext.owner(), tenantId).delete(TBL, UUID, promise);
-    return promise.future();
+    return PostgresClient.getInstance(vertxContext.owner(), tenantId).delete(TBL, UUID);
   }
 
   public static Future<RowSet<Row>> delete(Context vertxContext, Map<String, String> okapiHeaders) {
@@ -27,10 +24,8 @@ public class PeriodicConfigPgUtil {
 
   public static Future<String> upsert(
       Context vertxContext, String tenantId, PeriodicConfig config) {
-    Promise<String> promise = Promise.promise();
-    PostgresClient.getInstance(vertxContext.owner(), tenantId)
-        .save(TBL, UUID, config, false, true, promise);
-    return promise.future();
+    return PostgresClient.getInstance(vertxContext.owner(), tenantId)
+        .save(TBL, UUID, config, false, true);
   }
 
   public static Future<String> upsert(
@@ -39,10 +34,8 @@ public class PeriodicConfigPgUtil {
   }
 
   public static Future<PeriodicConfig> get(Context vertxContext, String tenantId) {
-    Promise<PeriodicConfig> promise = Promise.promise();
-    PostgresClient.getInstance(vertxContext.owner(), tenantId)
-        .getById(TBL, UUID, PeriodicConfig.class, promise);
-    return promise.future();
+    return PostgresClient.getInstance(vertxContext.owner(), tenantId)
+        .getById(TBL, UUID, PeriodicConfig.class);
   }
 
   public static Future<PeriodicConfig> get(Context vertxContext, Map<String, String> okapiHeaders) {

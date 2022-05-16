@@ -32,7 +32,7 @@ import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.http.Request;
 import com.github.tomakehurst.wiremock.http.ResponseDefinition;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import io.restassured.response.ValidatableResponse;
+import com.google.common.io.Resources;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
@@ -41,6 +41,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -62,10 +64,9 @@ import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.folio.rest.tools.utils.NetworkUtils;
-import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProvider3;
@@ -75,43 +76,36 @@ import org.slf4j.LoggerFactory;
 public class WorkerVerticleIT {
 
   private static final Vertx vertx = Vertx.vertx();
-  private static final List<String> tenants = List.of("tenanta", "tenantb");
+  private static final String TENANTA = "tenanta";
+  private static final Map<String, String> OKAPI_HEADERS =
+      Map.of(XOkapiHeaders.TENANT, TENANTA, XOkapiHeaders.TOKEN, "someToken");
+  private static final List<String> tenants = List.of(TENANTA, "tenantb");
+  private static final String HARVESTER_PATH = "/erm-usage-harvester";
+  private static final String HARVESTER_START_PATH = "/erm-usage-harvester/start";
+  private static final Map<String, List<UsageDataProvider>> tenantUDPMap = new HashMap<>();
+
+  private static String okapiUrl;
+  private static String reportsPath;
+  private static String providerPath;
+  private static Pattern providerPathWithIdPattern;
 
   @ClassRule
   public static PostgresContainerRule pgContainerRule =
       new PostgresContainerRule(vertx, tenants.toArray(String[]::new));
 
-  private final JsonArray tenantsJsonArray =
-      tenants.stream()
-          .map(s -> new JsonObject().put("id", s))
-          .collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
-  private final String harvesterPath = "/erm-usage-harvester";
-  private final String reportsPath = "/counter-reports";
-  private final String providerPath = "/usage-data-providers";
-  private final String aggregatorPath = "/aggregator-settings";
-  private final String modConfigurationPath = "/configurations/entries";
-  private final String tenantsPath = "/_/proxy/tenants";
-  private final Pattern pattern =
-      Pattern.compile("/usage-data-providers/(.{8}-.{4}-.{4}-.{4}-.{12}).*");
-  private final Map<String, List<UsageDataProvider>> tenantUDPMap = new HashMap<>();
-
-  @Rule
-  public WireMockRule baseRule =
+  @ClassRule
+  public static WireMockRule baseRule =
       new WireMockRule(wireMockConfig().extensions(new UDPResponseTransformer()).dynamicPort());
 
-  @Rule
-  public WireMockRule serviceProviderARule =
-      new WireMockRule(
-          wireMockConfig().extensions(new ServiceProviderResponseTransformer()).dynamicPort());
+  @ClassRule
+  public static WireMockRule serviceProviderARule =
+      new WireMockRule(wireMockConfig().dynamicPort());
 
-  @Rule
-  public WireMockRule serviceProviderBRule =
-      new WireMockRule(
-          wireMockConfig().extensions(new ServiceProviderResponseTransformer()).dynamicPort());
+  @ClassRule
+  public static WireMockRule serviceProviderBRule =
+      new WireMockRule(wireMockConfig().dynamicPort());
 
-  private String okapiUrl;
-
-  private void createUDPs() {
+  private void resetTenantUDPMap() {
     tenantUDPMap.clear();
     UsageDataProvider udp1 =
         new UsageDataProvider()
@@ -155,47 +149,38 @@ public class WorkerVerticleIT {
                     .withApiKey("apiKey")
                     .withCustomerId("custId")
                     .withRequestorId("reqId"));
-    tenantUDPMap.put("tenanta", new ArrayList<>(List.of(udp1, udp2)));
+    tenantUDPMap.put(TENANTA, new ArrayList<>(List.of(udp1, udp2)));
   }
 
-  @Before
-  public void before(TestContext context) {
-    createUDPs();
-
+  @BeforeClass
+  public static void beforeClass(TestContext context) throws IOException {
     okapiUrl = baseRule.baseUrl();
     int httpPort = NetworkUtils.nextFreePort();
-    JsonObject cfg =
-        new JsonObject()
-            .put("okapiUrl", okapiUrl)
-            .put("reportsPath", reportsPath)
-            .put("providerPath", providerPath)
-            .put("aggregatorPath", aggregatorPath)
-            .put("modConfigurationPath", modConfigurationPath)
-            .put("tenantsPath", tenantsPath)
-            .put("http.port", httpPort);
+
+    String deployCfg =
+        Resources.toString(Resources.getResource("config.json"), StandardCharsets.UTF_8);
+    JsonObject cfg = new JsonObject(deployCfg).put("okapiUrl", okapiUrl).put("http.port", httpPort);
+    String modConfigurationPath = cfg.getString("modConfigurationPath");
+    String tenantsPath = cfg.getString("tenantsPath");
+    providerPath = cfg.getString("providerPath");
+    reportsPath = cfg.getString("reportsPath");
+    providerPathWithIdPattern = Pattern.compile(providerPath + "/(.{8}-.{4}-.{4}-.{4}-.{12}).*");
 
     baseRule.stubFor(
-        get(urlMatching(harvesterPath + "/.*"))
+        get(urlMatching(HARVESTER_PATH + "/.*"))
             .willReturn(aResponse().proxiedFrom("http://localhost:" + httpPort)));
 
     baseRule.stubFor(
         get(urlPathEqualTo(modConfigurationPath))
             .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
+    JsonArray tenantsJsonArray =
+        tenants.stream()
+            .map(s -> new JsonObject().put("id", s))
+            .collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
     baseRule.stubFor(
         get(urlPathEqualTo(tenantsPath))
             .willReturn(aResponse().withStatus(200).withBody(tenantsJsonArray.encodePrettily())));
-
-    baseRule.stubFor(
-        get(urlPathEqualTo(providerPath))
-            .willReturn(
-                aResponse()
-                    .withStatus(200)
-                    .withBody(
-                        Json.encodePrettily(
-                            new UsageDataProviders()
-                                .withUsageDataProviders(tenantUDPMap.get("tenanta"))
-                                .withTotalRecords(tenantUDPMap.get("tenanta").size())))));
 
     baseRule.stubFor(
         get(urlMatching(providerPath + "/.*"))
@@ -217,41 +202,44 @@ public class WorkerVerticleIT {
 
     baseRule.stubFor(post(urlPathEqualTo(reportsPath)).willReturn(aResponse().withStatus(201)));
 
-    serviceProviderARule.stubFor(
-        get(anyUrl())
-            .willReturn(aResponse().withTransformers("ServiceProviderResponseTransformer")));
-
-    serviceProviderBRule.stubFor(
-        get(anyUrl())
-            .willReturn(aResponse().withTransformers("ServiceProviderResponseTransformer")));
-
     vertx.deployVerticle(
         RestVerticle.class.getName(),
         new DeploymentOptions().setConfig(cfg),
         context.asyncAssertSuccess());
   }
 
-  @After
-  public void after(TestContext context) {
-    vertx.undeploy(vertx.deploymentIDs().toArray()[0].toString(), context.asyncAssertSuccess());
+  @Before
+  public void before() {
+    resetTenantUDPMap();
+    baseRule.resetRequests();
+    serviceProviderARule.resetRequests();
+    serviceProviderBRule.resetRequests();
+
+    baseRule.stubFor(
+        get(urlPathEqualTo(providerPath))
+            .willReturn(
+                aResponse()
+                    .withStatus(200)
+                    .withBody(
+                        Json.encodePrettily(
+                            new UsageDataProviders()
+                                .withUsageDataProviders(tenantUDPMap.get(TENANTA))
+                                .withTotalRecords(tenantUDPMap.get(TENANTA).size())))));
+
+    serviceProviderARule.stubFor(
+        get(anyUrl())
+            .willReturn(aResponse().withStatus(200).withBody(Json.encodePrettily(new Report()))));
+
+    serviceProviderBRule.stubFor(
+        get(anyUrl())
+            .willReturn(aResponse().withStatus(200).withBody(Json.encodePrettily(new Report()))));
   }
 
   @Test
   public void testNumberOfRequestsMadeForTenant(TestContext context) {
     Async async = context.async();
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
-    ValidatableResponse then =
-        given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-            .get(okapiUrl + "/erm-usage-harvester/start")
-            .then();
-    System.out.println(
-        then.extract().statusCode()
-            + then.extract().statusLine()
-            + then.extract().body().asString());
-    then.statusCode(200);
+    given().headers(OKAPI_HEADERS).get(okapiUrl + HARVESTER_START_PATH).then().statusCode(200);
 
     vertx.setPeriodic(
         1000,
@@ -291,21 +279,14 @@ public class WorkerVerticleIT {
   @Test
   public void testNumberOfRequestsMadeForProviderWithErrors(TestContext context) {
     tenantUDPMap
-        .get("tenanta")
+        .get(TENANTA)
         .forEach(udp -> udp.getHarvestingConfig().getSushiConfig().setServiceType("wvitp2"));
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
-    ValidatableResponse then =
-        given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-            .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-            .then();
-    System.out.println(
-        then.extract().statusCode()
-            + then.extract().statusLine()
-            + then.extract().body().asString());
-    then.statusCode(200);
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
 
     Async async = context.async();
     vertx.setPeriodic(
@@ -347,7 +328,7 @@ public class WorkerVerticleIT {
   @Test
   public void testNumberOfThreadsUsedAfterTooManyRequestsError(TestContext context) {
     tenantUDPMap
-        .get("tenanta")
+        .get(TENANTA)
         .forEach(udp -> udp.getHarvestingConfig().getSushiConfig().setServiceType("wvitp3"));
 
     LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
@@ -357,18 +338,11 @@ public class WorkerVerticleIT {
     logger.addAppender(newAppender);
     newAppender.start();
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
-    ValidatableResponse then =
-        given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-            .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-            .then();
-    System.out.println(
-        then.extract().statusCode()
-            + then.extract().statusLine()
-            + then.extract().body().asString());
-    then.statusCode(200);
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
 
     Async async = context.async();
     vertx.setPeriodic(
@@ -420,18 +394,11 @@ public class WorkerVerticleIT {
     serviceProviderARule.stubFor(
         get(anyUrl()).willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
-    ValidatableResponse then =
-        given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-            .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-            .then();
-    System.out.println(
-        then.extract().statusCode()
-            + then.extract().statusLine()
-            + then.extract().body().asString());
-    then.statusCode(200);
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
 
     Async async = context.async();
     vertx.setPeriodic(
@@ -466,9 +433,9 @@ public class WorkerVerticleIT {
 
   @Test
   public void testLogMessageHarvestingNotActive(TestContext context) {
-    tenantUDPMap.get("tenanta").remove(1);
+    tenantUDPMap.get(TENANTA).remove(1);
     tenantUDPMap
-        .get("tenanta")
+        .get(TENANTA)
         .get(0)
         .getHarvestingConfig()
         .setHarvestingStatus(HarvestingStatus.INACTIVE);
@@ -481,18 +448,11 @@ public class WorkerVerticleIT {
     newAppender.start();
 
     Async async = context.async();
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
-    ValidatableResponse then =
-        given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-            .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-            .then();
-    System.out.println(
-        then.extract().statusCode()
-            + then.extract().statusLine()
-            + then.extract().body().asString());
-    then.statusCode(200);
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
 
     vertx.setPeriodic(
         1000,
@@ -527,18 +487,11 @@ public class WorkerVerticleIT {
     newAppender.start();
 
     Async async = context.async();
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
-    ValidatableResponse then =
-        given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-            .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-            .then();
-    System.out.println(
-        then.extract().statusCode()
-            + then.extract().statusLine()
-            + then.extract().body().asString());
-    then.statusCode(200);
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
 
     vertx.setPeriodic(
         1000,
@@ -567,7 +520,7 @@ public class WorkerVerticleIT {
   public void testServiceProviderFailsInitialization(TestContext context) {
     Async async = context.async();
 
-    UsageDataProvider udp = tenantUDPMap.get("tenanta").get(0);
+    UsageDataProvider udp = tenantUDPMap.get(TENANTA).get(0);
     HarvestingConfig harvestingConfig = udp.getHarvestingConfig();
     harvestingConfig.getSushiConfig().setServiceType("wvitpfailinit");
     harvestingConfig
@@ -576,14 +529,11 @@ public class WorkerVerticleIT {
         .withHarvestingStart("2021-01")
         .withHarvestingEnd("2021-03");
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
-    ValidatableResponse then =
-        given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-            .get(okapiUrl + "/erm-usage-harvester/start/" + udp.getId())
-            .then();
-    then.statusCode(200);
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/" + udp.getId())
+        .then()
+        .statusCode(200);
 
     vertx.setPeriodic(
         1000,
@@ -620,18 +570,11 @@ public class WorkerVerticleIT {
   public void testNumberOfRequestsMadeForProvider(TestContext context) {
     Async async = context.async();
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
-    ValidatableResponse then =
-        given()
-            .headers(
-                XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-            .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-            .then();
-    System.out.println(
-        then.extract().statusCode()
-            + then.extract().statusLine()
-            + then.extract().body().asString());
-    then.statusCode(200);
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
 
     vertx.setPeriodic(
         1000,
@@ -665,7 +608,7 @@ public class WorkerVerticleIT {
   @Test
   public void testFailedReasonIsExceptionToStringIfGetMessageIsNull(TestContext context) {
     tenantUDPMap
-        .get("tenanta")
+        .get(TENANTA)
         .forEach(
             udp -> {
               HarvestingConfig harvestingConfig = udp.getHarvestingConfig();
@@ -677,10 +620,9 @@ public class WorkerVerticleIT {
                   .withHarvestingEnd("2021-01");
             });
 
-    Token token = new Token(Token.createFakeJWTForTenant("tenanta"));
     given()
-        .headers(XOkapiHeaders.TENANT, token.getTenantId(), XOkapiHeaders.TOKEN, token.getToken())
-        .get(okapiUrl + "/erm-usage-harvester/start/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
         .then()
         .statusCode(200);
 
@@ -705,33 +647,7 @@ public class WorkerVerticleIT {
         });
   }
 
-  static class ServiceProviderResponseTransformer extends ResponseDefinitionTransformer {
-
-    @Override
-    public ResponseDefinition transform(
-        Request request,
-        ResponseDefinition responseDefinition,
-        FileSource files,
-        Parameters parameters) {
-
-      return new ResponseDefinitionBuilder()
-          .withStatus(200)
-          .withBody(Json.encodePrettily(new Report()))
-          .build();
-    }
-
-    @Override
-    public boolean applyGlobally() {
-      return false;
-    }
-
-    @Override
-    public String getName() {
-      return "ServiceProviderResponseTransformer";
-    }
-  }
-
-  class UDPResponseTransformer extends ResponseDefinitionTransformer {
+  static class UDPResponseTransformer extends ResponseDefinitionTransformer {
 
     @Override
     public ResponseDefinition transform(
@@ -741,7 +657,7 @@ public class WorkerVerticleIT {
         Parameters parameters) {
 
       String tenant = request.getHeader(XOkapiHeaders.TENANT);
-      Matcher matcher = pattern.matcher(request.getUrl());
+      Matcher matcher = providerPathWithIdPattern.matcher(request.getUrl());
       String uuid = (matcher.matches()) ? matcher.group(1) : "";
 
       return Optional.ofNullable(tenantUDPMap.get(tenant))

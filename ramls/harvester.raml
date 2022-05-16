@@ -1,6 +1,6 @@
 #%RAML 1.0
 title: mod-erm-usage-harvester API
-version: v1
+version: v1.3
 baseUri: http://localhost/erm-usage-harvester
 
 documentation:
@@ -25,9 +25,37 @@ resourceTypes:
   /start:
     get:
       description: Start harvesting for tenant - process all defined usage data providers
+      responses:
+        200:
+          description: Start for tenant succeeded
+          body:
+            application/json:
+        400:
+          description: Bad request
+          body:
+            text/plain:
+        500:
+          description: Start for tenant failed
+          body:
+            application/json:
+            text/plain:
     /{id}:
       get:
         description: Start harvesting for tenant - process a specific usage data provider only
+        responses:
+          200:
+            description: Start for provider succeeded
+            body:
+              application/json:
+          400:
+            description: Bad request
+            body:
+              text/plain:
+          500:
+            description: Start for provider failed
+            body:
+              application/json:
+              text/plain:
   /impl:
     get:
       description: Get available service implementations
@@ -36,3 +64,16 @@ resourceTypes:
           description: Filter by 'isAggregator' property (true or false)
           type: string
           required: false
+      responses:
+        200:
+          description: List of available service implementations
+          body:
+            application/json:
+        400:
+          description: Bad request
+          body:
+            text/plain:
+        500:
+          description: Internal server error
+          body:
+            text/plain:

@@ -1,11 +1,11 @@
-package org.olf.erm.usage.harvester;
+package org.olf.erm.usage.harvester.client;
 
+import static io.vertx.core.Future.succeededFuture;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
 
 import com.google.common.net.HttpHeaders;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -16,26 +16,25 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.MediaType;
 import org.folio.okapi.common.XOkapiHeaders;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.olf.erm.usage.harvester.SystemUser;
 
-public class OkapiClient {
+public class OkapiClientImpl implements OkapiClient {
 
-  private static final Logger LOG = LoggerFactory.getLogger(OkapiClient.class);
-
+  public static final String PATH_LOGIN = "/authn/login";
+  public static final String PATH_HARVESTER_START = "/erm-usage-harvester/start";
+  public static final String PATH_TENANTS = "/_/proxy/tenants";
   private final String okapiUrl;
-  private final String tenantsPath;
   private final WebClient client;
 
-  public OkapiClient(WebClient webClient, JsonObject cfg) {
+  public OkapiClientImpl(WebClient webClient, JsonObject cfg) {
     Objects.requireNonNull(cfg);
     this.okapiUrl = cfg.getString("okapiUrl");
-    this.tenantsPath = cfg.getString("tenantsPath");
     this.client = webClient;
   }
 
+  @Override
   public Future<String> loginSystemUser(String tenantId, SystemUser systemUser) {
-    String loginUrl = okapiUrl + "/authn/login";
+    String loginUrl = okapiUrl + PATH_LOGIN;
 
     return client
         .postAbs(loginUrl)
@@ -45,7 +44,7 @@ public class OkapiClient {
         .compose(
             resp -> {
               if (resp.statusCode() == 201) {
-                return Future.succeededFuture(resp.headers().get(XOkapiHeaders.TOKEN));
+                return succeededFuture(resp.headers().get(XOkapiHeaders.TOKEN));
               } else {
                 return Future.failedFuture(
                     String.format(
@@ -54,8 +53,9 @@ public class OkapiClient {
             });
   }
 
+  @Override
   public Future<HttpResponse<Buffer>> startHarvester(String tenantId, String token) {
-    String startUrl = okapiUrl + "/erm-usage-harvester/start";
+    String startUrl = okapiUrl + PATH_HARVESTER_START;
     return client
         .getAbs(startUrl)
         .putHeader(XOkapiHeaders.TENANT, tenantId)
@@ -63,13 +63,13 @@ public class OkapiClient {
         .send();
   }
 
+  @Override
   public Future<List<String>> getTenants() {
-    Promise<List<String>> promise = Promise.promise();
-
-    final String url = okapiUrl + tenantsPath;
-    client
+    String url = okapiUrl + PATH_TENANTS;
+    return client
         .getAbs(url)
-        .send(
+        .send()
+        .transform(
             ar -> {
               if (ar.succeeded()) {
                 if (ar.result().statusCode() == 200) {
@@ -80,13 +80,12 @@ public class OkapiClient {
                         jsonArray.stream()
                             .map(o -> ((JsonObject) o).getString("id"))
                             .collect(Collectors.toList());
-                    LOG.info("Found tenants: {}", tenants);
-                    promise.complete(tenants);
+                    return Future.succeededFuture(tenants);
                   } catch (Exception e) {
-                    promise.fail(String.format(ERR_MSG_DECODE, url, e.getMessage()));
+                    return Future.failedFuture(String.format(ERR_MSG_DECODE, url, e.getMessage()));
                   }
                 } else {
-                  promise.fail(
+                  return Future.failedFuture(
                       String.format(
                           ERR_MSG_STATUS,
                           ar.result().statusCode(),
@@ -94,9 +93,8 @@ public class OkapiClient {
                           url));
                 }
               } else {
-                promise.fail("Failed getting tenants: " + ar.cause());
+                return Future.failedFuture("Failed getting tenants: " + ar.cause());
               }
             });
-    return promise.future();
   }
 }
