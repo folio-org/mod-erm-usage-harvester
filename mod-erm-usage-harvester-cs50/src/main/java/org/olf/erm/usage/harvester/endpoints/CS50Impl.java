@@ -173,7 +173,7 @@ public class CS50Impl implements ServiceEndpoint {
       throw new InvalidReportException("Report is missing Report_Header");
     }
 
-    if (!reportHeader.getExceptions().isEmpty()) {
+    if (reportHeader.getExceptions() != null && !reportHeader.getExceptions().isEmpty()) {
       String exceptionMsg = gson.toJson(reportHeader.getExceptions());
       if (containsTooManyRequestsError(reportHeader.getExceptions())) {
         throw new TooManyRequestsException(exceptionMsg);
