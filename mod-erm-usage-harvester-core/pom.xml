@@ -85,12 +85,12 @@
     <dependency>
       <groupId>com.github.tomakehurst</groupId>
       <artifactId>wiremock-jre8-standalone</artifactId>
-      <scope>test</scope>
+      <version>2.33.2</version>
     </dependency>
     <dependency>
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
-      <version>4.5.1</version>
+      <version>5.0.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>

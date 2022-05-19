@@ -29,14 +29,14 @@
     <maven.compiler.release>11</maven.compiler.release>
     <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
 
-    <raml-module-builder.version>33.2.6</raml-module-builder.version>
+    <raml-module-builder.version>33.2.9</raml-module-builder.version>
     <ramlfiles_path>${project.basedir}/ramls</ramlfiles_path>
-    <vertx.version>4.2.5</vertx.version>
+    <vertx.version>4.3.0</vertx.version>
     <erm.usage.version>4.3.0</erm.usage.version>
     <erm.usage.counter.version>2.2.4</erm.usage.counter.version>
     <configurations.version>5.7.5</configurations.version>
     <slf4j.version>1.7.36</slf4j.version>
-    <jackson.version>2.10.0</jackson.version>
+    <jackson.version>2.13.3</jackson.version>
     <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
   </properties>
 
@@ -80,6 +80,11 @@
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-core</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-annotations</artifactId>
         <version>${jackson.version}</version>
       </dependency>
       <dependency>
