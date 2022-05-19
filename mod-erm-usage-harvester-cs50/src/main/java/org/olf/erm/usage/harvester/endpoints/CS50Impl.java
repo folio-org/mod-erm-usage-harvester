@@ -86,7 +86,7 @@ public class CS50Impl implements ServiceEndpoint {
                 String body = responseBody.string();
                 MediaType mediaType = responseBody.contentType();
                 Builder respBuilder =
-                    response.newBuilder().body(ResponseBody.create(body, mediaType));
+                    response.newBuilder().body(ResponseBody.create(mediaType, body));
 
                 // pass through if its a report
                 if (isOfType(body, COUNTERTitleReport.class)
@@ -173,7 +173,7 @@ public class CS50Impl implements ServiceEndpoint {
       throw new InvalidReportException("Report is missing Report_Header");
     }
 
-    if (!reportHeader.getExceptions().isEmpty()) {
+    if (reportHeader.getExceptions() != null && !reportHeader.getExceptions().isEmpty()) {
       String exceptionMsg = gson.toJson(reportHeader.getExceptions());
       if (containsTooManyRequestsError(reportHeader.getExceptions())) {
         throw new TooManyRequestsException(exceptionMsg);

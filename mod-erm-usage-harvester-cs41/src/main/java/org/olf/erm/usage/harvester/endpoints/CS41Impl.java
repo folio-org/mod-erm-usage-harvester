@@ -83,7 +83,7 @@ public class CS41Impl implements ServiceEndpoint {
     return request;
   }
 
-  CS41Impl(UsageDataProvider provider) {
+  public CS41Impl(UsageDataProvider provider) {
     this.provider = provider;
 
     SushiService service = new SushiService();
