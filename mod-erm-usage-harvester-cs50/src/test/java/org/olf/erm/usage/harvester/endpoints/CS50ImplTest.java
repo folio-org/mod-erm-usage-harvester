@@ -568,4 +568,19 @@ public class CS50ImplTest {
                   verifyApiCall();
                 }));
   }
+
+  @Test
+  public void testFetchMultipleMonthsWithEmptyMonths(TestContext context) throws IOException {
+    String reportStr =
+        Resources.toString(
+            Resources.getResource("reports/dr_with_empty_months.json"), StandardCharsets.UTF_8);
+
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH))
+            .willReturn(aResponse().withStatus(200).withBody(reportStr)));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(context.asyncAssertSuccess(list -> assertThat(list).hasSize(3)));
+  }
 }
