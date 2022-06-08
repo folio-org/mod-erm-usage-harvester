@@ -222,7 +222,7 @@ public class CS50ImplTest {
   }
 
   @Test
-  public void testFetchReportMissingReportItems(TestContext context) throws IOException {
+  public void testFetchReportNoReportItems(TestContext context) throws IOException {
     String reportStr =
         Resources.toString(
             Resources.getResource("SampleReportMissingItems.json"), StandardCharsets.UTF_8);
@@ -233,11 +233,11 @@ public class CS50ImplTest {
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
-            context.asyncAssertFailure(
-                t -> {
-                  assertThat(t)
-                      .isInstanceOf(InvalidReportException.class)
-                      .hasMessageContaining("missing Report_Items");
+            context.asyncAssertSuccess(
+                list -> {
+                  assertThat(list).hasSize(1);
+                  assertThat(list.get(0).getReport().getAdditionalProperties().get("Report_Items"))
+                      .isNotNull();
                   verifyApiCall();
                 }));
   }
@@ -254,11 +254,11 @@ public class CS50ImplTest {
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
-            context.asyncAssertFailure(
-                t -> {
-                  assertThat(t)
-                      .isInstanceOf(InvalidReportException.class)
-                      .hasMessageContaining("missing Report_Items");
+            context.asyncAssertSuccess(
+                list -> {
+                  assertThat(list).hasSize(1);
+                  assertThat(list.get(0).getReport().getAdditionalProperties().get("Report_Items"))
+                      .isNotNull();
                   verifyApiCall();
                 }));
   }
