@@ -1,0 +1,62 @@
+{
+  "Report_Header": {
+    "Customer_ID": "customer_id",
+    "Institution_Name": "Institution_name",
+    "Institution_ID": [
+      {
+        "Type": "Proprietary",
+        "Value": "emeraldinsight:34ab4f63_fcd8_4532_b69a_81f9fc3a5cd4"
+      }
+    ],
+    "Report_Filters": [
+      {
+        "Name": "Begin_Date",
+        "Value": "2021-01-01"
+      },
+      {
+        "Name": "End_Date",
+        "Value": "2021-03-31"
+      }
+    ],
+    "Created": "2022-05-24T17:26:28+00:00",
+    "Created_By": "LibLynx LLC",
+    "Release": "5",
+    "Report_Name": "Database Master Report",
+    "Report_ID": "DR"
+  },
+  "Report_Items": [
+    {
+      "Platform": "Emerald",
+      "Publisher": "Emerald Insight",
+      "Database": "Emerald Emerging Markets Case Studies",
+      "Item_ID": [
+        {
+          "Type": "Proprietary",
+          "Value": "emeraldinsight:EEMCS"
+        }
+      ],
+      "Performance": [
+        {
+          "Period": {
+            "Begin_Date": "2021-02-01",
+            "End_Date": "2021-02-28"
+          },
+          "Instance": [
+            {
+              "Metric_Type": "Total_Item_Investigations",
+              "Count": 1
+            },
+            {
+              "Metric_Type": "Unique_Item_Investigations",
+              "Count": 1
+            },
+            {
+              "Metric_Type": "No_License",
+              "Count": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

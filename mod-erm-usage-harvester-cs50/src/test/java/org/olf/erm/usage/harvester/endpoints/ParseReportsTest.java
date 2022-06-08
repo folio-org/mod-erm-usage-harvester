@@ -27,7 +27,8 @@ public class ParseReportsTest {
         new String[] {"IRWithoutParentDetails.json", "COUNTERItemReport"},
         new String[] {"IRWithParentDetails.json", "COUNTERItemReport"},
         new String[] {"PR.json", "COUNTERPlatformReport"},
-        new String[] {"TR.json", "COUNTERTitleReport"});
+        new String[] {"TR.json", "COUNTERTitleReport"},
+        new String[] {"dr_with_empty_months.json", "COUNTERDatabaseReport"});
   }
 
   public ParseReportsTest(String resourceName, String className) throws ClassNotFoundException {

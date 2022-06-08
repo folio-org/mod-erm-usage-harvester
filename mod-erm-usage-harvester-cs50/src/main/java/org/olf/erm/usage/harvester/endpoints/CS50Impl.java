@@ -152,10 +152,6 @@ public class CS50Impl implements ServiceEndpoint {
         .collect(Collectors.toList());
   }
 
-  private boolean hasReportItems(Object report) {
-    return gson.toJsonTree(report).getAsJsonObject().getAsJsonArray("Report_Items").size() > 0;
-  }
-
   private boolean containsTooManyRequestsError(List<SUSHIErrorModel> errors) {
     return errors.stream()
         .anyMatch(
@@ -180,10 +176,6 @@ public class CS50Impl implements ServiceEndpoint {
       } else {
         throw new InvalidReportException(exceptionMsg);
       }
-    }
-
-    if (!hasReportItems(report)) {
-      throw new InvalidReportException("Report is missing Report_Items");
     }
 
     return report;
