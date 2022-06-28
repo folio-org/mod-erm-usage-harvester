@@ -112,6 +112,17 @@ public class CS50ImplTest {
             .withQueryParam("end_date", equalTo(END_DATE)));
   }
 
+  private String createStubWithResource(int code, String resourceName) throws IOException {
+    String body = Resources.toString(Resources.getResource(resourceName), StandardCharsets.UTF_8);
+    return createStubWithBody(code, body);
+  }
+
+  private String createStubWithBody(int code, String body) {
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(code).withBody(body)));
+    return body;
+  }
+
   @Test
   public void testProxy(TestContext context) {
     ProxySelector.setDefault(
@@ -140,13 +151,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportNoHeader(TestContext context) throws IOException {
-    String reportStr =
-        Resources.toString(
-            Resources.getResource("SampleReportMissingHeader.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(200).withBody(reportStr)));
-
+    createStubWithResource(200, "SampleReportMissingHeader.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -169,9 +174,7 @@ public class CS50ImplTest {
     error.setCode(TOO_MANY_REQUEST_ERROR_CODE);
     error.setMessage("");
     tr.getReportHeader().setExceptions(List.of(error));
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(200).withBody(gson.toJson(tr))));
+    createStubWithBody(200, gson.toJson(tr));
 
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
@@ -193,9 +196,7 @@ public class CS50ImplTest {
     error.setCode(1);
     error.setMessage(TOO_MANY_REQUEST_STR);
     tr.getReportHeader().setExceptions(List.of(error));
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(200).withBody(gson.toJson(tr))));
+    createStubWithBody(200, gson.toJson(tr));
 
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
@@ -209,8 +210,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportTooManyRequestsByHttpStatusCode(TestContext context) {
-    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(429)));
-
+    createStubWithBody(429, null);
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -223,13 +223,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportNoReportItems(TestContext context) throws IOException {
-    String reportStr =
-        Resources.toString(
-            Resources.getResource("SampleReportMissingItems.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(200).withBody(reportStr)));
-
+    createStubWithResource(200, "SampleReportMissingItems.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -244,13 +238,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportEmptyReportItems(TestContext context) throws IOException {
-    String reportStr =
-        Resources.toString(
-            Resources.getResource("SampleReportEmptyItems.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(200).withBody(reportStr)));
-
+    createStubWithResource(200, "SampleReportEmptyItems.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -265,13 +253,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportWithException(TestContext context) throws IOException {
-    String reportStr =
-        Resources.toString(
-            Resources.getResource("SampleReportExceptionError.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(200).withBody(reportStr)));
-
+    createStubWithResource(200, "SampleReportExceptionError.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -287,12 +269,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportOkWithStatus200(TestContext context) throws IOException {
-    String expectedReportStr =
-        Resources.toString(Resources.getResource("SampleReport.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(200).withBody(expectedReportStr)));
-
+    String expectedReportStr = createStubWithResource(200, "SampleReport.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -314,12 +291,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportOkWithStatus202(TestContext context) throws IOException {
-    String expectedReportStr =
-        Resources.toString(Resources.getResource("SampleReport.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(202).withBody(expectedReportStr)));
-
+    String expectedReportStr = createStubWithResource(202, "SampleReport.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -341,12 +313,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportOkWithStatus400(TestContext context) throws IOException {
-    String expectedReportStr =
-        Resources.toString(Resources.getResource("SampleReport.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(400).withBody(expectedReportStr)));
-
+    String expectedReportStr = createStubWithResource(400, "SampleReport.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -360,13 +327,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportWithInvalidMetricType(TestContext context) throws IOException {
-    String expectedReportStr =
-        Resources.toString(
-            Resources.getResource("SampleReportInvalidMetricType.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(200).withBody(expectedReportStr)));
-
+    String expectedReportStr = createStubWithResource(200, "SampleReportInvalidMetricType.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -380,10 +341,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportErrorWithStatus400(TestContext context) throws IOException {
-    String errStr = Resources.toString(Resources.getResource("error.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(400).withBody(errStr)));
-
+    String errStr = createStubWithResource(400, "error.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -396,11 +354,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportErrorArrayWithStatus200(TestContext context) throws IOException {
-    String errStr =
-        Resources.toString(Resources.getResource("errorarray.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(200).withBody(errStr)));
-
+    String errStr = createStubWithResource(200, "errorarray.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -413,11 +367,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportErrorArrayWithStatus202(TestContext context) throws IOException {
-    String errStr =
-        Resources.toString(Resources.getResource("errorarray.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(202).withBody(errStr)));
-
+    String errStr = createStubWithResource(202, "errorarray.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -430,11 +380,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportErrorArrayWithStatus400(TestContext context) throws IOException {
-    String errStr =
-        Resources.toString(Resources.getResource("errorarray.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(400).withBody(errStr)));
-
+    String errStr = createStubWithResource(400, "errorarray.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -448,12 +394,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportErrorAvailableReportsArrayWithStatus200(TestContext context)
       throws IOException {
-    String errStr =
-        Resources.toString(
-            Resources.getResource("erroravailablereports.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(200).withBody(errStr)));
-
+    String errStr = createStubWithResource(200, "erroravailablereports.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -466,8 +407,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReport404(TestContext context) {
-    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
-
+    createStubWithBody(404, null);
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -517,10 +457,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportErrorWithStatus202(TestContext context) throws IOException {
-    String errStr = Resources.toString(Resources.getResource("error.json"), StandardCharsets.UTF_8);
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(202).withBody(errStr)));
-
+    String errStr = createStubWithResource(202, "error.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -533,11 +470,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportErrorWithStatus200(TestContext context) throws IOException {
-    String errStr = Resources.toString(Resources.getResource("error.json"), StandardCharsets.UTF_8);
-
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(200).withBody(errStr)));
-
+    String errStr = createStubWithResource(200, "error.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -550,13 +483,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportNullWithStatus200(TestContext context) throws IOException {
-    String reportStr =
-        Resources.toString(Resources.getResource("SampleReportNull.json"), StandardCharsets.UTF_8);
-
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(200).withBody(reportStr)));
-
+    createStubWithResource(200, "SampleReportNull.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -571,14 +498,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchMultipleMonthsWithEmptyMonths(TestContext context) throws IOException {
-    String reportStr =
-        Resources.toString(
-            Resources.getResource("reports/dr_with_empty_months.json"), StandardCharsets.UTF_8);
-
-    wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH))
-            .willReturn(aResponse().withStatus(200).withBody(reportStr)));
-
+    createStubWithResource(200, "reports/dr_with_empty_months.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(context.asyncAssertSuccess(list -> assertThat(list).hasSize(3)));
@@ -586,7 +506,7 @@ public class CS50ImplTest {
 
   @Test
   public void testAuthKeyRequestorId(TestContext context) {
-    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
+    createStubWithBody(404, null);
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
@@ -600,7 +520,7 @@ public class CS50ImplTest {
 
   @Test
   public void testAuthKeyApiKey(TestContext context) {
-    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
+    createStubWithBody(404, null);
     provider.getSushiCredentials().setApiKey(API_KEY);
     provider.getSushiCredentials().setRequestorId(null);
     new CS50Impl(provider)
@@ -616,7 +536,7 @@ public class CS50ImplTest {
 
   @Test
   public void testAuthKeyBoth(TestContext context) {
-    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
+    createStubWithBody(404, null);
     provider.getSushiCredentials().setApiKey(API_KEY);
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
@@ -631,7 +551,7 @@ public class CS50ImplTest {
 
   @Test
   public void testAuthKeyNone(TestContext context) {
-    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
+    createStubWithBody(404, null);
     provider.getSushiCredentials().setRequestorId(null);
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
