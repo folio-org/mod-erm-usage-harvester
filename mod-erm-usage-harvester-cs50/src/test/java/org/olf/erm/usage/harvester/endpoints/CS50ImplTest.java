@@ -1,6 +1,7 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.absent;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
@@ -54,7 +55,10 @@ public class CS50ImplTest {
   private static final String REPORT = "TR_J1";
   private static final String REPORT_PATH = "/sushi/reports/tr_j1";
   private static final String CUSTOMER_ID = "CustomerId123";
+  private static final String REQUESTOR_ID_QUERY = "requestor_id";
   private static final String REQUESTOR_ID = "RequestorId123";
+  private static final String API_KEY_QUERY = "api_key";
+  private static final String API_KEY = "ApiKey123";
   private static final COUNTERTitleReport emptyReport;
   private static UsageDataProvider provider;
   private static final Gson gson = new Gson();
@@ -71,10 +75,6 @@ public class CS50ImplTest {
   @Before
   public void before() {
     provider = createTestProvider();
-    provider
-        .getHarvestingConfig()
-        .getSushiConfig()
-        .setServiceUrl("http://localhost:" + wmRule.port() + "/sushi");
     ProxySelector.setDefault(
         new ProxySelector() {
           @Override
@@ -107,7 +107,7 @@ public class CS50ImplTest {
     wmRule.verify(
         getRequestedFor(urlPathEqualTo(REPORT_PATH))
             .withQueryParam("customer_id", equalTo(CUSTOMER_ID))
-            .withQueryParam("requestor_id", equalTo(REQUESTOR_ID))
+            .withQueryParam(REQUESTOR_ID_QUERY, equalTo(REQUESTOR_ID))
             .withQueryParam("begin_date", equalTo(BEGIN_DATE))
             .withQueryParam("end_date", equalTo(END_DATE)));
   }
@@ -582,5 +582,65 @@ public class CS50ImplTest {
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(context.asyncAssertSuccess(list -> assertThat(list).hasSize(3)));
+  }
+
+  @Test
+  public void testAuthKeyRequestorId(TestContext context) {
+    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                list ->
+                    wmRule.verify(
+                        getRequestedFor(urlPathEqualTo(REPORT_PATH))
+                            .withQueryParam(REQUESTOR_ID_QUERY, equalTo(REQUESTOR_ID))
+                            .withQueryParam(API_KEY_QUERY, absent()))));
+  }
+
+  @Test
+  public void testAuthKeyApiKey(TestContext context) {
+    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
+    provider.getSushiCredentials().setApiKey(API_KEY);
+    provider.getSushiCredentials().setRequestorId(null);
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                list ->
+                    wmRule.verify(
+                        getRequestedFor(urlPathEqualTo(REPORT_PATH))
+                            .withQueryParam(REQUESTOR_ID_QUERY, absent())
+                            .withQueryParam(API_KEY_QUERY, equalTo(API_KEY)))));
+  }
+
+  @Test
+  public void testAuthKeyBoth(TestContext context) {
+    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
+    provider.getSushiCredentials().setApiKey(API_KEY);
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                list ->
+                    wmRule.verify(
+                        getRequestedFor(urlPathEqualTo(REPORT_PATH))
+                            .withQueryParam(REQUESTOR_ID_QUERY, equalTo(REQUESTOR_ID))
+                            .withQueryParam(API_KEY_QUERY, equalTo(API_KEY)))));
+  }
+
+  @Test
+  public void testAuthKeyNone(TestContext context) {
+    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
+    provider.getSushiCredentials().setRequestorId(null);
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                list ->
+                    wmRule.verify(
+                        getRequestedFor(urlPathEqualTo(REPORT_PATH))
+                            .withQueryParam(REQUESTOR_ID_QUERY, absent())
+                            .withQueryParam(API_KEY_QUERY, absent()))));
   }
 }
