@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import static io.swagger.annotations.ApiKeyAuthDefinition.ApiKeyLocation.QUERY;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 import static org.apache.commons.lang3.StringUtils.abbreviate;
@@ -31,6 +32,7 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter50.Counter5Utils;
 import org.olf.erm.usage.counter50.Counter5Utils.Counter5UtilsException;
 import org.openapitools.client.ApiClient;
+import org.openapitools.client.auth.ApiKeyAuth;
 import org.openapitools.client.model.COUNTERDatabaseReport;
 import org.openapitools.client.model.COUNTERItemReport;
 import org.openapitools.client.model.COUNTERPlatformReport;
@@ -62,10 +64,16 @@ public class CS50Impl implements ServiceEndpoint {
     ApiClient apiClient = new ApiClient();
     String apiKey = provider.getSushiCredentials().getApiKey();
     String reqId = provider.getSushiCredentials().getRequestorId();
+
     if (!Strings.isNullOrEmpty(apiKey)) {
-      apiClient = new ApiClient("api_key", apiKey);
-    } else if (!Strings.isNullOrEmpty(reqId)) {
-      apiClient = new ApiClient("requestor_id", reqId);
+      ApiKeyAuth keyAuth1 = new ApiKeyAuth(QUERY.toValue(), "api_key");
+      keyAuth1.setApiKey(apiKey);
+      apiClient.addAuthorization("api_key", keyAuth1);
+    }
+    if (!Strings.isNullOrEmpty(reqId)) {
+      ApiKeyAuth keyAuth2 = new ApiKeyAuth(QUERY.toValue(), "requestor_id");
+      keyAuth2.setApiKey(reqId);
+      apiClient.addAuthorization("requestor_id", keyAuth2);
     }
 
     apiClient.getAdapterBuilder().baseUrl(baseUrl);
