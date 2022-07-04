@@ -1,3 +1,12 @@
+# 4.1.0
+* [MODEUSHARV-73](https://issues.folio.org/browse/MODEUSHARV-73) Requests only using one authentication parameter
+* [MODEUSHARV-72](https://issues.folio.org/browse/MODEUSHARV-72) RMB v34 upgrade - Morning Glory 2022 R2 module release
+* [MODEUSHARV-71](https://issues.folio.org/browse/MODEUSHARV-71) Reports without report items are considered invalid
+* [MODEUSHARV-70](https://issues.folio.org/browse/MODEUSHARV-70) CS50Exception: Split report size not equal to 1
+* [MODEUSHARV-69](https://issues.folio.org/browse/MODEUSHARV-69) Update dependencies
+* [MODEUSHARV-68](https://issues.folio.org/browse/MODEUSHARV-68) cs50 slf4j-ext Deserialization of Untrusted Data (CVE-2018-8088)
+* [MODEUSHARV-63](https://issues.folio.org/browse/MODEUSHARV-63) Refactoring
+
 # 4.0.1
 * [MODEUSHARV-62](https://issues.folio.org/browse/MODEUSHARV-62) NPE in SchedulingUtil
 * [MODEUSHARV-64](https://issues.folio.org/browse/MODEUSHARV-64) Sequential requests for sushi5.scholarlyiq.com
