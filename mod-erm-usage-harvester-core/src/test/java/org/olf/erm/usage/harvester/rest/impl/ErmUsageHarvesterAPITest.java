@@ -27,9 +27,11 @@ import java.util.Map;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.quartz.impl.StdSchedulerFactory;
 
 @RunWith(VertxUnitRunner.class)
 public class ErmUsageHarvesterAPITest {
@@ -42,7 +44,7 @@ public class ErmUsageHarvesterAPITest {
   private static Vertx vertx;
 
   @BeforeClass
-  public static void setup(TestContext context) throws IOException {
+  public static void beforeClass(TestContext context) throws IOException {
     vertx = Vertx.vertx();
 
     int port = NetworkUtils.nextFreePort();
@@ -61,8 +63,13 @@ public class ErmUsageHarvesterAPITest {
         context.asyncAssertSuccess());
   }
 
+  @Before
+  public void before() throws Exception {
+    StdSchedulerFactory.getDefaultScheduler().clear();
+  }
+
   @AfterClass
-  public static void after(TestContext context) {
+  public static void afterClass(TestContext context) {
     vertx.close(context.asyncAssertSuccess());
     RestAssured.reset();
   }
