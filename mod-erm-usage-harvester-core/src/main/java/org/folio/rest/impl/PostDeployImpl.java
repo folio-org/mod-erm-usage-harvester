@@ -41,35 +41,35 @@ public class PostDeployImpl implements PostDeployVerticle {
   }
 
   @Override
-  public void init(Vertx arg0, Context arg1, Handler<AsyncResult<Boolean>> arg2) {
-    if (Boolean.TRUE.equals(arg1.config().getBoolean("testing"))) {
+  public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
+    if (Boolean.TRUE.equals(context.config().getBoolean("testing"))) {
       log.info("Skipping PostDeployImpl (testing==true)");
-      arg2.handle(Future.succeededFuture(true));
+      resultHandler.handle(Future.succeededFuture(true));
       return;
     }
 
     try {
       Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-      scheduler.getContext().put("vertxContext", arg1);
+      scheduler.getContext().put("vertxContext", context);
       scheduler.start();
-
-      new OkapiClientImpl(WebClient.create(arg0), arg1.config())
-          .getTenants()
-          .onComplete(
-              ar -> {
-                if (ar.succeeded()) {
-                  log.info("Found tenants: {}", ar.result());
-                  processTenants(arg1, ar.result());
-                } else {
-                  log.error("failed getting tenants");
-                }
-              });
     } catch (SchedulerException e) {
       log.error("Error setting up quartz scheduler: {}", e.getMessage(), e);
-      arg2.handle(Future.failedFuture(e.getMessage()));
+      resultHandler.handle(Future.failedFuture(e.getMessage()));
       return;
     }
 
-    arg2.handle(Future.succeededFuture(true));
+    new OkapiClientImpl(WebClient.create(vertx), context.config())
+        .getTenants()
+        .onComplete(
+            ar -> {
+              if (ar.succeeded()) {
+                log.info("Found tenants: {}", ar.result());
+                processTenants(context, ar.result());
+              } else {
+                log.error("failed getting tenants");
+              }
+            });
+
+    resultHandler.handle(Future.succeededFuture(true));
   }
 }
