@@ -60,6 +60,7 @@ public class WorkerVerticle extends AbstractVerticle {
   private static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
   private static final String CONFIG_NAME = "maxFailedAttempts";
 
+  private final Promise<Void> finished = Promise.promise();
   private final String token;
   private final String tenantId;
   private final String providerId;
@@ -67,6 +68,10 @@ public class WorkerVerticle extends AbstractVerticle {
   private ExtUsageDataProvidersClient udpClient;
   private ExtAggregatorSettingsClient aggregatorSettingsClient;
   private ExtCounterReportsClient counterReportsClient;
+
+  public Future<Void> getFinished() {
+    return finished.future();
+  }
 
   private void logInfo(Supplier<String> logMessage) {
     if (LOG.isInfoEnabled()) {
@@ -90,11 +95,13 @@ public class WorkerVerticle extends AbstractVerticle {
     return new DisposableCompletableObserver() {
       @Override
       public void onComplete() {
+        finished.complete();
         logInfo(() -> createTenantMsg(tenantId, "Processing completed"));
       }
 
       @Override
       public void onError(Throwable e) {
+        finished.fail(e);
         logError(() -> createTenantMsg(tenantId, "Error during processing, {}", e.getMessage()), e);
       }
     };
