@@ -12,7 +12,7 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
 
-public class HarvestTenantManualJob extends AbstractHarvestJob {
+public class HarvestTenantJob extends AbstractHarvestJob {
 
   @Override
   public void execute(JobExecutionContext context) throws JobExecutionException {

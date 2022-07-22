@@ -53,7 +53,7 @@ public class SchedulingUtil {
           "Harvesting for tenant '" + tenantId + "' is already in progress");
     } else {
       scheduler.scheduleJob(
-          JobBuilder.newJob(HarvestTenantManualJob.class)
+          JobBuilder.newJob(HarvestTenantJob.class)
               .withIdentity(jobKey)
               .usingJobData(DATAKEY_TENANT, tenantId)
               .usingJobData(DATAKEY_TOKEN, token)
