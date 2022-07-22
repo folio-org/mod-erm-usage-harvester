@@ -78,7 +78,7 @@ public class SchedulingUtil {
     }
     JobDetail job =
         JobBuilder.newJob()
-            .ofType(HarvestTenantJob.class)
+            .ofType(HarvestTenantPeriodicJob.class)
             .usingJobData("tenantId", tenantId)
             .withIdentity(new JobKey(tenantId))
             .build();

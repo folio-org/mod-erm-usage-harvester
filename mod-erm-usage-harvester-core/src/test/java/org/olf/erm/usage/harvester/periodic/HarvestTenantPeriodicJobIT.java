@@ -48,7 +48,7 @@ import org.quartz.impl.matchers.KeyMatcher;
 import org.quartz.listeners.JobListenerSupport;
 
 @RunWith(VertxUnitRunner.class)
-public class HarvestTenantJobIT {
+public class HarvestTenantPeriodicJobIT {
 
   public static final String START_PATH = "/erm-usage-harvester/start";
   private static Vertx vertx = Vertx.vertx();
@@ -64,7 +64,7 @@ public class HarvestTenantJobIT {
   private static final JobKey jobKey = new JobKey(TENANT);
   private static JobDetail job =
       JobBuilder.newJob()
-          .ofType(HarvestTenantJob.class)
+          .ofType(HarvestTenantPeriodicJob.class)
           .usingJobData("tenantId", TENANT)
           .withIdentity(jobKey)
           .storeDurably(true)

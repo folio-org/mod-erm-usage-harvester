@@ -5,8 +5,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.ext.web.client.WebClient;
 import java.util.Date;
-import org.olf.erm.usage.harvester.client.OkapiClient;
 import org.olf.erm.usage.harvester.SystemUser;
+import org.olf.erm.usage.harvester.client.OkapiClient;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -14,9 +14,9 @@ import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HarvestTenantJob implements Job {
+public class HarvestTenantPeriodicJob implements Job {
 
-  private static final Logger log = LoggerFactory.getLogger(HarvestTenantJob.class);
+  private static final Logger log = LoggerFactory.getLogger(HarvestTenantPeriodicJob.class);
   private String tenantId;
 
   private Future<String> updateLastTriggeredAt(Context vertxContext, Date fireTime) {
