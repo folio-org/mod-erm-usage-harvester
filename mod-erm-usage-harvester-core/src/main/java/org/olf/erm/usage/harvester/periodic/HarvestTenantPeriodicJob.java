@@ -8,23 +8,21 @@ import java.util.Date;
 import org.olf.erm.usage.harvester.SystemUser;
 import org.olf.erm.usage.harvester.client.OkapiClient;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
-import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HarvestTenantPeriodicJob implements Job {
+public class HarvestTenantPeriodicJob extends AbstractHarvestJob {
 
   private static final Logger log = LoggerFactory.getLogger(HarvestTenantPeriodicJob.class);
-  private String tenantId;
 
   private Future<String> updateLastTriggeredAt(Context vertxContext, Date fireTime) {
-    return PeriodicConfigPgUtil.get(vertxContext, tenantId)
+    return PeriodicConfigPgUtil.get(vertxContext, getTenantId())
         .compose(
             pc ->
                 PeriodicConfigPgUtil.upsert(
-                    vertxContext, tenantId, pc.withLastTriggeredAt(fireTime)));
+                    vertxContext, getTenantId(), pc.withLastTriggeredAt(fireTime)));
   }
 
   private void failAndLog(Promise<?> promise, String message) {
@@ -45,12 +43,12 @@ public class HarvestTenantPeriodicJob implements Job {
       failAndLog(
           promise,
           String.format(
-              "Tenant: %s, error getting scheduler context: %s", tenantId, e.getMessage()));
+              "Tenant: %s, error getting scheduler context: %s", getTenantId(), e.getMessage()));
       return;
     }
 
     if (vertxContext == null) {
-      failAndLog(promise, String.format("Tenant: %s, error getting vert.x context", tenantId));
+      failAndLog(promise, String.format("Tenant: %s, error getting vert.x context", getTenantId()));
       return;
     }
 
@@ -58,8 +56,8 @@ public class HarvestTenantPeriodicJob implements Job {
     OkapiClient okapiClient = new OkapiClientImpl(webClient, vertxContext.config());
 
     okapiClient
-        .loginSystemUser(tenantId, new SystemUser(tenantId))
-        .compose(token -> okapiClient.startHarvester(tenantId, token))
+        .loginSystemUser(getTenantId(), new SystemUser(getTenantId()))
+        .compose(token -> okapiClient.startHarvester(getTenantId(), token))
         .onSuccess(
             resp -> {
               if (resp.statusCode() != 200) {
@@ -67,9 +65,9 @@ public class HarvestTenantPeriodicJob implements Job {
                     promise,
                     String.format(
                         "Tenant: %s, error starting job, received %s %s from start interface: %s",
-                        tenantId, resp.statusCode(), resp.statusMessage(), resp.bodyAsString()));
+                        getTenantId(), resp.statusCode(), resp.statusMessage(), resp.bodyAsString()));
               } else {
-                log.info("Tenant: {}, job started", tenantId);
+                log.info("Tenant: {}, job started", getTenantId());
                 updateLastTriggeredAt(vertxContext, context.getFireTime())
                     .onComplete(
                         ar2 -> {
@@ -80,7 +78,7 @@ public class HarvestTenantPeriodicJob implements Job {
                                 promise,
                                 String.format(
                                     "Tenant: %s, failed updating lastTriggeredAt: %s",
-                                    tenantId, ar2.cause().getMessage()));
+                                    getTenantId(), ar2.cause().getMessage()));
                           }
                         });
               }
@@ -90,10 +88,6 @@ public class HarvestTenantPeriodicJob implements Job {
                 failAndLog(
                     promise,
                     String.format(
-                        "Tenant: %s, error starting harvester: %s", tenantId, t.getMessage())));
-  }
-
-  public void setTenantId(String tenantId) {
-    this.tenantId = tenantId;
+                        "Tenant: %s, error starting harvester: %s", getTenantId(), t.getMessage())));
   }
 }
