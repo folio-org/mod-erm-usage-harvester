@@ -1,5 +1,9 @@
 package org.olf.erm.usage.harvester.periodic;
 
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_PROVIDER_ID;
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TOKEN;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -21,6 +25,42 @@ import org.slf4j.LoggerFactory;
 public class SchedulingUtil {
 
   private static final Logger log = LoggerFactory.getLogger(SchedulingUtil.class);
+
+  public static void scheduleProviderJob(
+      Scheduler scheduler, String tenantId, String token, String providerId)
+      throws SchedulerException {
+    JobKey jobKey = new JobKey(providerId, tenantId);
+    if (scheduler.checkExists(jobKey)) {
+      throw new SchedulerException(
+          "A job for provider with id '" + providerId + "' is already scheduled/running");
+    } else {
+      scheduler.scheduleJob(
+          JobBuilder.newJob(HarvestProviderJob.class)
+              .withIdentity(jobKey)
+              .usingJobData(DATAKEY_TENANT, tenantId)
+              .usingJobData(DATAKEY_TOKEN, token)
+              .usingJobData(DATAKEY_PROVIDER_ID, providerId)
+              .build(),
+          TriggerBuilder.newTrigger().startNow().build());
+    }
+  }
+
+  public static void scheduleTenantJob(Scheduler scheduler, String tenantId, String token)
+      throws SchedulerException {
+    JobKey jobKey = new JobKey(tenantId, tenantId);
+    if (scheduler.checkExists(jobKey) || scheduler.getJobGroupNames().contains(tenantId)) {
+      throw new SchedulerException(
+          "Harvesting for tenant '" + tenantId + "' is already in progress");
+    } else {
+      scheduler.scheduleJob(
+          JobBuilder.newJob(HarvestTenantManualJob.class)
+              .withIdentity(jobKey)
+              .usingJobData(DATAKEY_TENANT, tenantId)
+              .usingJobData(DATAKEY_TOKEN, token)
+              .build(),
+          TriggerBuilder.newTrigger().startNow().build());
+    }
+  }
 
   public static void createOrUpdateJob(PeriodicConfig config, String tenantId) {
     try {
