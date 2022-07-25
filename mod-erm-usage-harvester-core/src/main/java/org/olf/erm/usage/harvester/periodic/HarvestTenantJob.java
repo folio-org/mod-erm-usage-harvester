@@ -1,99 +1,57 @@
 package org.olf.erm.usage.harvester.periodic;
 
 import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.ext.web.client.WebClient;
-import java.util.Date;
-import org.olf.erm.usage.harvester.client.OkapiClient;
-import org.olf.erm.usage.harvester.SystemUser;
-import org.olf.erm.usage.harvester.client.OkapiClientImpl;
-import org.quartz.Job;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import org.folio.rest.jaxrs.model.UsageDataProviders;
+import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
 import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-public class HarvestTenantJob implements Job {
-
-  private static final Logger log = LoggerFactory.getLogger(HarvestTenantJob.class);
-  private String tenantId;
-
-  private Future<String> updateLastTriggeredAt(Context vertxContext, Date fireTime) {
-    return PeriodicConfigPgUtil.get(vertxContext, tenantId)
-        .compose(
-            pc ->
-                PeriodicConfigPgUtil.upsert(
-                    vertxContext, tenantId, pc.withLastTriggeredAt(fireTime)));
-  }
-
-  private void failAndLog(Promise<?> promise, String message) {
-    log.error(message);
-    promise.fail(message);
-  }
+public class HarvestTenantJob extends AbstractHarvestJob {
 
   @Override
-  public void execute(JobExecutionContext context) {
-    Promise<String> promise = Promise.promise();
-    context.setResult(promise);
-
+  public void execute(JobExecutionContext context) throws JobExecutionException {
     Context vertxContext;
     try {
-      Object o = context.getScheduler().getContext().get("vertxContext");
-      vertxContext = o instanceof Context ? (Context) o : null;
+      vertxContext = (Context) context.getScheduler().getContext().get("vertxContext");
     } catch (SchedulerException e) {
-      failAndLog(
-          promise,
-          String.format(
-              "Tenant: %s, error getting scheduler context: %s", tenantId, e.getMessage()));
-      return;
+      throw new JobExecutionException(e);
     }
 
-    if (vertxContext == null) {
-      failAndLog(promise, String.format("Tenant: %s, error getting vert.x context", tenantId));
-      return;
+    CompletableFuture<List<String>> complete =
+        new ExtUsageDataProvidersClientImpl(
+                vertxContext.config().getString("okapiUrl"), getTenantId(), getToken())
+            .getActiveProviders()
+            .map(UsageDataProviders::getUsageDataProviders)
+            .map(
+                udps ->
+                    udps.stream()
+                        .map(
+                            udp -> {
+                              try {
+                                SchedulingUtil.scheduleProviderJob(
+                                    context.getScheduler(), getTenantId(), getToken(), udp.getId());
+                              } catch (SchedulerException e) {
+                                return udp.getId();
+                              }
+                              return null;
+                            })
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList()))
+            .toCompletionStage()
+            .toCompletableFuture();
+    try {
+      context.setResult(complete.get());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new JobExecutionException(e);
+    } catch (ExecutionException e) {
+      throw new JobExecutionException(e);
     }
-
-    WebClient webClient = WebClient.create(vertxContext.owner());
-    OkapiClient okapiClient = new OkapiClientImpl(webClient, vertxContext.config());
-
-    okapiClient
-        .loginSystemUser(tenantId, new SystemUser(tenantId))
-        .compose(token -> okapiClient.startHarvester(tenantId, token))
-        .onSuccess(
-            resp -> {
-              if (resp.statusCode() != 200) {
-                failAndLog(
-                    promise,
-                    String.format(
-                        "Tenant: %s, error starting job, received %s %s from start interface: %s",
-                        tenantId, resp.statusCode(), resp.statusMessage(), resp.bodyAsString()));
-              } else {
-                log.info("Tenant: {}, job started", tenantId);
-                updateLastTriggeredAt(vertxContext, context.getFireTime())
-                    .onComplete(
-                        ar2 -> {
-                          if (ar2.succeeded()) {
-                            promise.complete();
-                          } else {
-                            failAndLog(
-                                promise,
-                                String.format(
-                                    "Tenant: %s, failed updating lastTriggeredAt: %s",
-                                    tenantId, ar2.cause().getMessage()));
-                          }
-                        });
-              }
-            })
-        .onFailure(
-            t ->
-                failAndLog(
-                    promise,
-                    String.format(
-                        "Tenant: %s, error starting harvester: %s", tenantId, t.getMessage())));
-  }
-
-  public void setTenantId(String tenantId) {
-    this.tenantId = tenantId;
   }
 }

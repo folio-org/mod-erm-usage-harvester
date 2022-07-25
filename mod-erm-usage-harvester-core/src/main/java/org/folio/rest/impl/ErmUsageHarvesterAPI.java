@@ -1,12 +1,11 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
+import static org.olf.erm.usage.harvester.WorkerVerticle.MESSAGE_NO_TOKEN;
 
 import com.google.common.base.Strings;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -17,20 +16,14 @@ import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.resource.ErmUsageHarvester;
-import org.olf.erm.usage.harvester.WorkerVerticle;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
+import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.impl.StdSchedulerFactory;
 
 public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
-
-  private Future<String> deployWorkerVerticle(
-      Context vertxContext, Map<String, String> okapiHeaders, String providerId) {
-    return vertxContext
-        .owner()
-        .deployVerticle(
-            new WorkerVerticle(okapiHeaders, providerId),
-            new DeploymentOptions().setConfig(vertxContext.config()));
-  }
 
   private String createResponseEntity(Map<String, String> okapiHeaders) {
     return this.createResponseEntity(okapiHeaders, null);
@@ -38,7 +31,8 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
   private String createResponseEntity(Map<String, String> okapiHeaders, String providerId) {
     String message =
-        String.format("Harvesting started for tenant: %s", okapiHeaders.get(XOkapiHeaders.TENANT));
+        String.format(
+            "Harvesting scheduled for tenant: %s", okapiHeaders.get(XOkapiHeaders.TENANT));
     if (providerId != null) message += ", providerId: " + providerId;
     return new JsonObject().put("message", message).toString();
   }
@@ -48,13 +42,25 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
-    deployWorkerVerticle(vertxContext, okapiHeaders, null)
-        .<Response>map(
-            s ->
-                GetErmUsageHarvesterStartResponse.respond200WithApplicationJson(
-                    createResponseEntity(okapiHeaders)))
-        .otherwise(t -> GetErmUsageHarvesterStartResponse.respond500WithTextPlain(t.getMessage()))
-        .onComplete(asyncResultHandler);
+    String token = okapiHeaders.get(XOkapiHeaders.TOKEN);
+    if (token == null) {
+      asyncResultHandler.handle(
+          succeededFuture(
+              GetErmUsageHarvesterStartByIdResponse.respond500WithTextPlain(MESSAGE_NO_TOKEN)));
+    }
+
+    try {
+      Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
+      SchedulingUtil.scheduleTenantJob(scheduler, okapiHeaders.get(XOkapiHeaders.TENANT), token);
+      asyncResultHandler.handle(
+          succeededFuture(
+              GetErmUsageHarvesterStartByIdResponse.respond200WithApplicationJson(
+                  createResponseEntity(okapiHeaders))));
+    } catch (SchedulerException e) {
+      asyncResultHandler.handle(
+          succeededFuture(
+              GetErmUsageHarvesterStartByIdResponse.respond500WithTextPlain(e.getMessage())));
+    }
   }
 
   @Override
@@ -63,14 +69,26 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
-    deployWorkerVerticle(vertxContext, okapiHeaders, id)
-        .<Response>map(
-            s ->
-                GetErmUsageHarvesterStartByIdResponse.respond200WithApplicationJson(
-                    createResponseEntity(okapiHeaders, id)))
-        .otherwise(
-            t -> GetErmUsageHarvesterStartByIdResponse.respond500WithTextPlain(t.getMessage()))
-        .onComplete(asyncResultHandler);
+    String token = okapiHeaders.get(XOkapiHeaders.TOKEN);
+    if (token == null) {
+      asyncResultHandler.handle(
+          succeededFuture(
+              GetErmUsageHarvesterStartByIdResponse.respond500WithTextPlain(MESSAGE_NO_TOKEN)));
+    }
+
+    try {
+      Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
+      SchedulingUtil.scheduleProviderJob(
+          scheduler, okapiHeaders.get(XOkapiHeaders.TENANT), token, id);
+      asyncResultHandler.handle(
+          succeededFuture(
+              GetErmUsageHarvesterStartByIdResponse.respond200WithApplicationJson(
+                  createResponseEntity(okapiHeaders, id))));
+    } catch (SchedulerException e) {
+      asyncResultHandler.handle(
+          succeededFuture(
+              GetErmUsageHarvesterStartByIdResponse.respond500WithTextPlain(e.getMessage())));
+    }
   }
 
   @Override

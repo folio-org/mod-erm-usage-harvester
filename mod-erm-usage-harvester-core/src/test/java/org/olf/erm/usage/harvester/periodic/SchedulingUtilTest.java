@@ -1,8 +1,13 @@
 package org.olf.erm.usage.harvester.periodic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_PROVIDER_ID;
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TOKEN;
+import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.scheduleProviderJob;
+import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.scheduleTenantJob;
 
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -12,7 +17,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.quartz.JobDataMap;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -20,10 +25,11 @@ import org.quartz.Trigger;
 import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
 
-@RunWith(VertxUnitRunner.class)
 public class SchedulingUtilTest {
 
   private static final String TENANT = "testtenant";
+  private static final String TOKEN = "someToken";
+  private static final String PROVIDER_ID = "someid-123";
   private static final TriggerKey triggerKey = new TriggerKey(TENANT);
   private static final JobKey jobKey = new JobKey(TENANT);
   private static Scheduler defaultScheduler;
@@ -209,5 +215,39 @@ public class SchedulingUtilTest {
     assertThat(getTrigger().getNextFireTime()).isEqualTo(startDate);
     assertThat(getTrigger().getFireTimeAfter(toDate(2018, 1, 1))).isEqualTo(startDate);
     assertThat(getTrigger().getFireTimeAfter(startDate)).isEqualTo(toDate(2019, 1, 2));
+  }
+
+  @Test
+  public void testScheduleProviderJob() {
+    assertThatCode(
+            () -> {
+              scheduleProviderJob(defaultScheduler, TENANT, TOKEN, PROVIDER_ID);
+              JobDataMap jobDataMap =
+                  defaultScheduler.getJobDetail(new JobKey(PROVIDER_ID, TENANT)).getJobDataMap();
+              assertThat(jobDataMap.getString(DATAKEY_TENANT)).isEqualTo(TENANT);
+              assertThat(jobDataMap.getString(DATAKEY_TOKEN)).isEqualTo(TOKEN);
+              assertThat(jobDataMap.getString(DATAKEY_PROVIDER_ID)).isEqualTo(PROVIDER_ID);
+            })
+        .doesNotThrowAnyException();
+    assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, TOKEN, PROVIDER_ID))
+        .hasMessageContaining("already scheduled/running")
+        .hasMessageContaining(PROVIDER_ID);
+  }
+
+  @Test
+  public void testScheduleTenantJob() {
+    assertThatCode(
+            () -> {
+              scheduleTenantJob(defaultScheduler, TENANT, TOKEN);
+              JobDataMap jobDataMap =
+                  defaultScheduler.getJobDetail(new JobKey(TENANT, TENANT)).getJobDataMap();
+              assertThat(jobDataMap.getString(DATAKEY_TENANT)).isEqualTo(TENANT);
+              assertThat(jobDataMap.getString(DATAKEY_TOKEN)).isEqualTo(TOKEN);
+              assertThat(jobDataMap.getString(DATAKEY_PROVIDER_ID)).isNull();
+            })
+        .doesNotThrowAnyException();
+    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT, TOKEN))
+        .hasMessageContaining("already in progress")
+        .hasMessageContaining(TENANT);
   }
 }

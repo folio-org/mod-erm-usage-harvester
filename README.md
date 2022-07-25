@@ -95,6 +95,20 @@ properties by `run-java.sh`.
 
 * `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`
 
+### Quartz scheduler
+
+Quartz configuration is located
+in [quartz.properties](mod-erm-usage-harvester-bundle/src/main/resources/org/quartz/quartz.properties)
+. If you wish to use another file, you must define the system property `org.quartz.properties` to
+point to the file you want. You can also set individual quartz properties using system properties (
+e.g. `-Dorg.quartz.threadPool.threadCount=8`).
+
+### Hazelcast
+
+The configured `HazelcastJobStore` for Quartz relies on Hazelcast for clustering and is set up to
+use the default hazelcast configuration. You can specify your own configuration file by setting
+the `hazelcast.config` system property.
+
 ## Periodic harvesting
 
 Periodic harvesting requires the module to login as a user. User credentials are set separately for
