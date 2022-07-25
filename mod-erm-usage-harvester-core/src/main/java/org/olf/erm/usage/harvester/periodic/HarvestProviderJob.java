@@ -2,11 +2,9 @@ package org.olf.erm.usage.harvester.periodic;
 
 import io.vertx.core.Context;
 import io.vertx.core.DeploymentOptions;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import org.folio.okapi.common.XOkapiHeaders;
 import org.olf.erm.usage.harvester.WorkerVerticle;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -26,10 +24,7 @@ public class HarvestProviderJob extends AbstractHarvestJob {
       throw new JobExecutionException(e);
     }
 
-    WorkerVerticle workerVerticle =
-        new WorkerVerticle(
-            Map.of(XOkapiHeaders.TENANT, getTenantId(), XOkapiHeaders.TOKEN, getToken()),
-            getProviderId());
+    WorkerVerticle workerVerticle = new WorkerVerticle(getTenantId(), getToken(), getProviderId());
     DeploymentOptions options =
         new DeploymentOptions().setConfig(vertxContext.config()).setWorker(true);
     CompletableFuture<String> cfDeploy =

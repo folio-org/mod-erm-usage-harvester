@@ -1,6 +1,7 @@
 package org.olf.erm.usage.harvester;
 
 import static io.reactivex.schedulers.Schedulers.trampoline;
+import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
@@ -25,20 +26,16 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Aggregator;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClient;
 import org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtConfigurationsClient;
@@ -55,7 +52,9 @@ import org.slf4j.LoggerFactory;
 
 public class WorkerVerticle extends AbstractVerticle {
 
-  public static final String MESSAGE_NO_TOKEN = "No " + XOkapiHeaders.TOKEN + " provided";
+  public static final String MESSAGE_NO_TENANTID = "No token provided";
+  public static final String MESSAGE_NO_TOKEN = "No token provided";
+  public static final String MESSAGE_NO_PROVIDERID = "No token provided";
   private static final Logger LOG = LoggerFactory.getLogger(WorkerVerticle.class);
   private static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
   private static final String CONFIG_NAME = "maxFailedAttempts";
@@ -107,14 +106,10 @@ public class WorkerVerticle extends AbstractVerticle {
     };
   }
 
-  public WorkerVerticle(Map<String, String> okapiHeaders, String providerId) {
-    this.token = okapiHeaders.get(XOkapiHeaders.TOKEN);
-    this.tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
-    this.providerId = providerId;
-  }
-
-  public WorkerVerticle(Map<String, String> okapiHeaders) {
-    this(okapiHeaders, null);
+  public WorkerVerticle(String tenantId, String token, String providerId) {
+    this.tenantId = requireNonNull(tenantId, MESSAGE_NO_TENANTID);
+    this.token = requireNonNull(token, MESSAGE_NO_TOKEN);
+    this.providerId = requireNonNull(providerId, MESSAGE_NO_PROVIDERID);
   }
 
   public Future<ServiceEndpoint> getServiceEndpoint(UsageDataProvider provider) {
@@ -372,21 +367,6 @@ public class WorkerVerticle extends AbstractVerticle {
                     .onErrorComplete());
   }
 
-  public void runRx() {
-    toSingle(udpClient.getActiveProviders())
-        .doOnSubscribe(d -> LOG.info("{}", createTenantMsg(tenantId, "getting active providers")))
-        .doOnSuccess(
-            udps ->
-                LOG.info(
-                    createTenantMsg(
-                        tenantId, "total active providers: {}", udps.getTotalRecords())))
-        .map(UsageDataProviders::getUsageDataProviders)
-        .flatMapObservable(Observable::fromIterable)
-        .flatMapCompletable(this::fetchAndPostReportsRx)
-        .doAfterTerminate(() -> vertx.undeploy(this.deploymentID()))
-        .subscribe(createCompletableObserver());
-  }
-
   public void runSingleProviderRx() {
     toSingle(udpClient.getActiveProviderById(providerId))
         .flatMapCompletable(this::fetchAndPostReportsRx)
@@ -404,17 +384,12 @@ public class WorkerVerticle extends AbstractVerticle {
   public void start() throws Exception {
     super.start();
 
-    Objects.requireNonNull(token, MESSAGE_NO_TOKEN);
-    String okapiUrl =
-        Objects.requireNonNull(config().getString("okapiUrl"), "No okapiUrl configured");
-
+    String okapiUrl = requireNonNull(config().getString("okapiUrl"), "No okapiUrl configured");
     udpClient = new ExtUsageDataProvidersClientImpl(okapiUrl, tenantId, token);
     ExtConfigurationsClient configurationsClient =
         new ExtConfigurationsClientImpl(okapiUrl, tenantId, token);
     aggregatorSettingsClient = new ExtAggregatorSettingsClientImpl(okapiUrl, tenantId, token);
     counterReportsClient = new ExtCounterReportsClientImpl(okapiUrl, tenantId, token);
-
-    logInfo(() -> createTenantMsg(tenantId, "deployed WorkerVericle"));
 
     configurationsClient
         .getModConfigurationValue(CONFIG_MODULE, CONFIG_NAME)
@@ -438,11 +413,12 @@ public class WorkerVerticle extends AbstractVerticle {
 
               boolean isTesting = config().getBoolean("testing", false);
               if (!isTesting) {
-                if (providerId == null) runRx();
-                else runSingleProviderRx();
+                runSingleProviderRx();
               } else {
                 LOG.info("Skipping harvesting (testing==true)");
               }
             });
+
+    logInfo(() -> createTenantMsg(tenantId, "deployed WorkerVericle"));
   }
 }

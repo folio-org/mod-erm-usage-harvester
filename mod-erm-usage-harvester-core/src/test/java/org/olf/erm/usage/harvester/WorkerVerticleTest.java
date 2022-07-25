@@ -41,11 +41,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.YearMonth;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.CounterReports;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
@@ -70,7 +68,7 @@ public class WorkerVerticleTest {
 
   private static final String tenantId = "diku";
   private static final WorkerVerticle harvester =
-      new WorkerVerticle(Map.of(XOkapiHeaders.TENANT, tenantId, XOkapiHeaders.TOKEN, "someToken"));
+      new WorkerVerticle(tenantId, "someTokem", "providerId");
   private static final Vertx vertx = Vertx.vertx();
 
   private static String reportsPath;
