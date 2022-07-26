@@ -105,9 +105,10 @@ e.g. `-Dorg.quartz.threadPool.threadCount=8`).
 
 ### Hazelcast
 
-The configured `HazelcastJobStore` for Quartz relies on Hazelcast for clustering and is set up to
-use the default hazelcast configuration. You can specify your own configuration file by setting
-the `hazelcast.config` system property.
+The configured `HazelcastJobStore` for Quartz relies on Hazelcast for
+clustering. [hazelcast.xml](mod-erm-usage-harvester-bundle/src/main/resources/hazelcast.xml) is used
+as configuration file. You can specify your own configuration file by setting the `hazelcast.config`
+system property.
 
 ## Periodic harvesting
 
