@@ -52,9 +52,9 @@ import org.slf4j.LoggerFactory;
 
 public class WorkerVerticle extends AbstractVerticle {
 
-  public static final String MESSAGE_NO_TENANTID = "No token provided";
+  public static final String MESSAGE_NO_TENANTID = "No tenantId provided";
   public static final String MESSAGE_NO_TOKEN = "No token provided";
-  public static final String MESSAGE_NO_PROVIDERID = "No token provided";
+  public static final String MESSAGE_NO_PROVIDERID = "No providerId provided";
   private static final Logger LOG = LoggerFactory.getLogger(WorkerVerticle.class);
   private static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
   private static final String CONFIG_NAME = "maxFailedAttempts";
