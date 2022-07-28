@@ -2,14 +2,20 @@ package org.olf.erm.usage.harvester.periodic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval.WEEKLY;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_PROVIDER_ID;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TOKEN;
+import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
+import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.TENANT_JOB_KEY;
+import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.createOrUpdateJob;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.scheduleProviderJob;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.scheduleTenantJob;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval;
@@ -31,7 +37,7 @@ public class SchedulingUtilTest {
   private static final String TOKEN = "someToken";
   private static final String PROVIDER_ID = "someid-123";
   private static final TriggerKey triggerKey = new TriggerKey(TENANT);
-  private static final JobKey jobKey = new JobKey(TENANT);
+  private static final JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, TENANT);
   private static Scheduler defaultScheduler;
 
   @BeforeClass
@@ -92,7 +98,7 @@ public class SchedulingUtilTest {
   public void testWeeklySUN() throws SchedulerException {
     Date startDate = toDate(2019, 1, 6);
     PeriodicConfig config =
-        new PeriodicConfig().withStartAt(startDate).withPeriodicInterval(PeriodicInterval.WEEKLY);
+        new PeriodicConfig().withStartAt(startDate).withPeriodicInterval(WEEKLY);
 
     assertCreateOrUpdateJob(config);
     assertThat(getTrigger().getStartTime()).isEqualTo(startDate);
@@ -106,7 +112,7 @@ public class SchedulingUtilTest {
   public void testWeeklyWED() throws SchedulerException {
     Date startDate = toDate(2019, 1, 2);
     PeriodicConfig config =
-        new PeriodicConfig().withStartAt(startDate).withPeriodicInterval(PeriodicInterval.WEEKLY);
+        new PeriodicConfig().withStartAt(startDate).withPeriodicInterval(WEEKLY);
 
     assertCreateOrUpdateJob(config);
     assertThat(getTrigger().getStartTime()).isEqualTo(startDate);
@@ -218,7 +224,7 @@ public class SchedulingUtilTest {
   }
 
   @Test
-  public void testScheduleProviderJob() {
+  public void testScheduleProviderJob() throws SchedulerException {
     assertThatCode(
             () -> {
               scheduleProviderJob(defaultScheduler, TENANT, TOKEN, PROVIDER_ID);
@@ -229,25 +235,55 @@ public class SchedulingUtilTest {
               assertThat(jobDataMap.getString(DATAKEY_PROVIDER_ID)).isEqualTo(PROVIDER_ID);
             })
         .doesNotThrowAnyException();
+    assertThat(defaultScheduler.checkExists(new JobKey(PROVIDER_ID, TENANT))).isTrue();
     assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, TOKEN, PROVIDER_ID))
         .hasMessageContaining("already scheduled/running")
         .hasMessageContaining(PROVIDER_ID);
   }
 
   @Test
-  public void testScheduleTenantJob() {
+  public void testScheduleTenantJob() throws SchedulerException {
     assertThatCode(
             () -> {
               scheduleTenantJob(defaultScheduler, TENANT, TOKEN);
               JobDataMap jobDataMap =
-                  defaultScheduler.getJobDetail(new JobKey(TENANT, TENANT)).getJobDataMap();
+                  defaultScheduler.getJobDetail(new JobKey(TENANT_JOB_KEY, TENANT)).getJobDataMap();
               assertThat(jobDataMap.getString(DATAKEY_TENANT)).isEqualTo(TENANT);
               assertThat(jobDataMap.getString(DATAKEY_TOKEN)).isEqualTo(TOKEN);
               assertThat(jobDataMap.getString(DATAKEY_PROVIDER_ID)).isNull();
             })
         .doesNotThrowAnyException();
+    assertThat(defaultScheduler.checkExists(new JobKey(TENANT_JOB_KEY, TENANT))).isTrue();
     assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT, TOKEN))
         .hasMessageContaining("already in progress")
         .hasMessageContaining(TENANT);
+  }
+
+  @Test
+  public void testScheduleTenantJobSucceedsWithPeriodicJobPresent() throws SchedulerException {
+    assertThatCode(
+            () -> {
+              PeriodicConfig periodicConfig =
+                  new PeriodicConfig()
+                      .withPeriodicInterval(WEEKLY)
+                      .withStartAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)));
+              createOrUpdateJob(periodicConfig, TENANT);
+            })
+        .doesNotThrowAnyException();
+    assertThat(defaultScheduler.checkExists(new JobKey(PERIODIC_JOB_KEY, TENANT))).isTrue();
+    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT, TOKEN))
+        .doesNotThrowAnyException();
+    assertThat(defaultScheduler.checkExists(new JobKey(TENANT_JOB_KEY, TENANT))).isTrue();
+  }
+
+  @Test
+  public void testScheduleTenantJobFailsWithProviderJobPresent() throws SchedulerException {
+    assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, TOKEN, PROVIDER_ID))
+        .doesNotThrowAnyException();
+    assertThat(defaultScheduler.checkExists(new JobKey(PROVIDER_ID, TENANT))).isTrue();
+    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT, TOKEN))
+        .hasMessageContaining("already in progress")
+        .hasMessageContaining(TENANT);
+    assertThat(defaultScheduler.checkExists(new JobKey(TENANT_JOB_KEY, TENANT))).isFalse();
   }
 }

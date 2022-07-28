@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.rest.impl;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
@@ -86,7 +87,7 @@ public class ErmUsageHarvesterPeriodicAPIIT {
                     LocalDateTime.of(2019, 1, 1, 8, 5).atZone(ZoneId.systemDefault()).toInstant()))
             .withPeriodicInterval(PeriodicInterval.DAILY);
 
-    JobKey jobKey = new JobKey(TENANT);
+    JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, TENANT);
     TriggerKey triggerKey = new TriggerKey(TENANT);
 
     given().spec(baseReq).get().then().statusCode(404);
