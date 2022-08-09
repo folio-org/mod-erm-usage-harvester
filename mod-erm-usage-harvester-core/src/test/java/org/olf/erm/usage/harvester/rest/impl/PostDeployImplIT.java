@@ -6,6 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.DeploymentOptions;
@@ -28,6 +29,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.PostgresContainerRule;
 import org.olf.erm.usage.harvester.periodic.PeriodicConfigPgUtil;
+import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
@@ -97,9 +99,9 @@ public class PostDeployImplIT {
         RestVerticle.class.getName(), options, context.asyncAssertSuccess(s -> async.countDown()));
 
     async.awaitSuccess(5000);
-    assertThat(scheduler.checkExists(new JobKey(TENANT))).isTrue();
+    assertThat(scheduler.checkExists(new JobKey(PERIODIC_JOB_KEY, TENANT))).isTrue();
     assertThat(scheduler.checkExists(new TriggerKey(TENANT))).isTrue();
-    assertThat(scheduler.checkExists(new JobKey(TENANT2))).isTrue();
+    assertThat(scheduler.checkExists(new JobKey(PERIODIC_JOB_KEY, TENANT2))).isTrue();
     assertThat(scheduler.checkExists(new TriggerKey(TENANT2))).isTrue();
   }
 

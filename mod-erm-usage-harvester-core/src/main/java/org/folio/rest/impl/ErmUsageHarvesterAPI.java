@@ -47,6 +47,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       asyncResultHandler.handle(
           succeededFuture(
               GetErmUsageHarvesterStartByIdResponse.respond500WithTextPlain(MESSAGE_NO_TOKEN)));
+      return;
     }
 
     try {

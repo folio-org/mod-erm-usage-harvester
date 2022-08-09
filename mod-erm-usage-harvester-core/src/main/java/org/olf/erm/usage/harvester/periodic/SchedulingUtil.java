@@ -3,6 +3,7 @@ package org.olf.erm.usage.harvester.periodic;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_PROVIDER_ID;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TOKEN;
+import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -24,6 +25,8 @@ import org.slf4j.LoggerFactory;
 
 public class SchedulingUtil {
 
+  public static final String TENANT_JOB_KEY = "tenant";
+  public static final String PERIODIC_JOB_KEY = "periodic";
   private static final Logger log = LoggerFactory.getLogger(SchedulingUtil.class);
 
   public static void scheduleProviderJob(
@@ -47,14 +50,16 @@ public class SchedulingUtil {
 
   public static void scheduleTenantJob(Scheduler scheduler, String tenantId, String token)
       throws SchedulerException {
-    JobKey jobKey = new JobKey(tenantId, tenantId);
-    if (scheduler.checkExists(jobKey) || scheduler.getJobGroupNames().contains(tenantId)) {
+    boolean jobForTenantExists =
+        scheduler.getJobKeys(jobGroupEquals(tenantId)).stream()
+            .anyMatch(jk -> !PERIODIC_JOB_KEY.equals(jk.getName()));
+    if (jobForTenantExists) {
       throw new SchedulerException(
           "Harvesting for tenant '" + tenantId + "' is already in progress");
     } else {
       scheduler.scheduleJob(
           JobBuilder.newJob(HarvestTenantJob.class)
-              .withIdentity(jobKey)
+              .withIdentity(new JobKey(TENANT_JOB_KEY, tenantId))
               .usingJobData(DATAKEY_TENANT, tenantId)
               .usingJobData(DATAKEY_TOKEN, token)
               .build(),
@@ -76,17 +81,18 @@ public class SchedulingUtil {
       log.info("Tenant: {}, No PeriodicConfig present", tenantId);
       return;
     }
+    JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, tenantId);
     JobDetail job =
         JobBuilder.newJob()
             .ofType(HarvestTenantPeriodicJob.class)
-            .usingJobData("tenantId", tenantId)
-            .withIdentity(new JobKey(tenantId))
+            .usingJobData(DATAKEY_TENANT, tenantId)
+            .withIdentity(jobKey)
             .build();
 
     Trigger trigger = createTrigger(tenantId, config);
     if (trigger != null) {
       try {
-        if (scheduler.checkExists(new JobKey(tenantId))) {
+        if (scheduler.checkExists(jobKey)) {
           scheduler.rescheduleJob(new TriggerKey(tenantId), trigger);
           log.info(
               "Tenant: {}, Updated job trigger, next trigger: {}",
@@ -116,7 +122,7 @@ public class SchedulingUtil {
   }
 
   public static void deleteJob(Scheduler scheduler, String tenantId) {
-    JobKey jobKey = new JobKey(tenantId);
+    JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, tenantId);
     try {
       if (scheduler.checkExists(jobKey)) {
         scheduler.deleteJob(jobKey);
