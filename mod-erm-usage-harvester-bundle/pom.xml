@@ -7,6 +7,11 @@
   </parent>
   <artifactId>mod-erm-usage-harvester-bundle</artifactId>
 
+  <properties>
+    <hazelcast-kubernetes.version>2.2.3</hazelcast-kubernetes.version>
+    <hazelcast-aws.version>3.4</hazelcast-aws.version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.olf</groupId>
@@ -32,6 +37,16 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-hazelcast</artifactId>
       <version>${vertx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.hazelcast</groupId>
+      <artifactId>hazelcast-aws</artifactId>
+      <version>${hazelcast-aws.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.hazelcast</groupId>
+      <artifactId>hazelcast-kubernetes</artifactId>
+      <version>${hazelcast-kubernetes.version}</version>
     </dependency>
     <dependency>
       <groupId>com.breakingequity</groupId>
@@ -140,8 +155,6 @@
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
                     <Main-Class>org.olf.erm.usage.harvester.Launcher</Main-Class>
-                    <!-- <Main-Verticle>org.olf.erm.usage.harvester.HarvesterVerticle</Main-Verticle>
-                      <Main-Class>org.folio.rest.RestLauncher</Main-Class> -->
                     <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
                     <Multi-Release>true</Multi-Release>
                   </manifestEntries>
