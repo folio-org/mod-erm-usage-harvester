@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "erm-usage-harvester",
-      "version": "1.2",
+      "version": "1.3",
       "handlers": [
         {
           "methods": [
@@ -85,6 +85,15 @@
           "permissionsRequired": [
             "ermusageharvester.periodic.delete"
           ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/erm-usage-harvester/jobs",
+          "permissionsRequired": [
+            "ermusageharvester.jobs.get"
+          ]
         }
       ]
     },
@@ -162,6 +171,11 @@
       "description": "Delete harvester periodic setting"
     },
     {
+      "permissionName": "ermusageharvester.jobs.get",
+      "displayName": "erm-usage-harvester get jobs",
+      "description": "Get harvester jobs"
+    },
+    {
       "permissionName": "ermusageharvester.all",
       "displayName": "erm-usage-harvester all",
       "description": "All permissions for the mod-erm-harvester module",
@@ -171,7 +185,8 @@
         "ermusageharvester.impl.get",
         "ermusageharvester.periodic.get",
         "ermusageharvester.periodic.post",
-        "ermusageharvester.periodic.delete"
+        "ermusageharvester.periodic.delete",
+        "ermusageharvester.jobs.get"
       ]
     },
     {

@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "JobInfo Schema",
+  "description": "Job information",
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Job information id",
+      "type": "string"
+    },
+    "type": {
+      "description": "Job type",
+      "type": "string",
+      "enum": [
+        "periodic",
+        "tenant",
+        "provider"
+      ]
+    },
+    "providerId": {
+      "description": "Job providerId",
+      "type": "string"
+    },
+    "timestamp": {
+      "description": "timestamp",
+      "type": "number",
+      "javaType": "java.lang.Long"
+    },
+    "startedAt": {
+      "description": "Job start date-time",
+      "type": "string",
+      "format": "date-time"
+    },
+    "finishedAt": {
+      "description": "Job finish date-time",
+      "type": "string",
+      "format": "date-time"
+    },
+    "nextStart": {
+      "description": "Job next start date-time",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

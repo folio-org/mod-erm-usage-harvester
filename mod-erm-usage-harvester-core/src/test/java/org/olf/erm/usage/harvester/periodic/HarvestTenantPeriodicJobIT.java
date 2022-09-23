@@ -10,6 +10,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Fault;
@@ -65,7 +67,8 @@ public class HarvestTenantPeriodicJobIT {
   private static JobDetail job =
       JobBuilder.newJob()
           .ofType(HarvestTenantPeriodicJob.class)
-          .usingJobData("tenantId", TENANT)
+          .usingJobData(DATAKEY_TENANT, TENANT)
+          .usingJobData(DATAKEY_TIMESTAMP, Instant.now().toEpochMilli())
           .withIdentity(jobKey)
           .storeDurably(true)
           .build();

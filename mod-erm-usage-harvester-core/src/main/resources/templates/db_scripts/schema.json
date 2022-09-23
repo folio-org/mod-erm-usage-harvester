@@ -12,8 +12,34 @@
   "tables": [
     {
       "tableName": "periodic",
-      "fromModuleVersion": "1.0",
+      "fromModuleVersion": "1.4.0",
       "uniqueIndex": []
+    },
+    {
+      "tableName": "jobs",
+      "fromModuleVersion": "4.2.0",
+      "index": [
+        {
+          "fieldName": "providerId"
+        },
+        {
+          "fieldName": "timestamp"
+        },
+        {
+          "fieldName": "type"
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "finishedAt"
+        },
+        {
+          "fieldName": "startedAt"
+        },
+        {
+          "fieldName": "nextStart"
+        }
+      ]
     }
   ],
   "views": []

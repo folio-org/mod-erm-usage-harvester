@@ -1,16 +1,21 @@
 package org.olf.erm.usage.harvester.periodic;
 
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_JOB_ID;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_PROVIDER_ID;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TOKEN;
 import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.UUID;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.DateBuilder;
+import org.quartz.Job;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
@@ -29,6 +34,18 @@ public class SchedulingUtil {
   public static final String PERIODIC_JOB_KEY = "periodic";
   private static final Logger log = LoggerFactory.getLogger(SchedulingUtil.class);
 
+  private static JobDetail createJobDetail(
+      Class<? extends Job> jobClass, JobKey jobKey, String token, String providerId) {
+    return JobBuilder.newJob(jobClass)
+        .withIdentity(jobKey)
+        .usingJobData(DATAKEY_TENANT, jobKey.getGroup())
+        .usingJobData(DATAKEY_TOKEN, token)
+        .usingJobData(DATAKEY_PROVIDER_ID, providerId)
+        .usingJobData(DATAKEY_TIMESTAMP, Instant.now().toEpochMilli())
+        .usingJobData(DATAKEY_JOB_ID, UUID.randomUUID().toString())
+        .build();
+  }
+
   public static void scheduleProviderJob(
       Scheduler scheduler, String tenantId, String token, String providerId)
       throws SchedulerException {
@@ -37,14 +54,8 @@ public class SchedulingUtil {
       throw new SchedulerException(
           "A job for provider with id '" + providerId + "' is already scheduled/running");
     } else {
-      scheduler.scheduleJob(
-          JobBuilder.newJob(HarvestProviderJob.class)
-              .withIdentity(jobKey)
-              .usingJobData(DATAKEY_TENANT, tenantId)
-              .usingJobData(DATAKEY_TOKEN, token)
-              .usingJobData(DATAKEY_PROVIDER_ID, providerId)
-              .build(),
-          TriggerBuilder.newTrigger().startNow().build());
+      JobDetail jobDetail = createJobDetail(HarvestProviderJob.class, jobKey, token, providerId);
+      scheduler.scheduleJob(jobDetail, TriggerBuilder.newTrigger().startNow().build());
     }
   }
 
@@ -57,13 +68,9 @@ public class SchedulingUtil {
       throw new SchedulerException(
           "Harvesting for tenant '" + tenantId + "' is already in progress");
     } else {
-      scheduler.scheduleJob(
-          JobBuilder.newJob(HarvestTenantJob.class)
-              .withIdentity(new JobKey(TENANT_JOB_KEY, tenantId))
-              .usingJobData(DATAKEY_TENANT, tenantId)
-              .usingJobData(DATAKEY_TOKEN, token)
-              .build(),
-          TriggerBuilder.newTrigger().startNow().build());
+      JobKey jobKey = new JobKey(TENANT_JOB_KEY, tenantId);
+      JobDetail jobDetail = createJobDetail(HarvestTenantJob.class, jobKey, token, null);
+      scheduler.scheduleJob(jobDetail, TriggerBuilder.newTrigger().startNow().build());
     }
   }
 
@@ -82,24 +89,19 @@ public class SchedulingUtil {
       return;
     }
     JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, tenantId);
-    JobDetail job =
-        JobBuilder.newJob()
-            .ofType(HarvestTenantPeriodicJob.class)
-            .usingJobData(DATAKEY_TENANT, tenantId)
-            .withIdentity(jobKey)
-            .build();
+    JobDetail jobDetail = createJobDetail(HarvestTenantPeriodicJob.class, jobKey, null, null);
 
     Trigger trigger = createTrigger(tenantId, config);
     if (trigger != null) {
       try {
         if (scheduler.checkExists(jobKey)) {
-          scheduler.rescheduleJob(new TriggerKey(tenantId), trigger);
+          scheduler.rescheduleJob(new TriggerKey(PERIODIC_JOB_KEY, tenantId), trigger);
           log.info(
               "Tenant: {}, Updated job trigger, next trigger: {}",
               tenantId,
               trigger.getNextFireTime());
         } else {
-          scheduler.scheduleJob(job, trigger);
+          scheduler.scheduleJob(jobDetail, trigger);
           log.info(
               "Tenant: {}, Scheduled new job, next trigger: {}",
               tenantId,
@@ -174,7 +176,7 @@ public class SchedulingUtil {
 
     return TriggerBuilder.newTrigger()
         .startAt(startAt)
-        .withIdentity(new TriggerKey(tenantId))
+        .withIdentity(new TriggerKey(PERIODIC_JOB_KEY, tenantId))
         .withSchedule(cronScheduleBuilder.withMisfireHandlingInstructionFireAndProceed())
         .build();
   }
