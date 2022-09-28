@@ -100,9 +100,9 @@ public class PostDeployImplIT {
 
     async.awaitSuccess(5000);
     assertThat(scheduler.checkExists(new JobKey(PERIODIC_JOB_KEY, TENANT))).isTrue();
-    assertThat(scheduler.checkExists(new TriggerKey(TENANT))).isTrue();
+    assertThat(scheduler.checkExists(new TriggerKey(PERIODIC_JOB_KEY, TENANT))).isTrue();
     assertThat(scheduler.checkExists(new JobKey(PERIODIC_JOB_KEY, TENANT2))).isTrue();
-    assertThat(scheduler.checkExists(new TriggerKey(TENANT2))).isTrue();
+    assertThat(scheduler.checkExists(new TriggerKey(PERIODIC_JOB_KEY, TENANT2))).isTrue();
   }
 
   private static class SchedulerListenerAsyncCountdown extends SchedulerListenerSupport {

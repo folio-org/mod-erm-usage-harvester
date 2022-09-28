@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "A collection of JobInfo objects",
+  "type": "object",
+  "properties": {
+    "jobInfos": {
+      "description": "List of JobInfo",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref": "jobInfo.json"
+      }
+    },
+    "totalRecords": {
+      "description": "Total number of JobInfo objects",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "jobInfos",
+    "totalRecords"
+  ]
+}

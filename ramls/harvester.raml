@@ -8,6 +8,7 @@ documentation:
     content: This documents the API calls that can be made to mod-erm-usage-harvester
 
 types:
+  jobInfos: !include schemas/jobInfos.json
   errors: !include raml-util/schemas/errors.schema
 
 traits:
@@ -77,3 +78,32 @@ resourceTypes:
           description: Internal server error
           body:
             text/plain:
+  /jobs:
+    get:
+      description: Get harvesting jobs
+      is: [ searchable: { description: "CQL string", example: "type==provider" }, pageable ]
+      queryParameters:
+        timestamp:
+          description: Only return jobs created at or before this timestamp
+          example: 1641020400000
+          type: number
+          required: false
+        providerId:
+          description: Only return jobs with this providerId
+          example: "6697f576-78d4-4712-ae18-2612ccdcd66d"
+          type: string
+          required: false
+      responses:
+        200:
+          description: List of harvesting jobs
+          body:
+            application/json:
+              type: jobInfos
+        400:
+          description: Bad request
+          body:
+            text/plain:
+        500:
+            description: Internal server error
+            body:
+              text/plain:

@@ -36,7 +36,7 @@ public class SchedulingUtilTest {
   private static final String TENANT = "testtenant";
   private static final String TOKEN = "someToken";
   private static final String PROVIDER_ID = "someid-123";
-  private static final TriggerKey triggerKey = new TriggerKey(TENANT);
+  private static final TriggerKey triggerKey = new TriggerKey(PERIODIC_JOB_KEY, TENANT);
   private static final JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, TENANT);
   private static Scheduler defaultScheduler;
 

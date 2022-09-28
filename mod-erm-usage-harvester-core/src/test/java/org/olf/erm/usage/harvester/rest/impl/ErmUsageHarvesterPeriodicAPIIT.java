@@ -88,7 +88,7 @@ public class ErmUsageHarvesterPeriodicAPIIT {
             .withPeriodicInterval(PeriodicInterval.DAILY);
 
     JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, TENANT);
-    TriggerKey triggerKey = new TriggerKey(TENANT);
+    TriggerKey triggerKey = new TriggerKey(PERIODIC_JOB_KEY, TENANT);
 
     given().spec(baseReq).get().then().statusCode(404);
     given().spec(baseReq).delete().then().statusCode(404);
