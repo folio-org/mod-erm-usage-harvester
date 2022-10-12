@@ -36,7 +36,7 @@ public class PostgresContainerRule implements TestRule {
     log.info("Creating schema for tenant: {}", tenant);
     Promise<List<String>> createSchema = Promise.promise();
     try {
-      String[] sqlFile = new TenantAPI().sqlFile(tenant, false, null, null);
+      String[] sqlFile = new TenantAPI().sqlFile(tenant, false, null, null, null);
       PostgresClient.getInstance(vertx)
           .runSQLFile(
               String.join("\n", sqlFile),
