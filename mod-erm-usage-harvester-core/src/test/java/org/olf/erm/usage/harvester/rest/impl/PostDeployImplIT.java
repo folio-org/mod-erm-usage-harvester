@@ -6,6 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.TestUtil.shutdownSchedulers;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
@@ -29,7 +30,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.PostgresContainerRule;
 import org.olf.erm.usage.harvester.periodic.PeriodicConfigPgUtil;
-import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
@@ -85,7 +85,7 @@ public class PostDeployImplIT {
 
   @AfterClass
   public static void afterClass() throws SchedulerException {
-    scheduler.shutdown();
+    shutdownSchedulers();
   }
 
   @Test
@@ -96,7 +96,14 @@ public class PostDeployImplIT {
     scheduler.getListenerManager().addSchedulerListener(new SchedulerListenerAsyncCountdown(async));
     options.getConfig().put("testing", false);
     vertx.deployVerticle(
-        RestVerticle.class.getName(), options, context.asyncAssertSuccess(s -> async.countDown()));
+        RestVerticle.class.getName(),
+        options,
+        context.asyncAssertSuccess(
+            s ->
+                vertx.setTimer(
+                    2000 // give listener some time to execute
+                    ,
+                    l -> async.countDown())));
 
     async.awaitSuccess(5000);
     assertThat(scheduler.checkExists(new JobKey(PERIODIC_JOB_KEY, TENANT))).isTrue();
