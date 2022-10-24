@@ -1,3 +1,10 @@
+# 4.2.0
+* Reduce error output during tests
+* Pin jackson-databind to v2.13.4.2
+* [MODEUSHARV-75](https://issues.folio.org/browse/MODEUSHARV-75) Upgrade to RMB v35
+* [MODEUSHARV-67](https://issues.folio.org/browse/MODEUSHARV-67) Provide information about harvesting jobs
+* [MODEUSHARV-66](https://issues.folio.org/browse/MODEUSHARV-66) Support horizontal scaling
+
 # 4.1.0
 * [MODEUSHARV-73](https://issues.folio.org/browse/MODEUSHARV-73) Requests only using one authentication parameter
 * [MODEUSHARV-72](https://issues.folio.org/browse/MODEUSHARV-72) RMB v34 upgrade - Morning Glory 2022 R2 module release
