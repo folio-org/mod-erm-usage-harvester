@@ -19,6 +19,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.TestUtil.shutdownSchedulers;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
@@ -64,12 +65,14 @@ import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProvider3;
+import org.quartz.SchedulerException;
 import org.slf4j.LoggerFactory;
 
 @RunWith(VertxUnitRunner.class)
@@ -206,6 +209,11 @@ public class WorkerVerticleIT {
         RestVerticle.class.getName(),
         new DeploymentOptions().setConfig(cfg),
         context.asyncAssertSuccess());
+  }
+
+  @AfterClass
+  public static void afterClass() throws SchedulerException {
+    shutdownSchedulers();
   }
 
   @Before
