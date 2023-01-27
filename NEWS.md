@@ -1,3 +1,6 @@
+# 4.2.1
+* [MODEUSHARV-78](https://issues.folio.org/browse/MODEUSHARV-78) Hazelcast 4.2.6 fixing improper authentication CVE-2022-36437, RMB 35.0.4, Vert.x 4.3.7
+
 # 4.2.0
 * Reduce error output during tests
 * Pin jackson-databind to v2.13.4.2
