@@ -4,6 +4,7 @@ import static io.swagger.annotations.ApiKeyAuthDefinition.ApiKeyLocation.QUERY;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 import static org.apache.commons.lang3.StringUtils.abbreviate;
+import static org.olf.erm.usage.harvester.endpoints.JsonUtil.isJsonArray;
 import static org.olf.erm.usage.harvester.endpoints.JsonUtil.isOfType;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
@@ -18,6 +19,7 @@ import java.net.Proxy;
 import java.net.URI;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -48,10 +50,20 @@ public class CS50Impl implements ServiceEndpoint {
   public static final int MAX_ERROR_BODY_LENGTH = 2000;
   private static final Gson gson = new Gson();
   private static final Logger LOG = LoggerFactory.getLogger(CS50Impl.class);
+  private static final Map<String, Class<?>> reportClassMap =
+      Map.of(
+          "tr",
+          COUNTERTitleReport.class,
+          "pr",
+          COUNTERPlatformReport.class,
+          "dr",
+          COUNTERDatabaseReport.class,
+          "ir",
+          COUNTERItemReport.class);
   private final UsageDataProvider provider;
   private final DefaultApi client;
 
-  CS50Impl(UsageDataProvider provider) {
+  public CS50Impl(UsageDataProvider provider) {
     requireNonNull(provider.getSushiCredentials());
     requireNonNull(provider.getHarvestingConfig());
     requireNonNull(provider.getHarvestingConfig().getSushiConfig());
@@ -94,17 +106,24 @@ public class CS50Impl implements ServiceEndpoint {
                 String body = responseBody.string();
                 MediaType mediaType = responseBody.contentType();
                 Builder respBuilder =
-                    response.newBuilder().body(ResponseBody.create(mediaType, body));
+                    response.newBuilder().body(ResponseBody.create(body, mediaType));
 
-                // pass through if its a report
-                if (isOfType(body, COUNTERTitleReport.class)
-                    || isOfType(body, COUNTERItemReport.class)
-                    || isOfType(body, COUNTERPlatformReport.class)
-                    || isOfType(body, COUNTERDatabaseReport.class)) {
+                Class<?> expectedReportClass =
+                    reportClassMap.get(
+                        request.url().pathSegments().get(request.url().pathSize() - 1));
+                try {
+                  // pass through if its a valid report
+                  JsonUtil.validate(body, expectedReportClass);
                   return respBuilder.build();
-                } else {
+                } catch (Exception e) {
                   // otherwise route to 400
-                  return respBuilder.code(400).message("Bad Request").build();
+                  respBuilder.code(400).message("Bad Request");
+                  if (isOfType(body, SUSHIErrorModel.class) || isJsonArray(body)) {
+                    return respBuilder.build();
+                  }
+                  return respBuilder
+                      .body(ResponseBody.create(e.toString(), MediaType.parse("text/plain")))
+                      .build();
                 }
               }
               return response;
@@ -127,7 +146,7 @@ public class CS50Impl implements ServiceEndpoint {
     if (e instanceof HttpException) {
       HttpException ex = (HttpException) e;
       try {
-        ResponseBody responseBody = ex.response().errorBody();
+        ResponseBody responseBody = requireNonNull(ex.response()).errorBody();
         String errorBody = requireNonNull(responseBody).string();
         String abbrStr = abbreviate(errorBody, MAX_ERROR_BODY_LENGTH);
         if (ex.code() == 429) {
