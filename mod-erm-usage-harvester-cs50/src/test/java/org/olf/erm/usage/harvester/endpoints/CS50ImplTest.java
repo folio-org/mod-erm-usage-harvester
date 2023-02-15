@@ -52,8 +52,9 @@ public class CS50ImplTest {
 
   private static final String BEGIN_DATE = "2019-01-01";
   private static final String END_DATE = "2019-01-31";
-  private static final String REPORT = "TR_J1";
-  private static final String REPORT_PATH = "/sushi/reports/tr_j1";
+  private static final String REPORT = "tr";
+  private static final String REPORT_PATH_PREFIX = "/sushi/reports/";
+  private static final String REPORT_PATH = REPORT_PATH_PREFIX + REPORT;
   private static final String CUSTOMER_ID = "CustomerId123";
   private static final String REQUESTOR_ID_QUERY = "requestor_id";
   private static final String REQUESTOR_ID = "RequestorId123";
@@ -104,8 +105,12 @@ public class CS50ImplTest {
   }
 
   private void verifyApiCall() {
+    verifyApiCall(REPORT);
+  }
+
+  private void verifyApiCall(String reportName) {
     wmRule.verify(
-        getRequestedFor(urlPathEqualTo(REPORT_PATH))
+        getRequestedFor(urlPathEqualTo(REPORT_PATH_PREFIX + reportName))
             .withQueryParam("customer_id", equalTo(CUSTOMER_ID))
             .withQueryParam(REQUESTOR_ID_QUERY, equalTo(REQUESTOR_ID))
             .withQueryParam("begin_date", equalTo(BEGIN_DATE))
@@ -113,13 +118,23 @@ public class CS50ImplTest {
   }
 
   private String createStubWithResource(int code, String resourceName) throws IOException {
+    return createStubWithResource(REPORT, code, resourceName);
+  }
+
+  private String createStubWithResource(String reportName, int code, String resourceName)
+      throws IOException {
     String body = Resources.toString(Resources.getResource(resourceName), StandardCharsets.UTF_8);
-    return createStubWithBody(code, body);
+    return createStubWithBody(reportName, code, body);
   }
 
   private String createStubWithBody(int code, String body) {
+    return createStubWithBody(REPORT, code, body);
+  }
+
+  private String createStubWithBody(String reportName, int code, String body) {
     wmRule.stubFor(
-        get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(code).withBody(body)));
+        get(urlPathEqualTo(REPORT_PATH_PREFIX + reportName))
+            .willReturn(aResponse().withStatus(code).withBody(body)));
     return body;
   }
 
@@ -327,14 +342,15 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportWithInvalidMetricType(TestContext context) throws IOException {
-    String expectedReportStr = createStubWithResource(200, "SampleReportInvalidMetricType.json");
+    createStubWithResource(200, "SampleReportInvalidMetricType.json");
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
                   assertThat(t)
-                      .hasMessage(StringUtils.abbreviate(expectedReportStr, MAX_ERROR_BODY_LENGTH));
+                      .hasMessageStartingWith(
+                          "com.fasterxml.jackson.databind.exc.InvalidFormatException:");
                   verifyApiCall();
                 }));
   }
@@ -498,9 +514,9 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchMultipleMonthsWithEmptyMonths(TestContext context) throws IOException {
-    createStubWithResource(200, "reports/dr_with_empty_months.json");
+    createStubWithResource("dr", 200, "reports/dr_with_empty_months.json");
     new CS50Impl(provider)
-        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .fetchReport("dr", BEGIN_DATE, END_DATE)
         .onComplete(context.asyncAssertSuccess(list -> assertThat(list).hasSize(3)));
   }
 

@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,5 +34,9 @@ public class JsonUtil {
     } catch (Exception e) {
       return false;
     }
+  }
+
+  public static void validate(String json, Class<?> clazz) throws JsonProcessingException {
+    om.readValue(json, clazz);
   }
 }

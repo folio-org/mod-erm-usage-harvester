@@ -1,6 +1,6 @@
 # mod-erm-usage-harvester
 
-Copyright (C) 2018-2022 The Open Library Foundation
+Copyright (C) 2018-2023 The Open Library Foundation
 
 This software is distributed under the terms of the Apache License, Version 2.0. See the
 file "[LICENSE](LICENSE)" for more information.
@@ -219,13 +219,12 @@ client expects `2xx` codes to return counter reports and different codes to retu
 So if reponses with status code `2xx` are received, it is checked whether the response data
 structure matches one of the 4 counter master reports (`TR`, `PR`, `DR` and `IR`). If it does match,
 no changes are made to the response. If it does not match, the response gets transformed into
-a `400 - Bad Request` response, preserving the original response body.
+a `400 - Bad Request` response, preserving the original response body in cases listed below.
 
 Some observations and how they are handled so far:
 
-* Providers use `2xx` status codes to return sushi errors (everything thats not a report gets routed
-  to and handled as `400`)
-* Providers return sushi errors as array instead of object (array makes it into the error message)
+* Providers use `2xx` status codes to return sushi errors, not reports (gets routed and handled as `400` with original response body)
+* Providers return sushi errors as array instead of object (array makes it into the response body)
 * Providers return `"null"` instead of sushi error (returns a `InvalidReportException: null`)
 * Providers return reports with a `Report_Header` that contains a `Exception` object instead of
   a `Exceptions` array (not handled, will be interpreted as report without `Exceptions`)
