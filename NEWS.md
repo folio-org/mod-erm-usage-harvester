@@ -1,3 +1,7 @@
+# 4.3.0
+* [MODEUSHARV-82](https://issues.folio.org/browse/MODEUSHARV-82) RMB v35.0.6, Vert.x v4.3.8
+* [MODEUSHARV-81](https://issues.folio.org/browse/MODEUSHARV-81) Return error message if report deserialization fails
+
 # 4.2.1
 * [MODEUSHARV-78](https://issues.folio.org/browse/MODEUSHARV-78) Hazelcast 4.2.6 fixing improper authentication CVE-2022-36437, RMB 35.0.4, Vert.x 4.3.7
 
