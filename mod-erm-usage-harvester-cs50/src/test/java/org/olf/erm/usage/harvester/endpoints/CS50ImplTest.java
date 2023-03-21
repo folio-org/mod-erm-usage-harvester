@@ -15,7 +15,7 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.io.Resources;
-import com.google.gson.Gson;
+import io.vertx.core.http.HttpClosedException;
 import io.vertx.core.json.Json;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
@@ -45,7 +45,6 @@ import org.junit.runner.RunWith;
 import org.openapitools.client.model.COUNTERTitleReport;
 import org.openapitools.client.model.SUSHIErrorModel;
 import org.openapitools.client.model.SUSHIReportHeader;
-import retrofit2.HttpException;
 
 @RunWith(VertxUnitRunner.class)
 public class CS50ImplTest {
@@ -62,7 +61,6 @@ public class CS50ImplTest {
   private static final String API_KEY = "ApiKey123";
   private static final COUNTERTitleReport emptyReport;
   private static UsageDataProvider provider;
-  private static final Gson gson = new Gson();
 
   @Rule public WireMockRule wmRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
   @Rule public WireMockRule proxyRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
@@ -138,6 +136,10 @@ public class CS50ImplTest {
     return body;
   }
 
+  private Report decodeReport(String str, Class<?> reportClass) {
+    return Json.decodeValue(Json.encode(Json.decodeValue(str, reportClass)), Report.class);
+  }
+
   @Test
   public void testProxy(TestContext context) {
     ProxySelector.setDefault(
@@ -184,12 +186,12 @@ public class CS50ImplTest {
     String reportStr =
         Resources.toString(
             Resources.getResource("SampleReportEmptyItems.json"), StandardCharsets.UTF_8);
-    COUNTERTitleReport tr = gson.fromJson(reportStr, COUNTERTitleReport.class);
+    COUNTERTitleReport tr = Json.decodeValue(reportStr, COUNTERTitleReport.class);
     SUSHIErrorModel error = new SUSHIErrorModel();
     error.setCode(TOO_MANY_REQUEST_ERROR_CODE);
     error.setMessage("");
     tr.getReportHeader().setExceptions(List.of(error));
-    createStubWithBody(200, gson.toJson(tr));
+    createStubWithBody(200, Json.encode(tr));
 
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
@@ -206,12 +208,12 @@ public class CS50ImplTest {
     String reportStr =
         Resources.toString(
             Resources.getResource("SampleReportEmptyItems.json"), StandardCharsets.UTF_8);
-    COUNTERTitleReport tr = gson.fromJson(reportStr, COUNTERTitleReport.class);
+    COUNTERTitleReport tr = Json.decodeValue(reportStr, COUNTERTitleReport.class);
     SUSHIErrorModel error = new SUSHIErrorModel();
     error.setCode(1);
     error.setMessage(TOO_MANY_REQUEST_STR);
     tr.getReportHeader().setExceptions(List.of(error));
-    createStubWithBody(200, gson.toJson(tr));
+    createStubWithBody(200, Json.encode(tr));
 
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
@@ -292,10 +294,7 @@ public class CS50ImplTest {
                 list -> {
                   assertThat(list).hasSize(1);
                   Report receivedReport = list.get(0).getReport();
-                  Report expectedReport =
-                      Json.decodeValue(
-                          gson.toJson(gson.fromJson(expectedReportStr, COUNTERTitleReport.class)),
-                          Report.class);
+                  Report expectedReport = decodeReport(expectedReportStr, COUNTERTitleReport.class);
                   assertThat(receivedReport)
                       .usingRecursiveComparison()
                       .ignoringCollectionOrder()
@@ -314,10 +313,7 @@ public class CS50ImplTest {
                 list -> {
                   assertThat(list).hasSize(1);
                   Report receivedReport = list.get(0).getReport();
-                  Report expectedReport =
-                      Json.decodeValue(
-                          gson.toJson(gson.fromJson(expectedReportStr, COUNTERTitleReport.class)),
-                          Report.class);
+                  Report expectedReport = decodeReport(expectedReportStr, COUNTERTitleReport.class);
                   assertThat(receivedReport)
                       .usingRecursiveComparison()
                       .ignoringCollectionOrder()
@@ -348,9 +344,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t)
-                      .hasMessageStartingWith(
-                          "com.fasterxml.jackson.databind.exc.InvalidFormatException:");
+                  assertThat(t).hasMessageStartingWith("com.fasterxml.jackson.databind.exc");
                   verifyApiCall();
                 }));
   }
@@ -429,9 +423,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t.getCause())
-                      .isInstanceOf(HttpException.class)
-                      .hasMessageContaining("Not Found");
+                  assertThat(t).hasMessageContaining("Not Found");
                   verifyApiCall();
                 }));
   }
@@ -457,7 +449,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).isInstanceOf(IOException.class);
+                  assertThat(t).isInstanceOf(HttpClosedException.class);
                   verifyApiCall();
                 }));
   }
