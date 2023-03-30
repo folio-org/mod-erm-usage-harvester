@@ -1,5 +1,8 @@
 package org.olf.erm.usage.harvester.periodic;
 
+import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCauseMessage;
+import static org.folio.rest.jaxrs.model.JobInfo.Result.FAILURE;
+import static org.folio.rest.jaxrs.model.JobInfo.Result.SUCCESS;
 import static org.folio.rest.jaxrs.model.JobInfo.Type.PERIODIC;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_JOB_ID;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
@@ -36,6 +39,12 @@ public class JobInfoJobListener extends JobListenerSupport {
             .withStartedAt(context.getFireTime())
             .withFinishedAt(
                 Date.from(context.getFireTime().toInstant().plusMillis(context.getJobRunTime())));
+    if (jobException != null) {
+      jobInfo.withResult(FAILURE);
+      jobInfo.withErrorMessage(getRootCauseMessage(jobException));
+    } else {
+      jobInfo.withResult(SUCCESS);
+    }
     upsertJobInfo(jobInfo, tenant);
   }
 
