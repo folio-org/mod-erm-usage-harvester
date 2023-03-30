@@ -17,7 +17,7 @@
     },
     {
       "tableName": "jobs",
-      "fromModuleVersion": "4.2.0",
+      "fromModuleVersion": "4.4.0",
       "index": [
         {
           "fieldName": "providerId"
@@ -27,6 +27,9 @@
         },
         {
           "fieldName": "type"
+        },
+        {
+          "fieldName": "result"
         }
       ],
       "fullTextIndex": [
