@@ -29,7 +29,7 @@
   },
   "required": [
     "startAt",
-    "interval"
+    "periodicInterval"
   ],
   "additionalProperties": true
 }
