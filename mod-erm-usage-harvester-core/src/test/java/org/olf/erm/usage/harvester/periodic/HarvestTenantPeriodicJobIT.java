@@ -16,9 +16,7 @@ import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TI
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
@@ -53,18 +51,18 @@ import org.quartz.listeners.JobListenerSupport;
 public class HarvestTenantPeriodicJobIT {
 
   public static final String START_PATH = "/erm-usage-harvester/start";
-  private static Vertx vertx = Vertx.vertx();
+  private static final Vertx vertx = Vertx.vertx();
   private static Context vertxContext;
   private static Scheduler scheduler;
   private static final String TENANT = "tnanet";
 
-  private static PeriodicConfig config =
+  private static final PeriodicConfig config =
       new PeriodicConfig()
           .withStartAt(Date.from(Instant.now()))
           .withPeriodicInterval(PeriodicInterval.DAILY);
 
   private static final JobKey jobKey = new JobKey(TENANT);
-  private static JobDetail job =
+  private static final JobDetail job =
       JobBuilder.newJob()
           .ofType(HarvestTenantPeriodicJob.class)
           .usingJobData(DATAKEY_TENANT, TENANT)
@@ -115,14 +113,9 @@ public class HarvestTenantPeriodicJobIT {
         .getListenerManager()
         .addJobListener(
             new JobWasExecutedListener(
-                ar -> {
-                  if (ar.failed()) {
-                    context.verify(
-                        v -> assertThat(ar.cause().getMessage()).contains("vert.x context"));
-                    async.complete();
-                  } else {
-                    context.fail(ar.cause());
-                  }
+                je -> {
+                  context.verify(v -> assertThat(je.getMessage()).contains("vert.x context"));
+                  async.complete();
                 }),
             KeyMatcher.keyEquals(jobKey));
     scheduler.triggerJob(jobKey);
@@ -136,17 +129,13 @@ public class HarvestTenantPeriodicJobIT {
         .getListenerManager()
         .addJobListener(
             new JobWasExecutedListener(
-                ar -> {
-                  if (ar.failed()) {
-                    context.verify(
-                        v -> {
-                          assertThat(ar.cause().getMessage()).contains("error starting");
-                          wireMockRule.verify(0, getRequestedFor(urlPathEqualTo(START_PATH)));
-                        });
-                    async.complete();
-                  } else {
-                    context.fail(ar.cause());
-                  }
+                je -> {
+                  context.verify(
+                      v -> {
+                        assertThat(je.getMessage()).contains("error starting");
+                        wireMockRule.verify(0, getRequestedFor(urlPathEqualTo(START_PATH)));
+                      });
+                  async.complete();
                 }),
             KeyMatcher.keyEquals(jobKey));
     scheduler.triggerJob(jobKey);
@@ -162,17 +151,13 @@ public class HarvestTenantPeriodicJobIT {
         .getListenerManager()
         .addJobListener(
             new JobWasExecutedListener(
-                ar -> {
-                  if (ar.failed()) {
-                    context.verify(
-                        v -> {
-                          assertThat(ar.cause().getMessage()).contains("error starting");
-                          wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH)));
-                        });
-                    async.complete();
-                  } else {
-                    context.fail(ar.cause());
-                  }
+                je -> {
+                  context.verify(
+                      v -> {
+                        assertThat(je.getMessage()).contains("error starting");
+                        wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH)));
+                      });
+                  async.complete();
                 }),
             KeyMatcher.keyEquals(jobKey));
     scheduler.triggerJob(jobKey);
@@ -186,29 +171,26 @@ public class HarvestTenantPeriodicJobIT {
         .getListenerManager()
         .addJobListener(
             new JobWasExecutedListener(
-                ar -> {
-                  if (ar.failed()) {
-                    context.verify(
-                        v -> {
-                          assertThat(ar.cause().getMessage()).contains("received 404");
-                          wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH)));
-                        });
-                    PeriodicConfigPgUtil.get(vertxContext, TENANT)
-                        .onComplete(
-                            ar2 -> {
-                              if (ar2.succeeded()) {
-                                context.verify(
-                                    v ->
-                                        assertThat(ar2.result().withId(null))
-                                            .isEqualToComparingFieldByFieldRecursively(config));
-                                async.complete();
-                              } else {
-                                context.fail(ar2.cause());
-                              }
-                            });
-                  } else {
-                    context.fail(ar.cause());
-                  }
+                je -> {
+                  context.verify(
+                      v -> {
+                        assertThat(je.getMessage()).contains("received 404");
+                        wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH)));
+                      });
+                  PeriodicConfigPgUtil.get(vertxContext, TENANT)
+                      .onComplete(
+                          ar -> {
+                            if (ar.succeeded()) {
+                              context.verify(
+                                  v ->
+                                      assertThat(ar.result().withId(null))
+                                          .usingRecursiveComparison()
+                                          .isEqualTo(config));
+                              async.complete();
+                            } else {
+                              context.fail(ar.cause());
+                            }
+                          });
                 }),
             KeyMatcher.keyEquals(jobKey));
     scheduler.triggerJob(jobKey);
@@ -222,24 +204,20 @@ public class HarvestTenantPeriodicJobIT {
         .getListenerManager()
         .addJobListener(
             new JobWasExecutedListener(
-                ar -> {
-                  if (ar.succeeded()) {
-                    context.verify(
-                        v -> wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH))));
-                    PeriodicConfigPgUtil.get(vertxContext, TENANT)
-                        .onComplete(
-                            ar2 -> {
-                              if (ar2.succeeded()) {
-                                context.verify(
-                                    v -> assertThat(ar2.result().getLastTriggeredAt()).isNotNull());
-                                async.complete();
-                              } else {
-                                context.fail(ar2.cause());
-                              }
-                            });
-                  } else {
-                    context.fail(ar.cause());
-                  }
+                je -> {
+                  context.verify(
+                      v -> wireMockRule.verify(1, getRequestedFor(urlPathEqualTo(START_PATH))));
+                  PeriodicConfigPgUtil.get(vertxContext, TENANT)
+                      .onComplete(
+                          ar -> {
+                            if (ar.succeeded()) {
+                              context.verify(
+                                  v -> assertThat(ar.result().getLastTriggeredAt()).isNotNull());
+                              async.complete();
+                            } else {
+                              context.fail(ar.cause());
+                            }
+                          });
                 }),
             KeyMatcher.keyEquals(jobKey));
     scheduler.triggerJob(jobKey);
@@ -247,7 +225,7 @@ public class HarvestTenantPeriodicJobIT {
 
   private static class JobWasExecutedListener extends JobListenerSupport {
 
-    private Handler<AsyncResult<String>> handler;
+    private final Handler<JobExecutionException> handler;
 
     @Override
     public String getName() {
@@ -256,8 +234,7 @@ public class HarvestTenantPeriodicJobIT {
 
     @Override
     public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
-      Future<String> result = (Future<String>) context.getResult();
-      result.onComplete(handler);
+      handler.handle(jobException);
     }
 
     @Override
@@ -265,7 +242,7 @@ public class HarvestTenantPeriodicJobIT {
       System.out.println("veto");
     }
 
-    public JobWasExecutedListener(Handler<AsyncResult<String>> handler) {
+    public JobWasExecutedListener(Handler<JobExecutionException> handler) {
       this.handler = handler;
     }
   }

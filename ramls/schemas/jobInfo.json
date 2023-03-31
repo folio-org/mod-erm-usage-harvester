@@ -22,7 +22,7 @@
       "type": "string"
     },
     "timestamp": {
-      "description": "timestamp",
+      "description": "Job timestamp",
       "type": "number",
       "javaType": "java.lang.Long"
     },
@@ -40,6 +40,18 @@
       "description": "Job next start date-time",
       "type": "string",
       "format": "date-time"
+    },
+    "result": {
+      "description": "Job execution result",
+      "type": "string",
+      "enum": [
+        "success",
+        "failure"
+      ]
+    },
+    "errorMessage": {
+      "description": "Job execution error message",
+      "type": "string"
     }
   },
   "additionalProperties": false
