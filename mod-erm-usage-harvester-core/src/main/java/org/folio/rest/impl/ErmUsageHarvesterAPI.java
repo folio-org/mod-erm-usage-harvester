@@ -182,4 +182,24 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
         .otherwise(GetErmUsageHarvesterJobsResponse::respond500WithTextPlain)
         .onComplete(asyncResultHandler);
   }
+
+  @Override
+  public void postErmUsageHarvesterJobsPurgefinished(
+      Number timestamp,
+      Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+    PgUtil.postgresClient(vertxContext, okapiHeaders)
+        .delete(
+            TABLE_NAME_JOBS,
+            new Criterion(createTimestampCriteria(timestamp))
+                .addCriterion(
+                    new Criteria()
+                        .addField("'finishedAt'")
+                        .setJSONB(true)
+                        .setOperation("IS NOT NULL")))
+        .<Response>map(PostErmUsageHarvesterJobsPurgefinishedResponse.respond204())
+        .otherwise(PostErmUsageHarvesterJobsPurgefinishedResponse::respond500WithTextPlain)
+        .onComplete(asyncResultHandler);
+  }
 }

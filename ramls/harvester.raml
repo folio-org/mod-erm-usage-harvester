@@ -107,4 +107,22 @@ resourceTypes:
             description: Internal server error
             body:
               text/plain:
-
+    /purgefinished:
+      post:
+        description: Purge finished harvesting jobs
+        queryParameters:
+          timestamp:
+            description: Only purge jobs having a timestamp less than or equal to this value
+            example: 1641020400000
+            type: number
+        responses:
+          204:
+            description: Success
+          400:
+            description: Bad request
+            body:
+              text/plain:
+          500:
+            description: Internal server error
+            body:
+              text/plain:
