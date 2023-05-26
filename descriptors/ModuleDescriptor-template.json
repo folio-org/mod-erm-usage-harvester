@@ -94,6 +94,15 @@
           "permissionsRequired": [
             "ermusageharvester.jobs.get"
           ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/erm-usage-harvester/jobs/purgefinished",
+          "permissionsRequired": [
+            "ermusageharvester.jobs.purge"
+          ]
         }
       ]
     },
@@ -176,6 +185,11 @@
       "description": "Get harvester jobs"
     },
     {
+      "permissionName": "ermusageharvester.jobs.purge",
+      "displayName": "erm-usage-harvester purge finished jobs",
+      "description": "Purge finished harvester jobs"
+    },
+    {
       "permissionName": "ermusageharvester.all",
       "displayName": "erm-usage-harvester all",
       "description": "All permissions for the mod-erm-harvester module",
@@ -186,7 +200,8 @@
         "ermusageharvester.periodic.get",
         "ermusageharvester.periodic.post",
         "ermusageharvester.periodic.delete",
-        "ermusageharvester.jobs.get"
+        "ermusageharvester.jobs.get",
+        "ermusageharvester.jobs.purge"
       ]
     },
     {
