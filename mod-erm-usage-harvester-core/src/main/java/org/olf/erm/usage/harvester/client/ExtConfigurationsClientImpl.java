@@ -12,10 +12,11 @@ import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.tools.utils.VertxUtils;
 
-public class ExtConfigurationsClientImpl extends ConfigurationsClient implements
-    ExtConfigurationsClient {
+public class ExtConfigurationsClientImpl extends ConfigurationsClient
+    implements ExtConfigurationsClient {
 
-  public static final String PATH = "/configurations/entries";
+  public static final String PATH = "/configurations/entries"; // NOSONAR
+  public static final String NO_ENTRY = "No configuration entry found";
 
   public ExtConfigurationsClientImpl(String okapiUrl, String tenantId, String token) {
     super(okapiUrl, tenantId, token, WebClient.create(VertxUtils.getVertxFromContextOrNew()));
@@ -29,7 +30,7 @@ public class ExtConfigurationsClientImpl extends ConfigurationsClient implements
         .flatMap(
             config ->
                 (config.getConfigs().isEmpty())
-                    ? failedFuture("No configuration entry found")
+                    ? failedFuture(NO_ENTRY)
                     : succeededFuture(config.getConfigs().get(0)))
         .map(Config::getValue);
   }
