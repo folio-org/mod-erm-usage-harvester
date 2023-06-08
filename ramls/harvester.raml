@@ -126,3 +126,17 @@ resourceTypes:
             description: Internal server error
             body:
               text/plain:
+    /purgestale:
+      post:
+        description: Purge stale jobs
+        responses:
+          204:
+            description: Success
+          400:
+            description: Bad request
+            body:
+              text/plain:
+          500:
+            description: Internal server error
+            body:
+              text/plain:

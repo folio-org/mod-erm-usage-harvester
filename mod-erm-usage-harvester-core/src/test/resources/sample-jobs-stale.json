@@ -1,0 +1,54 @@
+{
+  "jobInfos": [
+    {
+      "id": "96d680a7-10f2-4df5-95c9-b87937cd13b6",
+      "type": "periodic",
+      "timestamp": 1672552800000,
+      "nextStart": "2023-01-03T08:00:00.000+00:00"
+    },
+    {
+      "id": "a3969bd4-c1ce-4ae3-b78f-e675ef93107f",
+      "type": "tenant",
+      "timestamp": 1672560000000,
+      "startedAt": "2023-01-01T08:00:00.082+00:00",
+      "finishedAt": "2023-01-01T08:00:00.112+00:00"
+    },
+    {
+      "id": "077fbdd7-c0d8-4b92-89cf-535c335e120e",
+      "type": "provider",
+      "providerId": "6e6190bb-ccc2-4c55-9bd9-b9ec8ff045ac",
+      "timestamp": 1672560001000,
+      "startedAt": "2023-01-01T08:00:03.000+00:00",
+      "finishedAt": "2023-01-01T08:00:21.000+00:00"
+    },
+    {
+      "id": "70ce9ee8-69d1-4d9b-b4e4-52fccdcbdfed",
+      "type": "provider",
+      "providerId": "17373a99-6a81-419f-ae7c-0a4271667b6a",
+      "timestamp": 1672560002000,
+      "startedAt": "2023-01-01T08:00:04.000+00:00",
+      "finishedAt": "2023-01-01T08:00:22.000+00:00"
+    },
+    {
+      "id": "055ca7f2-6156-450c-9e39-a89f05e3544f",
+      "type": "tenant",
+      "timestamp": 1672646400000,
+      "startedAt": "2023-01-02T08:00:00.082+00:00"
+    },
+    {
+      "id": "9127e10b-3603-443b-8a40-cbe5e2e1bb19",
+      "type": "provider",
+      "providerId": "6e6190bb-ccc2-4c55-9bd9-b9ec8ff045ac",
+      "timestamp": 1672646401000,
+      "startedAt": "2023-01-02T08:00:03.000+00:00"
+    },
+    {
+      "id": "b39c0e8d-9ff1-41fc-8851-c49f61b085e1",
+      "type": "provider",
+      "providerId": "17373a99-6a81-419f-ae7c-0a4271667b6a",
+      "timestamp": 1672646402000,
+      "startedAt": "2023-01-02T08:00:04.000+00:00"
+    }
+  ],
+  "totalRecords": 7
+}
