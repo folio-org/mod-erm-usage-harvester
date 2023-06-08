@@ -3,14 +3,22 @@ package org.folio.rest.impl;
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.okapi.common.XOkapiHeaders.TENANT;
 import static org.olf.erm.usage.harvester.WorkerVerticle.MESSAGE_NO_TOKEN;
+import static org.olf.erm.usage.harvester.periodic.JobInfoUtil.upsertJobInfo;
+import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 
 import com.google.common.base.Strings;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,12 +27,14 @@ import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.JobInfo;
+import org.folio.rest.jaxrs.model.JobInfo.Result;
 import org.folio.rest.jaxrs.model.JobInfos;
 import org.folio.rest.jaxrs.resource.ErmUsageHarvester;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.cql.CQLWrapper;
+import org.olf.erm.usage.harvester.ClockProvider;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
 import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
@@ -35,6 +45,14 @@ import org.quartz.impl.StdSchedulerFactory;
 public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
   public static final String TABLE_NAME_JOBS = "jobs";
+  public static final String STALE_JOB_ERROR_MSG = "Stale job";
+
+  private static final Criteria finishedCriteria =
+      new Criteria().addField("'finishedAt'").setJSONB(true).setOperation("IS NOT NULL");
+  private static final Criteria notFinishedCritera =
+      new Criteria().addField("'finishedAt'").setJSONB(true).setOperation("IS NULL");
+  private static final Criteria notPeriodicJobTypeCriteria =
+      new Criteria().setJSONB(true).addField("'type'").setOperation("!=").setVal(PERIODIC_JOB_KEY);
 
   private String createResponseEntity(Map<String, String> okapiHeaders) {
     return this.createResponseEntity(okapiHeaders, null);
@@ -192,14 +210,49 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     PgUtil.postgresClient(vertxContext, okapiHeaders)
         .delete(
             TABLE_NAME_JOBS,
-            new Criterion(createTimestampCriteria(timestamp))
-                .addCriterion(
-                    new Criteria()
-                        .addField("'finishedAt'")
-                        .setJSONB(true)
-                        .setOperation("IS NOT NULL")))
+            new Criterion(createTimestampCriteria(timestamp)).addCriterion(finishedCriteria))
         .<Response>map(PostErmUsageHarvesterJobsPurgefinishedResponse.respond204())
         .otherwise(PostErmUsageHarvesterJobsPurgefinishedResponse::respond500WithTextPlain)
         .onComplete(asyncResultHandler);
+  }
+
+  @Override
+  @SuppressWarnings("rawtypes")
+  public void postErmUsageHarvesterJobsPurgestale(
+      Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+    String tenantId = okapiHeaders.get(TENANT);
+    long minus60Minutes = getCurrentTimestampMinus(60, ChronoUnit.MINUTES);
+    PgUtil.postgresClient(vertxContext, okapiHeaders)
+        .get(
+            TABLE_NAME_JOBS,
+            JobInfo.class,
+            new Criterion()
+                .addCriterion(createTimestampCriteria(minus60Minutes))
+                .addCriterion(notPeriodicJobTypeCriteria)
+                .addCriterion(notFinishedCritera))
+        .flatMap(
+            res -> {
+              List<Future> upserts =
+                  res.getResults().stream()
+                      .map(
+                          ji ->
+                              upsertJobInfo(
+                                  ji.withFinishedAt(
+                                          Date.from(Instant.now(ClockProvider.getClock())))
+                                      .withResult(Result.FAILURE)
+                                      .withErrorMessage(STALE_JOB_ERROR_MSG),
+                                  tenantId))
+                      .collect(Collectors.toList());
+              return CompositeFuture.join(upserts);
+            })
+        .<Response>map(cf -> PostErmUsageHarvesterJobsPurgestaleResponse.respond204())
+        .otherwise(PostErmUsageHarvesterJobsPurgestaleResponse::respond500WithTextPlain)
+        .onComplete(asyncResultHandler);
+  }
+
+  private long getCurrentTimestampMinus(long amountToSubstract, TemporalUnit unit) {
+    return Instant.now(ClockProvider.getClock()).minus(amountToSubstract, unit).toEpochMilli();
   }
 }

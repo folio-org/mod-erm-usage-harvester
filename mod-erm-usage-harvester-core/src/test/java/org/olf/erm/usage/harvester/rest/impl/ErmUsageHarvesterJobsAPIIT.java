@@ -1,9 +1,14 @@
 package org.olf.erm.usage.harvester.rest.impl;
 
 import static io.restassured.RestAssured.given;
+import static java.time.ZoneOffset.UTC;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.folio.rest.impl.ErmUsageHarvesterAPI.STALE_JOB_ERROR_MSG;
 import static org.folio.rest.impl.ErmUsageHarvesterAPI.TABLE_NAME_JOBS;
+import static org.folio.rest.jaxrs.model.JobInfo.Result.FAILURE;
 
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.io.Resources;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
@@ -20,9 +25,15 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.JobInfo;
 import org.folio.rest.jaxrs.model.JobInfos;
@@ -35,6 +46,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.olf.erm.usage.harvester.ClockProvider;
 import org.olf.erm.usage.harvester.PostgresContainerRule;
 
 @RunWith(VertxUnitRunner.class)
@@ -51,26 +63,41 @@ public class ErmUsageHarvesterJobsAPIIT {
       Map.of(XOkapiHeaders.TENANT, TENANT, XOkapiHeaders.TOKEN, TOKEN);
 
   private static final Vertx vertx = Vertx.vertx();
+  private static final String BASE_PATH = "/erm-usage-harvester/jobs";
+  private static final String PURGE_PATH_SEGMENT = "/purgefinished";
+
   private static JobInfos expectedJobInfos;
+  private static JobInfos expectedStaleJobInfos;
 
   @ClassRule
   public static PostgresContainerRule postgresContainerRule =
       new PostgresContainerRule(vertx, TENANT);
+
+  @ClassRule
+  public static WireMockRule okapiMockRule =
+      new WireMockRule(new WireMockConfiguration().dynamicPort());
 
   @BeforeClass
   public static void beforeClass(TestContext context) throws IOException {
     int port = NetworkUtils.nextFreePort();
     RestAssured.reset();
     RestAssured.port = port;
-    RestAssured.basePath = "erm-usage-harvester/jobs";
+    RestAssured.basePath = BASE_PATH;
     RestAssured.requestSpecification = new RequestSpecBuilder().addHeaders(OKAPI_HEADERS).build();
     RestAssured.defaultParser = Parser.JSON;
 
     String expectedJobInfosStr =
         Resources.toString(Resources.getResource("sample-jobs.json"), StandardCharsets.UTF_8);
     expectedJobInfos = Json.decodeValue(expectedJobInfosStr, JobInfos.class);
+    String expectedStaleJobInfosStr =
+        Resources.toString(Resources.getResource("sample-jobs-stale.json"), StandardCharsets.UTF_8);
+    expectedStaleJobInfos = Json.decodeValue(expectedStaleJobInfosStr, JobInfos.class);
 
-    JsonObject cfg = new JsonObject().put("http.port", port).put("testing", true);
+    JsonObject cfg =
+        new JsonObject()
+            .put("okapiUrl", okapiMockRule.baseUrl())
+            .put("http.port", port)
+            .put("testing", true);
     vertx
         .deployVerticle("org.folio.rest.RestVerticle", new DeploymentOptions().setConfig(cfg))
         .compose(s -> populateDb(expectedJobInfos))
@@ -153,12 +180,71 @@ public class ErmUsageHarvesterJobsAPIIT {
   }
 
   @Test
+  public void testPurgeStaleJobs() throws ExecutionException, InterruptedException {
+    try {
+      // set up test data
+      clearDb()
+          .compose(rs -> populateDb(expectedStaleJobInfos))
+          .toCompletionStage()
+          .toCompletableFuture()
+          .get();
+      assertThat(new GetJobsRequest().send())
+          .usingRecursiveComparison()
+          .isEqualTo(expectedStaleJobInfos);
+
+      // stale jobs are not older than 60 minutes
+      ClockProvider.setClock(
+          Clock.fixed(LocalDateTime.of(2023, 1, 2, 8, 30, 0).toInstant(UTC), UTC));
+      given().post("/purgestale").then().statusCode(204);
+      assertThat(new GetJobsRequest().send())
+          .usingRecursiveComparison()
+          .isEqualTo(expectedStaleJobInfos);
+
+      // stale jobs are older than 60 minutes
+      Instant testInstant = LocalDateTime.of(2023, 1, 2, 9, 5, 0).toInstant(UTC);
+      ClockProvider.setClock(Clock.fixed(testInstant, UTC));
+      given().post("/purgestale").then().statusCode(204);
+
+      List<String> idsExpectedToChange =
+          List.of(
+              "055ca7f2-6156-450c-9e39-a89f05e3544f",
+              "9127e10b-3603-443b-8a40-cbe5e2e1bb19",
+              "b39c0e8d-9ff1-41fc-8851-c49f61b085e1");
+      Map<Boolean, List<JobInfo>> jobsExpectedToChange =
+          new GetJobsRequest()
+              .send().getJobInfos().stream()
+                  .collect(Collectors.groupingBy(ji -> idsExpectedToChange.contains(ji.getId())));
+      assertThat(expectedStaleJobInfos.getJobInfos())
+          .usingRecursiveFieldByFieldElementComparator()
+          .containsAll(jobsExpectedToChange.get(false));
+      assertThat(jobsExpectedToChange.get(true))
+          .allSatisfy(
+              ji -> {
+                assertThat(ji.getErrorMessage()).isEqualTo(STALE_JOB_ERROR_MSG);
+                assertThat(ji.getResult()).isEqualTo(FAILURE);
+                assertThat(ji.getFinishedAt()).isEqualTo(Date.from(testInstant));
+              });
+
+    } finally {
+      clearDb()
+          .compose(rs -> populateDb(expectedJobInfos))
+          .toCompletionStage()
+          .toCompletableFuture()
+          .get();
+    }
+  }
+
+  @Test
   public void testPurgeFinishedJobs() throws ExecutionException, InterruptedException {
     try {
       assertThat(new GetJobsRequest().send()).satisfies(hasResultSizes(10, 18));
 
       // purge timestamp
-      given().queryParam("timestamp", 1663150479004L).post("/purgefinished").then().statusCode(204);
+      given()
+          .queryParam(PARAM_TIMESTAMP, 1663150479004L)
+          .post(PURGE_PATH_SEGMENT)
+          .then()
+          .statusCode(204);
       assertThat(new GetJobsRequest().send())
           .satisfies(
               hasResultSizes(4, 4),
@@ -169,7 +255,7 @@ public class ErmUsageHarvesterJobsAPIIT {
                   "910c8c0e-e331-4800-935e-e13232e30190"));
 
       // purge all finished jobs
-      given().post("/purgefinished").then().statusCode(204);
+      given().post(PURGE_PATH_SEGMENT).then().statusCode(204);
       assertThat(new GetJobsRequest().send())
           .satisfies(hasResultSizes(1, 1), containsIds("42ddd915-a046-4613-8272-e25b0edf36a1"));
     } finally {

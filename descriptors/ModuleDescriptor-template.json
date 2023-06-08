@@ -103,6 +103,15 @@
           "permissionsRequired": [
             "ermusageharvester.jobs.purge"
           ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/erm-usage-harvester/jobs/purgestale",
+          "permissionsRequired": [
+            "ermusageharvester.jobs.purge"
+          ]
         }
       ]
     },
