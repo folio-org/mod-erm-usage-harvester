@@ -134,6 +134,25 @@
           "pathPattern": "/_/tenant/{id}"
         }
       ]
+    },
+    {
+      "id": "_timer",
+      "version": "1.0",
+      "interfaceType": "system",
+      "handlers": [
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/erm-usage-harvester/jobs/cleanup",
+          "unit": "minute",
+          "delay": "30",
+          "modulePermissions": [
+            "configuration.entries.collection.get",
+            "ermusageharvester.jobs.purge"
+          ]
+        }
+      ]
     }
   ],
   "requires": [

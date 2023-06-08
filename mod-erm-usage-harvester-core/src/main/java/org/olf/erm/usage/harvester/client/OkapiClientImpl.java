@@ -2,12 +2,12 @@ package org.olf.erm.usage.harvester.client;
 
 import static io.vertx.core.Future.succeededFuture;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
-import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS_WITH_URL;
 
 import com.google.common.net.HttpHeaders;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpResponse;
@@ -17,13 +17,14 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.MediaType;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.tools.utils.VertxUtils;
 import org.olf.erm.usage.harvester.SystemUser;
 
 public class OkapiClientImpl implements OkapiClient {
 
-  public static final String PATH_LOGIN = "/authn/login";
-  public static final String PATH_HARVESTER_START = "/erm-usage-harvester/start";
-  public static final String PATH_TENANTS = "/_/proxy/tenants";
+  public static final String PATH_LOGIN = "/authn/login"; // NOSONAR
+  public static final String PATH_HARVESTER_START = "/erm-usage-harvester/start"; // NOSONAR
+  public static final String PATH_TENANTS = "/_/proxy/tenants"; // NOSONAR
   private final String okapiUrl;
   private final WebClient client;
 
@@ -31,6 +32,16 @@ public class OkapiClientImpl implements OkapiClient {
     Objects.requireNonNull(cfg);
     this.okapiUrl = cfg.getString("okapiUrl");
     this.client = webClient;
+  }
+
+  public OkapiClientImpl(WebClient webClient, String okapiUrl) {
+    Objects.requireNonNull(okapiUrl);
+    this.okapiUrl = okapiUrl;
+    this.client = webClient;
+  }
+
+  public OkapiClientImpl(String okapiUrl) {
+    this(WebClient.create(VertxUtils.getVertxFromContextOrNew()), okapiUrl);
   }
 
   @Override
@@ -91,7 +102,7 @@ public class OkapiClientImpl implements OkapiClient {
                 } else {
                   return Future.failedFuture(
                       String.format(
-                          ERR_MSG_STATUS,
+                          ERR_MSG_STATUS_WITH_URL,
                           ar.result().statusCode(),
                           ar.result().statusMessage(),
                           url));
@@ -100,5 +111,15 @@ public class OkapiClientImpl implements OkapiClient {
                 return Future.failedFuture("Failed getting tenants: " + ar.cause());
               }
             });
+  }
+
+  public Future<HttpResponse<Buffer>> sendRequest(
+      HttpMethod method, String path, String tenantId, String token) {
+    String uri = okapiUrl + path;
+    return client
+        .requestAbs(method, uri)
+        .putHeader(XOkapiHeaders.TENANT, tenantId)
+        .putHeader(XOkapiHeaders.TOKEN, token)
+        .send();
   }
 }
