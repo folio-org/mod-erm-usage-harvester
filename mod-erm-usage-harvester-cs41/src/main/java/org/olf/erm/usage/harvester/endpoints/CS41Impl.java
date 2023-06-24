@@ -7,12 +7,12 @@ import io.vertx.core.Vertx;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javax.xml.datatype.DatatypeConfigurationException;
-import javax.xml.datatype.DatatypeFactory;
 import javax.xml.namespace.QName;
 import javax.xml.ws.BindingProvider;
 import org.apache.commons.lang3.ObjectUtils;
@@ -67,9 +67,9 @@ public class CS41Impl implements ServiceEndpoint {
     Filters filter = new Filters();
     Range range = new Range();
     try {
-      range.setBegin(DatatypeFactory.newInstance().newXMLGregorianCalendar(beginDate));
-      range.setEnd(DatatypeFactory.newInstance().newXMLGregorianCalendar(endDate));
-    } catch (DatatypeConfigurationException e) {
+      range.setBegin(LocalDate.parse(beginDate));
+      range.setEnd(LocalDate.parse(endDate));
+    } catch (DateTimeParseException e) {
       LOG.error(e.getMessage(), e);
     }
     filter.setUsageDateRange(range);
