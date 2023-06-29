@@ -1,3 +1,7 @@
+# 4.3.1
+* Bump guava from 31.1-jre to 32.0.1-jre
+* [MODEUSHARV-95](https://issues.folio.org/browse/MODEUSHARV-95) Error parsing DataTypeEnum from counter5 report
+
 # 4.3.0
 * [MODEUSHARV-82](https://issues.folio.org/browse/MODEUSHARV-82) RMB v35.0.6, Vert.x v4.3.8
 * [MODEUSHARV-81](https://issues.folio.org/browse/MODEUSHARV-81) Return error message if report deserialization fails
