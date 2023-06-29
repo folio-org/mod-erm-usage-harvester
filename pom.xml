@@ -33,7 +33,7 @@
     <ramlfiles_path>${project.basedir}/ramls</ramlfiles_path>
     <vertx.version>4.3.8</vertx.version>
     <erm.usage.version>4.3.0</erm.usage.version>
-    <erm.usage.counter.version>2.2.7</erm.usage.counter.version>
+    <erm.usage.counter.version>2.2.8</erm.usage.counter.version>
     <configurations.version>5.7.5</configurations.version>
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.4</jackson.version>
