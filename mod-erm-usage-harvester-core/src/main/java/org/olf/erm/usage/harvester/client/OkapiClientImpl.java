@@ -1,11 +1,12 @@
 package org.olf.erm.usage.harvester.client;
 
-import static io.vertx.core.Future.succeededFuture;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
+import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS_WITH_URL;
 
 import com.google.common.net.HttpHeaders;
 import io.vertx.core.Future;
+import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
@@ -14,7 +15,7 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.Optional;
 import javax.ws.rs.core.MediaType;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.tools.utils.VertxUtils;
@@ -23,6 +24,7 @@ import org.olf.erm.usage.harvester.SystemUser;
 public class OkapiClientImpl implements OkapiClient {
 
   public static final String PATH_LOGIN = "/authn/login"; // NOSONAR
+  public static final String PATH_LOGIN_EXPIRY = "/authn/login-with-expiry"; // NOSONAR
   public static final String PATH_HARVESTER_START = "/erm-usage-harvester/start"; // NOSONAR
   public static final String PATH_TENANTS = "/_/proxy/tenants"; // NOSONAR
   private final String okapiUrl;
@@ -44,28 +46,57 @@ public class OkapiClientImpl implements OkapiClient {
     this(WebClient.create(VertxUtils.getVertxFromContextOrNew()), okapiUrl);
   }
 
+  private HttpResponse<Buffer> throwIfStatusCodeNot201(HttpResponse<Buffer> response) {
+    if (response.statusCode() != 201) {
+      throw new OkapiClientException(
+          String.format(
+              "Error logging in with system user: " + ERR_MSG_STATUS,
+              response.statusCode(),
+              response.statusMessage()));
+    }
+    return response;
+  }
+
+  private String getTokenFromResponse(HttpResponse<Buffer> response) {
+    return Optional.ofNullable(
+            response.cookies().stream()
+                .filter(s -> s.startsWith("folioAccessToken"))
+                .findFirst()
+                .map(
+                    cookie -> {
+                      try {
+                        return cookie.split(";", 2)[0].split("=", 2)[1];
+                      } catch (Exception e) {
+                        return null;
+                      }
+                    })
+                .orElse(response.getHeader(XOkapiHeaders.TOKEN)))
+        .orElseThrow(() -> new OkapiClientException("Unable to extract token from login response"));
+  }
+
   @Override
   public Future<String> loginSystemUser(String tenantId, SystemUser systemUser) {
     String loginUrl = okapiUrl + PATH_LOGIN;
+    String loginWithExpiryUrl = okapiUrl + PATH_LOGIN_EXPIRY;
+
+    MultiMap headers =
+        MultiMap.caseInsensitiveMultiMap()
+            .add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
+            .add(XOkapiHeaders.TENANT, tenantId);
 
     return client
-        .postAbs(loginUrl)
-        .putHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
-        .putHeader(XOkapiHeaders.TENANT, tenantId)
+        .postAbs(loginWithExpiryUrl)
+        .putHeaders(headers)
         .sendJson(systemUser.toJsonObject())
-        .compose(
-            resp -> {
-              if (resp.statusCode() == 201) {
-                return succeededFuture(resp.headers().get(XOkapiHeaders.TOKEN));
-              } else {
-                return Future.failedFuture(
-                    String.format(
-                        ERR_MSG_STATUS_WITH_URL,
-                        resp.statusCode(),
-                        resp.statusMessage(),
-                        loginUrl));
-              }
-            });
+        .map(this::throwIfStatusCodeNot201)
+        .recover(
+            t ->
+                client
+                    .postAbs(loginUrl)
+                    .putHeaders(headers)
+                    .sendJson(systemUser.toJsonObject())
+                    .map(this::throwIfStatusCodeNot201))
+        .map(this::getTokenFromResponse);
   }
 
   @Override
@@ -92,9 +123,7 @@ public class OkapiClientImpl implements OkapiClient {
                   try {
                     jsonArray = ar.result().bodyAsJsonArray();
                     List<String> tenants =
-                        jsonArray.stream()
-                            .map(o -> ((JsonObject) o).getString("id"))
-                            .collect(Collectors.toList());
+                        jsonArray.stream().map(o -> ((JsonObject) o).getString("id")).toList();
                     return Future.succeededFuture(tenants);
                   } catch (Exception e) {
                     return Future.failedFuture(String.format(ERR_MSG_DECODE, url, e.getMessage()));
@@ -121,5 +150,11 @@ public class OkapiClientImpl implements OkapiClient {
         .putHeader(XOkapiHeaders.TENANT, tenantId)
         .putHeader(XOkapiHeaders.TOKEN, token)
         .send();
+  }
+
+  private static class OkapiClientException extends RuntimeException {
+    public OkapiClientException(String message) {
+      super(message);
+    }
   }
 }
