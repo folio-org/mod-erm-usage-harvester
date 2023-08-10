@@ -10,6 +10,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_LOGIN;
+import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_LOGIN_EXPIRY;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
 
@@ -94,8 +96,9 @@ public class HarvestTenantPeriodicJobIT {
 
   @Before
   public void before() throws SchedulerException {
+    stubFor(post(PATH_LOGIN_EXPIRY).willReturn(aResponse().withStatus(404)));
     stubFor(
-        post("/authn/login")
+        post(PATH_LOGIN)
             .willReturn(aResponse().withStatus(201).withHeader(XOkapiHeaders.TOKEN, "someToken")));
     WireMock.resetAllRequests();
     scheduler = StdSchedulerFactory.getDefaultScheduler();
@@ -123,7 +126,7 @@ public class HarvestTenantPeriodicJobIT {
 
   @Test
   public void testStartFailedLogin(TestContext context) throws SchedulerException {
-    stubFor(post("/authn/login").willReturn(aResponse().withStatus(422)));
+    stubFor(post(PATH_LOGIN).willReturn(aResponse().withStatus(422)));
     Async async = context.async();
     scheduler
         .getListenerManager()

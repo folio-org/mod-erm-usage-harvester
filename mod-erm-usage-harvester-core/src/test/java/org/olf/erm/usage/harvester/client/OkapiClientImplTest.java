@@ -8,6 +8,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_LOGIN;
+import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_LOGIN_EXPIRY;
 import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_TENANTS;
 
 import com.github.tomakehurst.wiremock.http.Fault;
@@ -63,7 +64,8 @@ public class OkapiClientImplTest {
   }
 
   @Test
-  public void testLoginSuccess(TestContext context) {
+  public void testLegacyLoginSuccess(TestContext context) {
+    stubFor(post(urlEqualTo(PATH_LOGIN_EXPIRY)).willReturn(aResponse().withStatus(404)));
     stubFor(
         post(urlEqualTo(PATH_LOGIN))
             .willReturn(aResponse().withStatus(201).withHeader(XOkapiHeaders.TOKEN, "someToken")));
@@ -73,7 +75,34 @@ public class OkapiClientImplTest {
   }
 
   @Test
-  public void testLoginFailure(TestContext context) {
+  public void testLoginWithExpirySuccess(TestContext context) {
+    stubFor(
+        post(urlEqualTo(PATH_LOGIN_EXPIRY))
+            .willReturn(
+                aResponse()
+                    .withStatus(201)
+                    .withHeader("Set-Cookie", "folioAccessToken=expiryToken")));
+    stubFor(post(urlEqualTo(PATH_LOGIN)).willReturn(aResponse().withStatus(404)));
+    okapiClient
+        .loginSystemUser(tenantId, SYSTEM_USER)
+        .onComplete(context.asyncAssertSuccess(s -> assertThat(s).isEqualTo("expiryToken")));
+  }
+
+  @Test
+  public void testLegacyLoginFailure(TestContext context) {
+    stubFor(post(urlEqualTo(PATH_LOGIN_EXPIRY)).willReturn(aResponse().withStatus(404)));
+    stubFor(post(urlEqualTo(PATH_LOGIN)).willReturn(aResponse().withStatus(422)));
+    okapiClient.loginSystemUser(tenantId, SYSTEM_USER).onComplete(context.asyncAssertFailure());
+  }
+
+  @Test
+  public void testLoginWithExpiryInvalidCookie(TestContext context) {
+    stubFor(
+        post(urlEqualTo(PATH_LOGIN_EXPIRY))
+            .willReturn(
+                aResponse()
+                    .withStatus(201)
+                    .withHeader("Set-Cookie", "folioAccessToken:expiryToken")));
     stubFor(post(urlEqualTo(PATH_LOGIN)).willReturn(aResponse().withStatus(422)));
     okapiClient.loginSystemUser(tenantId, SYSTEM_USER).onComplete(context.asyncAssertFailure());
   }
