@@ -293,6 +293,21 @@
       {
         "name": "DB_MAXPOOLSIZE",
         "value": "5"
+      },
+      {
+        "name": "OKAPI_URL",
+        "value": "http://10.0.2.15:9130",
+        "description": "Okapi URL"
+      },
+      {
+        "name": "DIKU_USER_NAME",
+        "value": "mod-erm-usage-harvester",
+        "description": "System user username for tenant diku"
+      },
+      {
+        "name": "DIKU_USER_PASS",
+        "value": "mod-erm-usage-harvester",
+        "description": "System user password for tenant diku"
       }
     ]
   }
