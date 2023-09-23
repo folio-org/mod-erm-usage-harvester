@@ -33,7 +33,6 @@ import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.http.Request;
 import com.github.tomakehurst.wiremock.http.ResponseDefinition;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.google.common.io.Resources;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
@@ -42,8 +41,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -71,6 +68,10 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl;
+import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
+import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
+import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProvider3;
 import org.quartz.SchedulerException;
 import org.slf4j.LoggerFactory;
@@ -88,9 +89,10 @@ public class WorkerVerticleIT {
   private static final Map<String, List<UsageDataProvider>> tenantUDPMap = new HashMap<>();
 
   private static String okapiUrl;
-  private static String reportsPath;
-  private static String providerPath;
-  private static Pattern providerPathWithIdPattern;
+  private static final String reportsPath = ExtCounterReportsClientImpl.PATH;
+  private static final String providerPath = ExtUsageDataProvidersClientImpl.PATH;
+  private static final Pattern providerPathWithIdPattern =
+      Pattern.compile(providerPath + "/(.{8}-.{4}-.{4}-.{4}-.{12}).*");
 
   @ClassRule
   public static PostgresContainerRule pgContainerRule =
@@ -156,25 +158,18 @@ public class WorkerVerticleIT {
   }
 
   @BeforeClass
-  public static void beforeClass(TestContext context) throws IOException {
+  public static void beforeClass(TestContext context) {
     okapiUrl = baseRule.baseUrl();
     int httpPort = NetworkUtils.nextFreePort();
 
-    String deployCfg =
-        Resources.toString(Resources.getResource("config.json"), StandardCharsets.UTF_8);
-    JsonObject cfg = new JsonObject(deployCfg).put("okapiUrl", okapiUrl).put("http.port", httpPort);
-    String modConfigurationPath = cfg.getString("modConfigurationPath");
-    String tenantsPath = cfg.getString("tenantsPath");
-    providerPath = cfg.getString("providerPath");
-    reportsPath = cfg.getString("reportsPath");
-    providerPathWithIdPattern = Pattern.compile(providerPath + "/(.{8}-.{4}-.{4}-.{4}-.{12}).*");
+    JsonObject cfg = new JsonObject().put("okapiUrl", okapiUrl).put("http.port", httpPort);
 
     baseRule.stubFor(
         get(urlMatching(HARVESTER_PATH + "/.*"))
             .willReturn(aResponse().proxiedFrom("http://localhost:" + httpPort)));
 
     baseRule.stubFor(
-        get(urlPathEqualTo(modConfigurationPath))
+        get(urlPathEqualTo(ExtConfigurationsClientImpl.PATH))
             .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
     JsonArray tenantsJsonArray =
@@ -182,7 +177,7 @@ public class WorkerVerticleIT {
             .map(s -> new JsonObject().put("id", s))
             .collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
     baseRule.stubFor(
-        get(urlPathEqualTo(tenantsPath))
+        get(urlPathEqualTo(OkapiClientImpl.PATH_TENANTS))
             .willReturn(aResponse().withStatus(200).withBody(tenantsJsonArray.encodePrettily())));
 
     baseRule.stubFor(

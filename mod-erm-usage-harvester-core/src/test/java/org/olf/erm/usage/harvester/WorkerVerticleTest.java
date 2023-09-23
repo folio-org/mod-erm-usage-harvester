@@ -37,7 +37,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.YearMonth;
 import java.util.Collections;
 import java.util.List;
@@ -56,6 +55,10 @@ import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClientImpl;
+import org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl;
+import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
+import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 
 @RunWith(VertxUnitRunner.class)
@@ -71,23 +74,16 @@ public class WorkerVerticleTest {
       new WorkerVerticle(tenantId, "someTokem", "providerId");
   private static final Vertx vertx = Vertx.vertx();
 
-  private static String reportsPath;
-  private static String providerPath;
-  private static String aggregatorPath;
-  private static String modConfigurationPath;
+  private static final String reportsPath = ExtCounterReportsClientImpl.PATH;
+  private static final String providerPath = ExtUsageDataProvidersClientImpl.PATH;
+  private static final String aggregatorPath = ExtAggregatorSettingsClientImpl.PATH;
+  private static final String modConfigurationPath = ExtConfigurationsClientImpl.PATH;
 
   @BeforeClass
-  public static void beforeClass(TestContext context) throws IOException {
-    String deployCfg =
-        Resources.toString(Resources.getResource("config.json"), StandardCharsets.UTF_8);
-    JsonObject cfg = new JsonObject(deployCfg);
+  public static void beforeClass(TestContext context) {
+    JsonObject cfg = new JsonObject();
     cfg.put("okapiUrl", wireMockRule.baseUrl());
     cfg.put("testing", true);
-
-    reportsPath = cfg.getString("reportsPath");
-    providerPath = cfg.getString("providerPath");
-    aggregatorPath = cfg.getString("aggregatorPath");
-    modConfigurationPath = cfg.getString("modConfigurationPath");
 
     vertx.deployVerticle(
         harvester, new DeploymentOptions().setConfig(cfg), context.asyncAssertSuccess());

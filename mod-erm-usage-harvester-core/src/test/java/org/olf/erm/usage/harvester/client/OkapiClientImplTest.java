@@ -13,7 +13,6 @@ import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_TENANTS;
 
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.google.common.io.Resources;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -21,8 +20,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.WebClient;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.junit.After;
@@ -48,11 +45,9 @@ public class OkapiClientImplTest {
   private OkapiClient okapiClient;
 
   @Before
-  public void setup() throws IOException {
+  public void setup() {
     vertx = Vertx.vertx();
-    JsonObject cfg =
-        new JsonObject(
-            Resources.toString(Resources.getResource("config.json"), StandardCharsets.UTF_8));
+    JsonObject cfg = new JsonObject();
     cfg.put("okapiUrl", StringUtils.removeEnd(wireMockRule.url(""), "/"));
     cfg.put("testing", true);
     okapiClient = new OkapiClientImpl(WebClient.create(vertx), cfg);
