@@ -89,55 +89,6 @@
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-resources-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>filter-config-template</id>
-            <!-- here the phase you need -->
-            <phase>validate</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${project.build.directory}</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${project.basedir}</directory>
-                  <include>config-template.json</include>
-                  <filtering>true</filtering>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>com.coderplus.maven.plugins</groupId>
-        <artifactId>copy-rename-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>rename-config-template</id>
-            <phase>generate-resources</phase>
-            <goals>
-              <goal>rename</goal>
-            </goals>
-            <configuration>
-              <fileSets>
-                <fileSet>
-                  <sourceFile>${project.build.directory}/config-template.json
-                  </sourceFile>
-                  <destinationFile>${project.build.directory}/config.json
-                  </destinationFile>
-                </fileSet>
-              </fileSets>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
         <executions>
           <execution>

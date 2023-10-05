@@ -12,7 +12,6 @@ import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
 import static org.olf.erm.usage.harvester.WorkerVerticle.MESSAGE_NO_TOKEN;
 
-import com.google.common.io.Resources;
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
 import io.restassured.parsing.Parser;
@@ -21,8 +20,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -44,13 +41,11 @@ public class ErmUsageHarvesterAPITest {
   private static Vertx vertx;
 
   @BeforeClass
-  public static void beforeClass(TestContext context) throws IOException {
+  public static void beforeClass(TestContext context) {
     vertx = Vertx.vertx();
 
     int port = NetworkUtils.nextFreePort();
-    String deployCfg =
-        Resources.toString(Resources.getResource("config.json"), StandardCharsets.UTF_8);
-    JsonObject cfg = new JsonObject(deployCfg);
+    JsonObject cfg = new JsonObject();
     cfg.put("testing", true);
     cfg.put("http.port", port);
     RestAssured.reset();

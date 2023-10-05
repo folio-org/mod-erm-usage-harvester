@@ -15,6 +15,8 @@ Module for harvesting counter reports.
 
 * The module needs to know about the Okapi URL ([see here](#setting-the-okapi-url)).
 * For scheduled harvesting you need to provide user credentials ([see here](#periodic-harvesting)).
+* Environment variables for database connectivity need to be
+  provided ([see here](https://github.com/folio-org/raml-module-builder#environment-variables)).
 
 ## Installation
 
@@ -27,8 +29,8 @@ $ mvn clean install
 ### Run plain jar
 
 ```
-$ cd mod-erm-usage-harvester-bundle
-$ java -jar target/mod-erm-usage-harvester-bundle-fat.jar -conf target/config.json
+$ env OKAPI_URL=http://127.0.0.1:9130 java -jar \
+  mod-erm-usage-harvester-bundle/target/mod-erm-usage-harvester-bundle-fat.jar
 ```
 
 ### Run via Docker
@@ -42,58 +44,31 @@ $ docker build -t mod-erm-usage-harvester .
 #### Run docker image
 
 ```
-$ docker run -p 8081:8081 mod-erm-usage-harvester .
-```
-
-#### Pass configuration to docker container
-
-as JSON string
-
-```
-$ docker run -e 'CONFIG={"okapiUrl": "http://172.17.0.1:9130"}' mod-erm-usage-harvester
-```
-
-or from file
-
-```
-$ docker run -e "CONFIG=$(<config.json)" mod-erm-usage-harvester
+$ docker run -e OKAPI_URL=http://127.0.0.1:9130 -p 8081:8081 mod-erm-usage-harvester
 ```
 
 ## Configuration
 
-Configuration is done via JSON file
+### Listening port
 
-```json
-{
-  "okapiUrl": "http://localhost:9130",
-  "tenantsPath": "/_/proxy/tenants",
-  "reportsPath": "/counter-reports",
-  "providerPath": "/usage-data-providers",
-  "aggregatorPath": "/aggregator-settings",
-  "modConfigurationPath": "/configurations/entries"
-}
-```
-
-A [default configuration](mod-erm-usage-harvester-bundle/config-template.json) is read
-from `config.json` in the execution directory. It can be overwritten by using the `-conf` parameter
-or setting the `CONFIG` environment variable.
-
-The default listening port is `8081` and can be set by using `-Dhttp.port` parameter.
+The default listening port is `8081` and can be set by using `-Dhttp.port` parameter when running
+the jar file or using the `-p` flag when using `docker run`.
 
 ### Setting the Okapi URL
 
-..is done either by configuration file like above, or by environment variable named `OKAPI_URL`.
+Use the environment variable named `OKAPI_URL` to provide the URL to Okapi.
 
 ### Proxy configuration
 
-Proxy settings are configured via JVM system properties.
+Proxy settings are configured via JVM system properties if you are running the plain jar.
 
 * `http.proxyHost`, `http.proxyPort`, `https.proxyHost`, `https.proxyPort`, `http.nonProxyHosts`
 
-If running the Docker container use environment variables. These get translated into system
-properties by `run-java.sh`.
+And via environment variables if you are running the Docker container.
 
-* `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`
+* `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`  
+  These get translated into JVM system properties by
+  the [base image](https://github.com/folio-org/folio-tools/tree/master/folio-java-docker/openjdk17).
 
 ### Quartz scheduler
 
@@ -223,7 +198,8 @@ a `400 - Bad Request` response, preserving the original response body in cases l
 
 Some observations and how they are handled so far:
 
-* Providers use `2xx` status codes to return sushi errors, not reports (gets routed and handled as `400` with original response body)
+* Providers use `2xx` status codes to return sushi errors, not reports (gets routed and handled
+  as `400` with original response body)
 * Providers return sushi errors as array instead of object (array makes it into the response body)
 * Providers return `"null"` instead of sushi error (returns a `InvalidReportException: null`)
 * Providers return reports with a `Report_Header` that contains a `Exception` object instead of

@@ -1,8 +1,0 @@
-{
-  "okapiUrl": "http://localhost:9130",
-  "tenantsPath": "/_/proxy/tenants",
-  "reportsPath": "/counter-reports",
-  "providerPath": "/usage-data-providers",
-  "aggregatorPath": "/aggregator-settings",
-  "modConfigurationPath": "/configurations/entries"
-}
