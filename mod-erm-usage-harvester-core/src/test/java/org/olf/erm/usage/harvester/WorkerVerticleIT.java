@@ -21,10 +21,6 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.olf.erm.usage.harvester.TestUtil.shutdownSchedulers;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.common.FileSource;
 import com.github.tomakehurst.wiremock.extension.Parameters;
@@ -50,6 +46,10 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.test.appender.ListAppender;
+import org.apache.logging.log4j.message.Message;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.CounterReports;
@@ -72,9 +72,7 @@ import org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
-import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProvider3;
 import org.quartz.SchedulerException;
-import org.slf4j.LoggerFactory;
 
 @RunWith(VertxUnitRunner.class)
 public class WorkerVerticleIT {
@@ -93,6 +91,8 @@ public class WorkerVerticleIT {
   private static final String providerPath = ExtUsageDataProvidersClientImpl.PATH;
   private static final Pattern providerPathWithIdPattern =
       Pattern.compile(providerPath + "/(.{8}-.{4}-.{4}-.{4}-.{12}).*");
+
+  private static final ListAppender listAppender = new ListAppender("listAppender");
 
   @ClassRule
   public static PostgresContainerRule pgContainerRule =
@@ -200,6 +200,12 @@ public class WorkerVerticleIT {
 
     baseRule.stubFor(post(urlPathEqualTo(reportsPath)).willReturn(aResponse().withStatus(201)));
 
+    // add listAppender to root logger
+    org.apache.logging.log4j.core.Logger root =
+        (org.apache.logging.log4j.core.Logger) LogManager.getRootLogger();
+    listAppender.start();
+    root.addAppender(listAppender);
+
     vertx.deployVerticle(
         RestVerticle.class.getName(),
         new DeploymentOptions().setConfig(cfg),
@@ -236,6 +242,8 @@ public class WorkerVerticleIT {
     serviceProviderBRule.stubFor(
         get(anyUrl())
             .willReturn(aResponse().withStatus(200).withBody(Json.encodePrettily(new Report()))));
+
+    listAppender.clear(); // reset ListAppender
   }
 
   @Test
@@ -334,13 +342,6 @@ public class WorkerVerticleIT {
         .get(TENANTA)
         .forEach(udp -> udp.getHarvestingConfig().getSushiConfig().setServiceType("wvitp3"));
 
-    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-    Logger logger = loggerContext.getLogger(WorkerVerticleITProvider3.class);
-
-    ListAppender<ILoggingEvent> newAppender = new ListAppender<>();
-    logger.addAppender(newAppender);
-    newAppender.start();
-
     given()
         .headers(OKAPI_HEADERS)
         .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
@@ -367,9 +368,10 @@ public class WorkerVerticleIT {
                   baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
 
                   List<String> threadNames =
-                      newAppender.list.stream()
-                          .filter(e -> e.getMessage().contains("Fetching report"))
-                          .map(ILoggingEvent::getThreadName)
+                      listAppender.getEvents().stream()
+                          .filter(
+                              e -> e.getMessage().getFormattedMessage().contains("Fetching report"))
+                          .map(LogEvent::getThreadName)
                           .collect(Collectors.toList());
                   assertThat(threadNames)
                       .hasSizeGreaterThanOrEqualTo(3 + 12)
@@ -443,13 +445,6 @@ public class WorkerVerticleIT {
         .getHarvestingConfig()
         .setHarvestingStatus(HarvestingStatus.INACTIVE);
 
-    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-    Logger logger = loggerContext.getLogger(WorkerVerticle.class);
-
-    ListAppender<ILoggingEvent> newAppender = new ListAppender<>();
-    logger.addAppender(newAppender);
-    newAppender.start();
-
     Async async = context.async();
     given()
         .headers(OKAPI_HEADERS)
@@ -463,9 +458,11 @@ public class WorkerVerticleIT {
           if (vertx.deploymentIDs().size() <= 1) {
             context.verify(
                 v -> {
-                  assertThat(newAppender.list.stream())
-                      .anyMatch(
-                          event -> event.getMessage().contains("HarvestingStatus not ACTIVE"));
+                  assertThat(
+                          listAppender.getEvents().stream()
+                              .map(LogEvent::getMessage)
+                              .map(Message::getFormattedMessage))
+                      .anyMatch(msg -> msg.contains("HarvestingStatus not ACTIVE"));
                   serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
                   baseRule.verify(0, postRequestedFor(urlEqualTo(reportsPath)));
                   baseRule.verify(0, putRequestedFor(urlMatching(providerPath + "/.*")));
@@ -482,13 +479,6 @@ public class WorkerVerticleIT {
   public void testLogMessageProviderNotFound(TestContext context) {
     tenantUDPMap.clear();
 
-    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-    Logger logger = loggerContext.getLogger(WorkerVerticle.class);
-
-    ListAppender<ILoggingEvent> newAppender = new ListAppender<>();
-    logger.addAppender(newAppender);
-    newAppender.start();
-
     Async async = context.async();
     given()
         .headers(OKAPI_HEADERS)
@@ -502,11 +492,14 @@ public class WorkerVerticleIT {
           if (vertx.deploymentIDs().size() <= 1) {
             context.verify(
                 v -> {
-                  assertThat(newAppender.list.stream())
+                  assertThat(
+                          listAppender.getEvents().stream()
+                              .map(LogEvent::getMessage)
+                              .map(Message::getFormattedMessage))
                       .anyMatch(
-                          event ->
-                              event.getMessage().contains("dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-                                  && event.getMessage().contains("404"));
+                          msg ->
+                              msg.contains("dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+                                  && msg.contains("404"));
                   serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
                   baseRule.verify(0, postRequestedFor(urlEqualTo(reportsPath)));
                   baseRule.verify(0, putRequestedFor(urlMatching(providerPath + "/.*")));

@@ -31,13 +31,12 @@
     <maven.compiler.release>17</maven.compiler.release>
     <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
 
-    <raml-module-builder.version>35.0.6</raml-module-builder.version>
+    <raml-module-builder.version>35.1.0</raml-module-builder.version>
     <ramlfiles_path>${project.basedir}/ramls</ramlfiles_path>
-    <vertx.version>4.3.8</vertx.version>
+    <vertx.version>4.4.5</vertx.version>
     <erm.usage.version>4.3.0</erm.usage.version>
-    <erm.usage.counter.version>4.0.0-SNAPSHOT</erm.usage.counter.version>
+    <erm.usage.counter.version>4.1.0-SNAPSHOT</erm.usage.counter.version>
     <configurations.version>5.7.5</configurations.version>
-    <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.4</jackson.version>
     <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
   </properties>
@@ -60,6 +59,20 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>2.20.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-stack-depchain</artifactId>
+        <version>${vertx.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
         <groupId>org.olf</groupId>
         <artifactId>mod-erm-usage-counter41</artifactId>
         <version>${erm.usage.counter.version}</version>
@@ -68,11 +81,6 @@
         <groupId>org.olf</groupId>
         <artifactId>mod-erm-usage-counter50</artifactId>
         <version>${erm.usage.counter.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-api</artifactId>
-        <version>${slf4j.version}</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
@@ -96,12 +104,6 @@
       </dependency>
 
       <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-simple</artifactId>
-        <version>${slf4j.version}</version>
-        <scope>test</scope>
-      </dependency>
-      <dependency>
         <groupId>com.github.tomakehurst</groupId>
         <artifactId>wiremock-jre8-standalone</artifactId>
         <version>2.35.1</version>
@@ -111,6 +113,10 @@
   </dependencyManagement>
 
   <dependencies>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j2-impl</artifactId>
+    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
