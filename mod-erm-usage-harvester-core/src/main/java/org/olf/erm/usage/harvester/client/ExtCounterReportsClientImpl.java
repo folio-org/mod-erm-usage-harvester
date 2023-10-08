@@ -30,7 +30,12 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
   private final String okapiUrl;
 
   public ExtCounterReportsClientImpl(String okapiUrl, String tenantId, String token) {
-    super(okapiUrl, tenantId, token, WebClient.create(VertxUtils.getVertxFromContextOrNew()));
+    this(okapiUrl, tenantId, token, WebClient.create(VertxUtils.getVertxFromContextOrNew()));
+  }
+
+  public ExtCounterReportsClientImpl(
+      String okapiUrl, String tenantId, String token, WebClient webClient) {
+    super(okapiUrl, tenantId, token, webClient);
     this.okapiUrl = okapiUrl;
   }
 

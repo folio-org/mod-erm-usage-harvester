@@ -22,12 +22,16 @@ public class ExtAggregatorSettingsClientImpl extends AggregatorSettingsClient
     super(okapiUrl, tenantId, token, WebClient.create(VertxUtils.getVertxFromContextOrNew()));
   }
 
+  public ExtAggregatorSettingsClientImpl(
+      String okapiUrl, String tenantId, String token, WebClient webClient) {
+    super(okapiUrl, tenantId, token, webClient);
+  }
+
   @Override
   public Future<AggregatorSetting> getAggregatorSetting(UsageDataProvider provider) {
     Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
     if (aggregator == null || aggregator.getId() == null) {
-      return failedFuture(
-          format("No aggregator present for provider %s", provider.getLabel()));
+      return failedFuture(format("No aggregator present for provider %s", provider.getLabel()));
     }
 
     return super.getAggregatorSettingsById(aggregator.getId(), null)

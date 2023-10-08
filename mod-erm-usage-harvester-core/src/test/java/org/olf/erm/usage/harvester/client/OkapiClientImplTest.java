@@ -49,7 +49,6 @@ public class OkapiClientImplTest {
     vertx = Vertx.vertx();
     JsonObject cfg = new JsonObject();
     cfg.put("okapiUrl", StringUtils.removeEnd(wireMockRule.url(""), "/"));
-    cfg.put("testing", true);
     okapiClient = new OkapiClientImpl(WebClient.create(vertx), cfg);
   }
 

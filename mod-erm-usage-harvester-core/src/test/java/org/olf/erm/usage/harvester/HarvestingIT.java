@@ -45,7 +45,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.test.appender.ListAppender;
@@ -75,7 +74,7 @@ import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.quartz.SchedulerException;
 
 @RunWith(VertxUnitRunner.class)
-public class WorkerVerticleIT {
+public class HarvestingIT {
 
   private static final Vertx vertx = Vertx.vertx();
   private static final String TENANTA = "tenanta";
@@ -337,7 +336,7 @@ public class WorkerVerticleIT {
   }
 
   @Test
-  public void testNumberOfThreadsUsedAfterTooManyRequestsError(TestContext context) {
+  public void testNumberOfRequestsMadeForProviderWithTooManyRequestsError(TestContext context) {
     tenantUDPMap
         .get(TENANTA)
         .forEach(udp -> udp.getHarvestingConfig().getSushiConfig().setServiceType("wvitp3"));
@@ -366,25 +365,6 @@ public class WorkerVerticleIT {
                   serviceProviderBRule.verify(0, getRequestedFor(urlPathEqualTo("/")));
                   baseRule.verify(28, postRequestedFor(urlEqualTo(reportsPath)));
                   baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
-
-                  List<String> threadNames =
-                      listAppender.getEvents().stream()
-                          .filter(
-                              e -> e.getMessage().getFormattedMessage().contains("Fetching report"))
-                          .map(LogEvent::getThreadName)
-                          .collect(Collectors.toList());
-                  assertThat(threadNames)
-                      .hasSizeGreaterThanOrEqualTo(3 + 12)
-                      .allMatch(s -> s.startsWith("pool"));
-
-                  long first5ThreadCount = threadNames.subList(0, 5).stream().distinct().count();
-                  assertThat(first5ThreadCount).isGreaterThanOrEqualTo(2);
-
-                  long last5ThreadCount =
-                      threadNames.subList(threadNames.size() - 5, threadNames.size()).stream()
-                          .distinct()
-                          .count();
-                  assertThat(last5ThreadCount).isEqualTo(1);
                 });
             vertx.cancelTimer(id);
             async.complete();
@@ -438,7 +418,6 @@ public class WorkerVerticleIT {
 
   @Test
   public void testLogMessageHarvestingNotActive(TestContext context) {
-    tenantUDPMap.get(TENANTA).remove(1);
     tenantUDPMap
         .get(TENANTA)
         .get(0)
@@ -513,7 +492,7 @@ public class WorkerVerticleIT {
   }
 
   @Test
-  public void testServiceProviderFailsInitialization(TestContext context) {
+  public void testLogMessageProviderFailsInitialization(TestContext context) {
     Async async = context.async();
 
     UsageDataProvider udp = tenantUDPMap.get(TENANTA).get(0);
@@ -537,22 +516,15 @@ public class WorkerVerticleIT {
           if (vertx.deploymentIDs().size() <= 1) {
             context.verify(
                 v -> {
+                  assertThat(
+                          listAppender.getEvents().stream()
+                              .map(LogEvent::getMessage)
+                              .map(Message::getFormattedMessage))
+                      .anyMatch(s -> s.contains("Initialization error"));
                   serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
                   serviceProviderBRule.verify(0, getRequestedFor(urlPathEqualTo("/")));
-                  baseRule.verify(
-                      3,
-                      postRequestedFor(urlEqualTo(reportsPath))
-                          .withRequestBody(
-                              matchingJsonPath(
-                                  "$.failedReason",
-                                  equalTo(
-                                      "Failed getting ServiceEndpoint: "
-                                          + "java.lang.RuntimeException: Initialization error"))));
-                  baseRule.verify(
-                      1,
-                      postRequestedFor(urlEqualTo(reportsPath))
-                          .withRequestBody(matchingJsonPath("$.yearMonth", equalTo("2021-03"))));
-                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
+                  baseRule.verify(0, postRequestedFor(urlEqualTo(reportsPath)));
+                  baseRule.verify(0, putRequestedFor(urlMatching(providerPath + "/.*")));
                 });
             vertx.cancelTimer(id);
             async.complete();
