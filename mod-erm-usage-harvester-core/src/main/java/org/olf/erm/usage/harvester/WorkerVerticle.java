@@ -3,7 +3,9 @@ package org.olf.erm.usage.harvester;
 import static io.vertx.core.Future.succeededFuture;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
+import static org.olf.erm.usage.harvester.FetchListUtil.expand;
 import static org.olf.erm.usage.harvester.Messages.createMsgStatus;
+import static org.olf.erm.usage.harvester.WorkerVerticle.QueueItem.createQueueItemList;
 import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createCounterReport;
 
 import io.vertx.core.AbstractVerticle;
@@ -32,6 +34,7 @@ public class WorkerVerticle extends AbstractVerticle {
   private static final Logger log = LoggerFactory.getLogger(WorkerVerticle.class);
   private static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
   private static final String CONFIG_NAME = "maxFailedAttempts";
+  private static final int RETRY_COUNT_TOO_MANY_REQUESTS = 2;
   private final ExtConfigurationsClient configurationsClient;
   private final ExtCounterReportsClient counterReportsClient;
   private final ExtUsageDataProvidersClient usageDataProvidersClient;
@@ -40,7 +43,7 @@ public class WorkerVerticle extends AbstractVerticle {
   private final Promise<Void> finished = Promise.promise();
   private final AtomicInteger currentTasks = new AtomicInteger(0);
   private final String tenantId;
-  private final LinkedBlockingQueue<FetchItem> queue = new LinkedBlockingQueue<>();
+  private final LinkedBlockingQueue<QueueItem> queue = new LinkedBlockingQueue<>();
   private int maxConcurrency;
 
   public WorkerVerticle(
@@ -80,7 +83,7 @@ public class WorkerVerticle extends AbstractVerticle {
                 undeploy();
                 return;
               }
-              queue.addAll(items);
+              queue.addAll(createQueueItemList(items, 0));
               for (int i = 1; i <= maxConcurrency; i++) {
                 startNext();
               }
@@ -115,10 +118,10 @@ public class WorkerVerticle extends AbstractVerticle {
 
   private void startNext() {
     if (currentTasks.get() < maxConcurrency) {
-      FetchItem item = queue.poll();
-      if (item != null) {
+      QueueItem queueItem = queue.poll();
+      if (queueItem != null) {
         currentTasks.incrementAndGet();
-        fetchReport(item)
+        fetchReport(queueItem)
             .compose(this::uploadReports)
             .onComplete(
                 ar -> {
@@ -129,53 +132,46 @@ public class WorkerVerticle extends AbstractVerticle {
     }
   }
 
-  private Future<List<CounterReport>> fetchReport(FetchItem item) {
+  private Future<List<CounterReport>> fetchReport(QueueItem queueItem) {
+    FetchItem item = queueItem.item;
     logInfo("processing {}", item);
     return serviceEndpoint
         .fetchReport(item.getReportType(), item.getBegin(), item.getEnd())
-        .otherwise(t -> handleFailedReport(item, t))
-        .otherwise(t -> createFailedCounterReportsFromFetchItem(item, t));
+        .otherwise(t -> handleFailedReport(queueItem, t));
   }
 
-  private List<CounterReport> handleFailedReport(FetchItem item, Throwable t) {
+  private List<CounterReport> handleFailedReport(QueueItem queueItem, Throwable t) {
+    FetchItem item = queueItem.item;
     logInfo("{} Received {}", item, getMessageOrToString(t));
     if (t instanceof TooManyRequestsException) {
-      logInfo("Too many requests.. retrying {}", item);
       maxConcurrency = 1;
-      queue.add(item);
-      return Collections.emptyList();
+      if (queueItem.retryCount < RETRY_COUNT_TOO_MANY_REQUESTS) {
+        logInfo("Too many requests.. adding {} back to queue", item);
+        queue.add(new QueueItem(item, queueItem.retryCount + 1));
+        return Collections.emptyList();
+      } else {
+        logInfo(
+            "Too many requests.. returning null for {} after {} retries",
+            item,
+            RETRY_COUNT_TOO_MANY_REQUESTS);
+        return createFailedReports(item, t);
+      }
     }
     if (t instanceof InvalidReportException) {
-      List<FetchItem> expand = FetchListUtil.expand(item);
+      List<FetchItem> expand = expand(item);
       // handle failed single month
       if (expand.size() <= 1) {
         logInfo("Returning null for {}", item);
-
-        return List.of(
-            createCounterReport(
-                    null,
-                    item.getReportType(),
-                    usageDataProvider,
-                    getYearMonthFromString(item.getBegin()))
-                .withFailedReason(getMessageOrToString(t)));
+        return createFailedReports(expand, t);
       } else {
         // handle failed multiple months
         logInfo("Expanded {} into {} FetchItems", item, expand.size());
-        queue.addAll(expand);
+        queue.addAll(createQueueItemList(expand, 0));
         return Collections.emptyList();
       }
     }
     // handle generic failures
-    return createFailedCounterReportsFromFetchItem(item, t);
-  }
-
-  private List<CounterReport> createFailedCounterReportsFromFetchItem(FetchItem item, Throwable t) {
-    return DateUtil.getYearMonths(item.getBegin(), item.getEnd()).stream()
-        .map(
-            ym ->
-                createCounterReport(null, item.getReportType(), usageDataProvider, ym)
-                    .withFailedReason(getMessageOrToString(t)))
-        .toList();
+    return createFailedReports(item, t);
   }
 
   /**
@@ -249,6 +245,23 @@ public class WorkerVerticle extends AbstractVerticle {
         .onFailure(t -> log.error(createMsg("{}", t.getMessage())));
   }
 
+  private List<CounterReport> createFailedReports(FetchItem item, Throwable t) {
+    return createFailedReports(expand(item), t);
+  }
+
+  private List<CounterReport> createFailedReports(List<FetchItem> items, Throwable t) {
+    return items.stream()
+        .map(
+            i ->
+                createCounterReport(
+                        null,
+                        i.getReportType(),
+                        usageDataProvider,
+                        getYearMonthFromString(i.getBegin()))
+                    .withFailedReason(getMessageOrToString(t)))
+        .toList();
+  }
+
   private String createMsg(String pattern, Object... args) {
     return Messages.createTenantProviderMsg(tenantId, usageDataProvider.getLabel(), pattern, args);
   }
@@ -260,6 +273,20 @@ public class WorkerVerticle extends AbstractVerticle {
   private void logInfo(String pattern, Object... args) {
     if (log.isInfoEnabled()) {
       log.info(createMsg(pattern, args));
+    }
+  }
+
+  static class QueueItem {
+    private final FetchItem item;
+    private final int retryCount;
+
+    public QueueItem(FetchItem item, int retryCount) {
+      this.item = item;
+      this.retryCount = retryCount;
+    }
+
+    public static List<QueueItem> createQueueItemList(List<FetchItem> itemList, int retryCount) {
+      return itemList.stream().map(item -> new QueueItem(item, retryCount)).toList();
     }
   }
 }

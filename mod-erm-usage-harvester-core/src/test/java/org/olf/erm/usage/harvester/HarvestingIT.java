@@ -3,6 +3,7 @@ package org.olf.erm.usage.harvester;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.absent;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
@@ -581,6 +582,52 @@ public class HarvestingIT {
                   serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
                   baseRule.verify(1, getRequestedFor(urlPathEqualTo(reportsPath)));
                   baseRule.verify(0, postRequestedFor(urlEqualTo(reportsPath)));
+                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
+                });
+            vertx.cancelTimer(id);
+            async.complete();
+          }
+        });
+
+    async.await(10000);
+  }
+
+  @Test
+  public void testRetryTooManyRequests(TestContext context) {
+    UsageDataProvider usageDataProvider = tenantUDPMap.get(TENANTA).get(0);
+    usageDataProvider.getHarvestingConfig().setHarvestingStart("2018-01");
+    usageDataProvider.getHarvestingConfig().setHarvestingEnd("2018-03");
+    usageDataProvider.getHarvestingConfig().getSushiConfig().setServiceType("wvitpftmr");
+
+    Async async = context.async();
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
+
+    vertx.setPeriodic(
+        1000,
+        id -> {
+          if (vertx.deploymentIDs().size() <= 1) {
+            context.verify(
+                v -> {
+                  assertThat(
+                          listAppender.getEvents().stream()
+                              .map(LogEvent::getMessage)
+                              .map(Message::getFormattedMessage))
+                      .anyMatch(msg -> msg.contains("Processing complete"));
+                  serviceProviderARule.verify(
+                      3,
+                      getRequestedFor(urlPathEqualTo("/"))
+                          .withQueryParam("begin", equalTo("2018-01-01"))
+                          .withQueryParam("end", equalTo("2018-03-31")));
+                  baseRule.verify(
+                      3,
+                      postRequestedFor(urlEqualTo(reportsPath))
+                          .withRequestBody(
+                              matchingJsonPath(
+                                  "$.failedReason", containing("TooManyRequestsException"))));
                   baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
                 });
             vertx.cancelTimer(id);
