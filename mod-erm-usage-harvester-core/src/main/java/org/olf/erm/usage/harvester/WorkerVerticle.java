@@ -93,7 +93,11 @@ public class WorkerVerticle extends AbstractVerticle {
                     }
                   });
             })
-        .onFailure(finished::fail);
+        .onFailure(
+            t -> {
+              finished.fail(t);
+              undeploy();
+            });
   }
 
   @Override
