@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester;
 
+import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
@@ -35,6 +36,7 @@ public class WorkerVerticle extends AbstractVerticle {
   private static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
   private static final String CONFIG_NAME = "maxFailedAttempts";
   private static final int RETRY_COUNT_TOO_MANY_REQUESTS = 2;
+  private static final int MAX_FAILED_UPLOAD_COUNT = 5;
   private final ExtConfigurationsClient configurationsClient;
   private final ExtCounterReportsClient counterReportsClient;
   private final ExtUsageDataProvidersClient usageDataProvidersClient;
@@ -42,6 +44,7 @@ public class WorkerVerticle extends AbstractVerticle {
   private final ServiceEndpoint serviceEndpoint;
   private final Promise<Void> finished = Promise.promise();
   private final AtomicInteger currentTasks = new AtomicInteger(0);
+  private final AtomicInteger failedUploadCount = new AtomicInteger(0);
   private final String tenantId;
   private final LinkedBlockingQueue<QueueItem> queue = new LinkedBlockingQueue<>();
   private int maxConcurrency;
@@ -203,14 +206,34 @@ public class WorkerVerticle extends AbstractVerticle {
             counterReportsClient
                 .upsertReport(cr)
                 .onSuccess(
-                    resp ->
-                        logInfo(
-                            "Upload of {} {}",
-                            counterReportToString(cr),
-                            createMsgStatus(resp.statusCode(), resp.statusMessage())))
+                    resp -> {
+                      if (resp.statusCode() / 100 != 2) {
+                        failedUploadCount.incrementAndGet();
+                      } else {
+                        failedUploadCount.set(0);
+                      }
+                      logInfo(
+                          "Upload of {} {}",
+                          counterReportToString(cr),
+                          createMsgStatus(resp.statusCode(), resp.statusMessage()));
+                    })
                 .onFailure(
-                    t -> log.error(createMsg("{} {}", counterReportToString(cr), t.getMessage())))
-                .transform(ar -> succeededFuture()));
+                    t -> {
+                      failedUploadCount.incrementAndGet();
+                      log.error(createMsg("{} {}", counterReportToString(cr), t.getMessage()));
+                    })
+                .transform(
+                    ar -> {
+                      if (failedUploadCount.get() >= MAX_FAILED_UPLOAD_COUNT) {
+                        String msg =
+                            "Stopped after " + MAX_FAILED_UPLOAD_COUNT + " failed uploads in a row";
+                        finished.tryFail(msg);
+                        undeploy();
+                        return failedFuture(msg);
+                      } else {
+                        return succeededFuture();
+                      }
+                    }));
   }
 
   private Future<Integer> getMaxFailedAttempts() {
