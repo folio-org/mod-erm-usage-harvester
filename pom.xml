@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.olf</groupId>
   <artifactId>mod-erm-usage-harvester</artifactId>
-  <version>4.4.0-SNAPSHOT</version>
+  <version>4.5.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <licenses>
@@ -34,8 +32,8 @@
     <raml-module-builder.version>35.1.0</raml-module-builder.version>
     <ramlfiles_path>${project.basedir}/ramls</ramlfiles_path>
     <vertx.version>4.4.5</vertx.version>
-    <erm.usage.version>4.3.0</erm.usage.version>
-    <erm.usage.counter.version>4.1.0-SNAPSHOT</erm.usage.counter.version>
+    <erm.usage.version>4.6.0</erm.usage.version>
+    <erm.usage.counter.version>4.0.0</erm.usage.counter.version>
     <configurations.version>5.7.5</configurations.version>
     <jackson.version>2.13.4</jackson.version>
     <maven.javadoc.failOnError>false</maven.javadoc.failOnError>

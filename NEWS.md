@@ -1,3 +1,15 @@
+# 4.4.0
+* [MODEUSHARV-98](https://issues.folio.org/browse/MODEUSHARV-98) RMB v35.1.x update
+* [MODEUSHARV-97](https://issues.folio.org/browse/MODEUSHARV-97) Remove configuration file
+* [MODEUSHARV-96](https://issues.folio.org/browse/MODEUSHARV-96) Update env vars in ModuleDescriptor
+* [MODEUSHARV-94](https://issues.folio.org/browse/MODEUSHARV-94) Update to Java 17
+* [MODEUSHARV-92](https://issues.folio.org/browse/MODEUSHARV-92) Implement a timer interface that periodically runs cleanup tasks
+* [MODEUSHARV-87](https://issues.folio.org/browse/MODEUSHARV-87) Add endpoint to delete finished harvesting jobs
+* [MODEUSHARV-86](https://issues.folio.org/browse/MODEUSHARV-86) Add endpoint to update stale JobInfo objects
+* [MODEUSHARV-85](https://issues.folio.org/browse/MODEUSHARV-85) Extend JobInfo with job execution result
+* [MODEUSHARV-84](https://issues.folio.org/browse/MODEUSHARV-84) Upgrade counter dependency to v3
+* [MODEUSHARV-77](https://issues.folio.org/browse/MODEUSHARV-77) Implement refresh token rotation
+
 # 4.3.1
 * Bump guava from 31.1-jre to 32.0.1-jre
 * [MODEUSHARV-95](https://issues.folio.org/browse/MODEUSHARV-95) Error parsing DataTypeEnum from counter5 report
