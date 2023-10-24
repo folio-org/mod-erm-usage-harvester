@@ -45,9 +45,23 @@ public class FetchListUtil {
                     fetchItem.getReportType(),
                     ym.atDay(1).toString(),
                     ym.atEndOfMonth().toString()))
-        .collect(Collectors.toList());
+        .toList();
   }
 
+  /**
+   * Collapses a list of {@link FetchItem} objects based on their report type and date ranges.
+   *
+   * <p>This method takes a list of {@link FetchItem} objects and groups them by their report type.
+   * For report type "TR" the items remain unchanged. For other report types, the items are grouped
+   * into date ranges where each range spans consecutive months and contains up to a maximum number
+   * of months specified by {@code MAX_RANGE}.
+   *
+   * @param items The list of {@link FetchItem} objects to be collapsed.
+   * @return A collapsed list of {@link FetchItem} objects, where items with report type "TR" remain
+   *     unchanged, and items with other report types are grouped into date ranges. The resulting
+   *     list is sorted by report type and date.
+   * @see FetchItem
+   */
   public static List<FetchItem> collapse(List<FetchItem> items) {
     Set<Entry<String, List<FetchItem>>> groupedByReportType =
         items.stream()
@@ -57,8 +71,11 @@ public class FetchListUtil {
 
     return groupedByReportType.stream()
         .map(
-            e ->
-                e.getValue().stream()
+            e -> {
+              if ("TR".equals(e.getKey())) {
+                return e.getValue();
+              } else {
+                return e.getValue().stream()
                     .map(fi -> DateUtil.getYearMonthFromString(fi.getBegin()))
                     .sorted()
                     .reduce(
@@ -90,8 +107,10 @@ public class FetchListUtil {
                                             .map(end -> new FetchItem(e.getKey(), start, end)))
                                 .orElse(null))
                     .filter(Objects::nonNull)
-                    .collect(Collectors.toList()))
+                    .toList();
+              }
+            })
         .flatMap(Collection::stream)
-        .collect(Collectors.toList());
+        .toList();
   }
 }
