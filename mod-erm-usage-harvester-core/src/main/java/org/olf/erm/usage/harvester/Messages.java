@@ -1,6 +1,5 @@
 package org.olf.erm.usage.harvester;
 
-import java.util.function.Supplier;
 import org.slf4j.helpers.MessageFormatter;
 
 public class Messages {
@@ -30,10 +29,9 @@ public class Messages {
     return String.format("Provider: %s, %s", provider, format(pattern, args));
   }
 
-  public static Supplier<String> createTenantProviderMsg(
+  public static String createTenantProviderMsg(
       String tenant, String provider, String pattern, Object... args) {
-    return () ->
-        String.format("Tenant: %s, Provider: %s, %s", tenant, provider, format(pattern, args));
+    return String.format("Tenant: %s, Provider: %s, %s", tenant, provider, format(pattern, args));
   }
 
   public static String format(String pattern, Object... args) {

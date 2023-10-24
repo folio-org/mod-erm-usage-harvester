@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.rest.impl;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
+import static org.folio.rest.impl.ErmUsageHarvesterAPI.MESSAGE_NO_TOKEN;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
@@ -10,7 +11,6 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
-import static org.olf.erm.usage.harvester.WorkerVerticle.MESSAGE_NO_TOKEN;
 
 import io.restassured.RestAssured;
 import io.restassured.http.Header;

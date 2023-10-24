@@ -10,6 +10,7 @@ import java.util.List;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.resource.interfaces.PostDeployVerticle;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
+import org.olf.erm.usage.harvester.periodic.HarvestProviderJobListener;
 import org.olf.erm.usage.harvester.periodic.JobInfoJobListener;
 import org.olf.erm.usage.harvester.periodic.JobInfoSchedulerListener;
 import org.olf.erm.usage.harvester.periodic.PeriodicConfigPgUtil;
@@ -53,6 +54,7 @@ public class PostDeployImpl implements PostDeployVerticle {
     try {
       Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
       scheduler.getListenerManager().addJobListener(new JobInfoJobListener());
+      scheduler.getListenerManager().addJobListener(new HarvestProviderJobListener());
       scheduler.getListenerManager().addSchedulerListener(new JobInfoSchedulerListener());
       scheduler.getContext().put("vertxContext", context);
       scheduler.start();

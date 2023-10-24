@@ -5,3 +5,4 @@ org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProvider2
 org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProvider3
 org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderFailsWithGetMessageNull
 org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderFailsInitialization
+org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderFailsTooManyRequests

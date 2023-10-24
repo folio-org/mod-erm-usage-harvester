@@ -1,49 +1,28 @@
 package org.olf.erm.usage.harvester;
 
-import static io.reactivex.schedulers.Schedulers.trampoline;
-import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static io.vertx.core.Future.succeededFuture;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
+import static org.olf.erm.usage.harvester.FetchListUtil.expand;
 import static org.olf.erm.usage.harvester.Messages.createMsgStatus;
-import static org.olf.erm.usage.harvester.Messages.createProviderMsg;
-import static org.olf.erm.usage.harvester.Messages.createTenantMsg;
-import static org.olf.erm.usage.harvester.Messages.createTenantProviderMsg;
+import static org.olf.erm.usage.harvester.WorkerVerticle.QueueItem.createQueueItemList;
 import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createCounterReport;
 
-import io.reactivex.Completable;
-import io.reactivex.CompletableObserver;
-import io.reactivex.Observable;
-import io.reactivex.Scheduler;
-import io.reactivex.Single;
-import io.reactivex.observers.DisposableCompletableObserver;
-import io.reactivex.schedulers.Schedulers;
+import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.reactivex.SingleHelper;
-import io.vertx.reactivex.core.AbstractVerticle;
 import java.time.Instant;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import org.folio.rest.jaxrs.model.Aggregator;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import org.folio.rest.jaxrs.model.CounterReport;
-import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClient;
-import org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtConfigurationsClient;
-import org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
-import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
-import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
@@ -52,373 +31,262 @@ import org.slf4j.LoggerFactory;
 
 public class WorkerVerticle extends AbstractVerticle {
 
-  public static final String MESSAGE_NO_TENANTID = "No tenantId provided";
-  public static final String MESSAGE_NO_TOKEN = "No token provided";
-  public static final String MESSAGE_NO_PROVIDERID = "No providerId provided";
-  private static final Logger LOG = LoggerFactory.getLogger(WorkerVerticle.class);
+  private static final Logger log = LoggerFactory.getLogger(WorkerVerticle.class);
   private static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
   private static final String CONFIG_NAME = "maxFailedAttempts";
-
+  private static final int RETRY_COUNT_TOO_MANY_REQUESTS = 2;
+  private final ExtConfigurationsClient configurationsClient;
+  private final ExtCounterReportsClient counterReportsClient;
+  private final ExtUsageDataProvidersClient usageDataProvidersClient;
+  private final UsageDataProvider usageDataProvider;
+  private final ServiceEndpoint serviceEndpoint;
   private final Promise<Void> finished = Promise.promise();
-  private final String token;
+  private final AtomicInteger currentTasks = new AtomicInteger(0);
   private final String tenantId;
-  private final String providerId;
-  private int maxFailedAttempts = 5;
-  private ExtUsageDataProvidersClient udpClient;
-  private ExtAggregatorSettingsClient aggregatorSettingsClient;
-  private ExtCounterReportsClient counterReportsClient;
+  private final LinkedBlockingQueue<QueueItem> queue = new LinkedBlockingQueue<>();
+  private int maxConcurrency;
+
+  public WorkerVerticle(
+      ExtConfigurationsClient configurationsClient,
+      ExtCounterReportsClient counterReportsClient,
+      ExtUsageDataProvidersClient usageDataProvidersClient,
+      String tenantId,
+      UsageDataProvider usageDataProvider,
+      ServiceEndpoint serviceEndpoint,
+      int initialConcurrency) {
+    this.configurationsClient = configurationsClient;
+    this.counterReportsClient = counterReportsClient;
+    this.usageDataProvidersClient = usageDataProvidersClient;
+    this.tenantId = tenantId;
+    this.usageDataProvider = usageDataProvider;
+    this.serviceEndpoint = serviceEndpoint;
+    this.maxConcurrency = initialConcurrency;
+  }
 
   public Future<Void> getFinished() {
-    return finished.future();
-  }
-
-  private void logInfo(Supplier<String> logMessage) {
-    if (LOG.isInfoEnabled()) {
-      LOG.info(logMessage.get());
-    }
-  }
-
-  private void logError(Supplier<String> logMessage, Throwable t) {
-    if (LOG.isErrorEnabled()) {
-      LOG.error(logMessage.get(), t);
-    }
-  }
-
-  private void logError(Supplier<String> logMessage) {
-    if (LOG.isErrorEnabled()) {
-      LOG.error(logMessage.get());
-    }
-  }
-
-  private CompletableObserver createCompletableObserver() {
-    return new DisposableCompletableObserver() {
-      @Override
-      public void onComplete() {
-        finished.complete();
-        logInfo(() -> createTenantMsg(tenantId, "Processing completed"));
-      }
-
-      @Override
-      public void onError(Throwable e) {
-        finished.fail(e);
-        logError(() -> createTenantMsg(tenantId, "Error during processing, {}", e.getMessage()), e);
-      }
-    };
-  }
-
-  public WorkerVerticle(String tenantId, String token, String providerId) {
-    this.tenantId = requireNonNull(tenantId, MESSAGE_NO_TENANTID);
-    this.token = requireNonNull(token, MESSAGE_NO_TOKEN);
-    this.providerId = requireNonNull(providerId, MESSAGE_NO_PROVIDERID);
-  }
-
-  public Future<ServiceEndpoint> getServiceEndpoint(UsageDataProvider provider) {
-    Promise<AggregatorSetting> aggrPromise = Promise.promise();
-    Promise<ServiceEndpoint> sepPromise = Promise.promise();
-
-    boolean useAggregator =
-        provider.getHarvestingConfig().getHarvestVia().equals(HarvestVia.AGGREGATOR);
-    Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
-    // Complete aggrPromise if aggregator is not set.. aka skip it
-    if (useAggregator && aggregator != null && aggregator.getId() != null) {
-      aggregatorSettingsClient
-          .getAggregatorSetting(provider)
-          .onSuccess(
-              result ->
-                  LOG.info(
-                      createTenantMsg(
-                          tenantId, "got AggregatorSetting for id: {}", result.getId())))
-          .onComplete(aggrPromise);
-    } else {
-      aggrPromise.complete(null);
-    }
-
-    return aggrPromise
+    return finished
         .future()
-        .compose(
-            as -> {
-              ServiceEndpoint sep = ServiceEndpoint.create(provider, as);
-              if (sep != null) {
-                sepPromise.complete(sep);
-              } else {
-                sepPromise.fail(
-                    createTenantMsg(
-                        tenantId,
-                        createProviderMsg(
-                            provider.getLabel(), "No service implementation available")));
+        .onSuccess(v -> logInfo("Processing completed"))
+        .onFailure(t -> log.error(createMsg("Error during processing, {}", t.getMessage()), t));
+  }
+
+  @Override
+  public void start() {
+    logInfo("Deploying WorkerVerticle");
+    updateUDPLastHarvestingDate();
+
+    getMaxFailedAttempts()
+        .compose(this::getFetchList)
+        .onSuccess(
+            items -> {
+              if (items.isEmpty()) {
+                undeploy();
+                return;
               }
-              return sepPromise.future();
+              queue.addAll(createQueueItemList(items, 0));
+              for (int i = 1; i <= maxConcurrency; i++) {
+                startNext();
+              }
+              vertx.setPeriodic(
+                  5000,
+                  id -> {
+                    if (queue.isEmpty() && currentTasks.get() == 0) {
+                      vertx.cancelTimer(id);
+                      undeploy();
+                    }
+                  });
+            })
+        .onFailure(
+            t -> {
+              finished.fail(t);
+              undeploy();
             });
   }
 
-  private <T> Single<T> toSingle(Future<T> future) {
-    return SingleHelper.toSingle(future::onComplete);
+  @Override
+  public void stop() {
+    finished.tryComplete();
   }
 
-  private Observable<List<CounterReport>> processItems(
-      UsageDataProvider provider,
-      ServiceEndpoint sep,
-      List<FetchItem> items,
-      Scheduler scheduler,
-      ThreadPoolExecutor executor) {
+  private void undeploy() {
+    vertx
+        .undeploy(context.deploymentID())
+        .onSuccess(v -> logInfo("Undeployed WorkerVericle"))
+        .onFailure(
+            t -> log.error(createMsg("Error undeploying WorkerVerticle: {}", t.getMessage()), t));
+  }
 
-    return Observable.fromIterable(items)
-        .flatMap(
-            fetchItem ->
-                Observable.zip(
-                        Observable.timer(1, SECONDS, trampoline())
-                            .doOnNext(
-                                l ->
-                                    logInfo(
-                                        createTenantProviderMsg(
-                                            tenantId,
-                                            provider.getLabel(),
-                                            "processing {}",
-                                            fetchItem))),
-                        Single.defer(
-                                () ->
-                                    toSingle(
-                                        sep.fetchReport(
-                                            fetchItem.getReportType(),
-                                            fetchItem.getBegin(),
-                                            fetchItem.getEnd())))
-                            .toObservable(),
-                        (f, s) -> s)
-                    .subscribeOn(scheduler)
-                    .retry(
-                        3,
-                        t -> {
-                          if (t instanceof TooManyRequestsException) {
-                            logInfo(
-                                createTenantProviderMsg(
-                                    tenantId,
-                                    provider.getLabel(),
-                                    "Too many requests.. retrying {}",
-                                    fetchItem));
-                            executor.setCorePoolSize(1);
-                            executor.setMaximumPoolSize(1);
-                            return true;
-                          } else {
-                            return false;
-                          }
-                        })
-                    .onErrorResumeNext(
-                        t -> {
-                          logInfo(
-                              createTenantProviderMsg(
-                                  tenantId,
-                                  provider.getLabel(),
-                                  "received {}",
-                                  getMessageOrToString(t)));
-                          if (!(t instanceof InvalidReportException)) {
-                            // handle generic failures
-                            List<CounterReport> counterReportList =
-                                DateUtil.getYearMonths(fetchItem.getBegin(), fetchItem.getEnd())
-                                    .stream()
-                                    .map(
-                                        ym ->
-                                            createCounterReport(
-                                                    null, fetchItem.getReportType(), provider, ym)
-                                                .withFailedReason(getMessageOrToString(t)))
-                                    .collect(Collectors.toList());
-                            return Observable.just(counterReportList);
-                          }
-                          List<FetchItem> expand = FetchListUtil.expand(fetchItem);
-                          // handle failed single month
-                          if (expand.size() <= 1) {
-                            logInfo(
-                                createTenantProviderMsg(
-                                    tenantId,
-                                    provider.getLabel(),
-                                    "Returning null for {}",
-                                    fetchItem));
-                            return Observable.just(
-                                List.of(
-                                    createCounterReport(
-                                            null,
-                                            fetchItem.getReportType(),
-                                            provider,
-                                            getYearMonthFromString(fetchItem.getBegin()))
-                                        .withFailedReason(getMessageOrToString(t))));
-                          } else {
-                            // handle failed multiple months
-                            logInfo(
-                                createTenantProviderMsg(
-                                    tenantId,
-                                    provider.getLabel(),
-                                    "Expanded {} into {} FetchItems",
-                                    fetchItem,
-                                    expand.size()));
-                            return processItems(provider, sep, expand, scheduler, executor);
-                          }
-                        }));
+  private void startNext() {
+    if (currentTasks.get() < maxConcurrency) {
+      QueueItem queueItem = queue.poll();
+      if (queueItem != null) {
+        currentTasks.incrementAndGet();
+        fetchReport(queueItem)
+            .compose(this::uploadReports)
+            .onComplete(
+                ar -> {
+                  currentTasks.decrementAndGet();
+                  startNext();
+                });
+      }
+    }
+  }
+
+  private Future<List<CounterReport>> fetchReport(QueueItem queueItem) {
+    FetchItem item = queueItem.item;
+    logInfo("processing {}", item);
+    return serviceEndpoint
+        .fetchReport(item.getReportType(), item.getBegin(), item.getEnd())
+        .otherwise(t -> handleFailedReport(queueItem, t));
+  }
+
+  private List<CounterReport> handleFailedReport(QueueItem queueItem, Throwable t) {
+    FetchItem item = queueItem.item;
+    logInfo("{} Received {}", item, getMessageOrToString(t));
+    if (t instanceof TooManyRequestsException) {
+      maxConcurrency = 1;
+      if (queueItem.retryCount < RETRY_COUNT_TOO_MANY_REQUESTS) {
+        logInfo("Too many requests.. adding {} back to queue", item);
+        queue.add(new QueueItem(item, queueItem.retryCount + 1));
+        return Collections.emptyList();
+      } else {
+        logInfo(
+            "Too many requests.. returning null for {} after {} retries",
+            item,
+            RETRY_COUNT_TOO_MANY_REQUESTS);
+        return createFailedReports(item, t);
+      }
+    }
+    if (t instanceof InvalidReportException) {
+      List<FetchItem> expand = expand(item);
+      // handle failed single month
+      if (expand.size() <= 1) {
+        logInfo("Returning null for {}", item);
+        return createFailedReports(expand, t);
+      } else {
+        // handle failed multiple months
+        logInfo("Expanded {} into {} FetchItems", item, expand.size());
+        queue.addAll(createQueueItemList(expand, 0));
+        return Collections.emptyList();
+      }
+    }
+    // handle generic failures
+    return createFailedReports(item, t);
+  }
+
+  /**
+   * Chain and execute asynchronous methods on a list of CounterReport objects sequentially.
+   *
+   * <p>This method takes a list of CounterReport objects and a method that processes each
+   * CounterReport asynchronously. It then sequentially executes the provided method on each item in
+   * the list, waiting for the completion of one before starting the next.
+   *
+   * @param list The list of CounterReport objects to process sequentially.
+   * @param method A function that takes a CounterReport object and returns a Future<Void>
+   *     representing an asynchronous operation on that object.
+   * @return A Future<Void> representing the completion of all asynchronous operations in the list,
+   *     executed sequentially.
+   */
+  private Future<Void> chainCall(
+      List<CounterReport> list, Function<CounterReport, Future<Void>> method) {
+    return list.stream()
+        .reduce(
+            Future.succeededFuture(),
+            (acc, item) -> acc.compose(v -> method.apply(item)),
+            (a, b) -> a);
+  }
+
+  private Future<Void> uploadReports(List<CounterReport> crs) {
+    return chainCall(
+        crs,
+        cr ->
+            counterReportsClient
+                .upsertReport(cr)
+                .onSuccess(
+                    resp ->
+                        logInfo(
+                            "Upload of {} {}",
+                            counterReportToString(cr),
+                            createMsgStatus(resp.statusCode(), resp.statusMessage())))
+                .onFailure(
+                    t -> log.error(createMsg("{} {}", counterReportToString(cr), t.getMessage())))
+                .transform(ar -> succeededFuture()));
+  }
+
+  private Future<Integer> getMaxFailedAttempts() {
+    return configurationsClient
+        .getModConfigurationValue(CONFIG_MODULE, CONFIG_NAME)
+        .map(Integer::parseInt)
+        .onFailure(
+            t ->
+                logInfo("Failed getting config value {}: {}", CONFIG_NAME, getMessageOrToString(t)))
+        .otherwise(5)
+        .onSuccess(s -> logInfo("Using config value {}={}", CONFIG_NAME, s));
+  }
+
+  private Future<List<FetchItem>> getFetchList(int maxFailedAttempts) {
+    return counterReportsClient
+        .getFetchList(usageDataProvider, maxFailedAttempts)
+        .map(
+            list -> {
+              if (list.isEmpty()) {
+                logInfo("No reports need to be fetched.");
+              }
+              return list;
+            })
+        .map(FetchListUtil::collapse)
+        .onFailure(t -> logInfo(t.getMessage()));
+  }
+
+  private void updateUDPLastHarvestingDate() {
+    usageDataProvidersClient
+        .updateUDPLastHarvestingDate(usageDataProvider, Date.from(Instant.now()))
+        .onSuccess(v -> logInfo("Updated harvestingDate"))
+        .onFailure(t -> log.error(createMsg("{}", t.getMessage())));
+  }
+
+  private List<CounterReport> createFailedReports(FetchItem item, Throwable t) {
+    return createFailedReports(expand(item), t);
+  }
+
+  private List<CounterReport> createFailedReports(List<FetchItem> items, Throwable t) {
+    return items.stream()
+        .map(
+            i ->
+                createCounterReport(
+                        null,
+                        i.getReportType(),
+                        usageDataProvider,
+                        getYearMonthFromString(i.getBegin()))
+                    .withFailedReason(getMessageOrToString(t)))
+        .toList();
+  }
+
+  private String createMsg(String pattern, Object... args) {
+    return Messages.createTenantProviderMsg(tenantId, usageDataProvider.getLabel(), pattern, args);
   }
 
   private String counterReportToString(CounterReport cr) {
     return cr.getReportName() + " " + cr.getYearMonth();
   }
 
-  private List<CounterReport> createFailedCounterReports(
-      UsageDataProvider provider, String failedReason, List<FetchItem> list) {
-    List<FetchItem> expandedList =
-        list.stream()
-            .map(FetchListUtil::expand)
-            .flatMap(Collection::stream)
-            .distinct()
-            .collect(Collectors.toList());
-    return expandedList.stream()
-        .map(
-            fi ->
-                createCounterReport(
-                        null, fi.getReportType(), provider, getYearMonthFromString(fi.getBegin()))
-                    .withFailedReason(failedReason))
-        .collect(Collectors.toList());
+  private void logInfo(String pattern, Object... args) {
+    if (log.isInfoEnabled()) {
+      log.info(createMsg(pattern, args));
+    }
   }
 
-  public Completable fetchAndPostReportsRx(UsageDataProvider provider) {
-    logInfo(() -> createTenantMsg(tenantId, "processing provider: {}", provider.getLabel()));
+  static class QueueItem {
+    private final FetchItem item;
+    private final int retryCount;
 
-    toSingle(udpClient.updateUDPLastHarvestingDate(provider, Date.from(Instant.now())))
-        .doOnSuccess(
-            v ->
-                logInfo(
-                    createTenantProviderMsg(
-                        tenantId, provider.getLabel(), "Updated harvestingDate")))
-        .doOnError(
-            t ->
-                logError(
-                    createTenantProviderMsg(tenantId, provider.getLabel(), "{}", t.getMessage())))
-        .ignoreElement()
-        .onErrorComplete()
-        .subscribe();
+    public QueueItem(FetchItem item, int retryCount) {
+      this.item = item;
+      this.retryCount = retryCount;
+    }
 
-    Single<ServiceEndpoint> sepSingle = toSingle(getServiceEndpoint(provider));
-    Single<List<FetchItem>> fetchListSingle =
-        toSingle(counterReportsClient.getFetchList(provider, maxFailedAttempts))
-            .map(
-                list -> {
-                  if (list.isEmpty()) {
-                    logInfo(
-                        () ->
-                            createTenantMsg(
-                                tenantId,
-                                createProviderMsg(
-                                    provider.getLabel(), "No reports need to be fetched.")));
-                  }
-                  return list;
-                })
-            .map(FetchListUtil::collapse)
-            .doOnError(
-                t ->
-                    logInfo(
-                        createTenantProviderMsg(tenantId, provider.getLabel(), t.getMessage())));
-
-    return sepSingle
-        .flatMap(
-            sep -> {
-              ThreadPoolExecutor threadPoolExecutor =
-                  new ThreadPoolExecutor(4, 4, 1, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
-              return fetchListSingle.map(
-                  list ->
-                      processItems(
-                          provider,
-                          sep,
-                          list,
-                          Schedulers.from(threadPoolExecutor),
-                          threadPoolExecutor));
-            })
-        .onErrorReturn(
-            t ->
-                fetchListSingle
-                    .map(
-                        list ->
-                            createFailedCounterReports(
-                                provider, "Failed getting ServiceEndpoint: " + t.toString(), list))
-                    .toObservable())
-        .flatMapObservable(listObservable -> listObservable)
-        .flatMap(Observable::fromIterable)
-        .doOnNext(
-            cr ->
-                logInfo(
-                    createTenantProviderMsg(
-                        tenantId, provider.getLabel(), "Received: {}", counterReportToString(cr))))
-        .flatMapCompletable(
-            cr ->
-                toSingle(counterReportsClient.upsertReport(cr))
-                    .doOnSuccess(
-                        resp ->
-                            logInfo(
-                                createTenantProviderMsg(
-                                    tenantId,
-                                    provider.getLabel(),
-                                    "{} {}",
-                                    counterReportToString(cr),
-                                    createMsgStatus(resp.statusCode(), resp.statusMessage()))))
-                    .doOnError(
-                        t ->
-                            logError(
-                                createTenantProviderMsg(
-                                    tenantId,
-                                    provider.getLabel(),
-                                    "{} {}",
-                                    counterReportToString(cr),
-                                    t.getMessage())))
-                    .ignoreElement()
-                    .onErrorComplete());
-  }
-
-  public void runSingleProviderRx() {
-    toSingle(udpClient.getActiveProviderById(providerId))
-        .flatMapCompletable(this::fetchAndPostReportsRx)
-        .doFinally(() -> vertx.undeploy(this.deploymentID()))
-        .subscribe(createCompletableObserver());
-  }
-
-  @Override
-  public void stop() throws Exception {
-    super.stop();
-    logInfo(() -> createTenantMsg(tenantId, "undeployed WorkerVerticle"));
-  }
-
-  @Override
-  public void start() throws Exception {
-    super.start();
-
-    String okapiUrl = requireNonNull(config().getString("okapiUrl"), "No okapiUrl configured");
-    udpClient = new ExtUsageDataProvidersClientImpl(okapiUrl, tenantId, token);
-    ExtConfigurationsClient configurationsClient =
-        new ExtConfigurationsClientImpl(okapiUrl, tenantId, token);
-    aggregatorSettingsClient = new ExtAggregatorSettingsClientImpl(okapiUrl, tenantId, token);
-    counterReportsClient = new ExtCounterReportsClientImpl(okapiUrl, tenantId, token);
-
-    configurationsClient
-        .getModConfigurationValue(CONFIG_MODULE, CONFIG_NAME)
-        .onSuccess(
-            s -> LOG.info(createTenantMsg(tenantId, "Got config value {}={}", CONFIG_NAME, s)))
-        .onFailure(
-            t ->
-                LOG.info(
-                    createTenantMsg(
-                        tenantId,
-                        "Failed getting config value {}: {}",
-                        CONFIG_NAME,
-                        t.getMessage())))
-        .onComplete(
-            ar -> {
-              if (ar.succeeded()) {
-                maxFailedAttempts = Integer.parseInt(ar.result());
-              }
-              logInfo(
-                  () -> createTenantMsg(tenantId, "using maxFailedAttempts={}", maxFailedAttempts));
-
-              boolean isTesting = config().getBoolean("testing", false);
-              if (!isTesting) {
-                runSingleProviderRx();
-              } else {
-                LOG.info("Skipping harvesting (testing==true)");
-              }
-            });
-
-    logInfo(() -> createTenantMsg(tenantId, "deployed WorkerVericle"));
+    public static List<QueueItem> createQueueItemList(List<FetchItem> itemList, int retryCount) {
+      return itemList.stream().map(item -> new QueueItem(item, retryCount)).toList();
+    }
   }
 }

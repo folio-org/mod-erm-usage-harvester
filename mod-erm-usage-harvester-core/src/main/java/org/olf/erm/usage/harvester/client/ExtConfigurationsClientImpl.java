@@ -22,6 +22,11 @@ public class ExtConfigurationsClientImpl extends ConfigurationsClient
     super(okapiUrl, tenantId, token, WebClient.create(VertxUtils.getVertxFromContextOrNew()));
   }
 
+  public ExtConfigurationsClientImpl(
+      String okapiUrl, String tenantId, String token, WebClient webClient) {
+    super(okapiUrl, tenantId, token, webClient);
+  }
+
   @Override
   public Future<String> getModConfigurationValue(String module, String configName) {
     final String queryStr = format("(module = %s and configName = %s)", module, configName);

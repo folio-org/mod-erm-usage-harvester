@@ -5,7 +5,6 @@ import static io.vertx.core.Future.succeededFuture;
 import static io.vertx.core.http.HttpMethod.POST;
 import static org.folio.okapi.common.XOkapiHeaders.TENANT;
 import static org.folio.okapi.common.XOkapiHeaders.TOKEN;
-import static org.olf.erm.usage.harvester.WorkerVerticle.MESSAGE_NO_TOKEN;
 import static org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl.NO_ENTRY;
 import static org.olf.erm.usage.harvester.periodic.JobInfoUtil.upsertJobInfo;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
@@ -28,7 +27,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
@@ -58,6 +56,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
   public static final String TABLE_NAME_JOBS = "jobs";
   public static final String STALE_JOB_ERROR_MSG = "Stale job";
+  public static final String MESSAGE_NO_TOKEN = "No token provided";
 
   private static final Criteria finishedCriteria =
       new Criteria().addField("'finishedAt'").setJSONB(true).setOperation("IS NOT NULL");
@@ -159,7 +158,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
                           || provider.isAggregator().equals(Boolean.valueOf(aggregator)))
               .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))
               .map(ServiceEndpointProvider::toJson)
-              .collect(Collectors.toList());
+              .toList();
       String result = new JsonObject().put("implementations", new JsonArray(collect)).toString();
       asyncResultHandler.handle(
           succeededFuture(GetErmUsageHarvesterImplResponse.respond200WithApplicationJson(result)));
@@ -262,7 +261,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
             res -> {
               List<Future> upserts =
                   res.getResults().stream()
-                      .map(
+                      .<Future>map(
                           ji ->
                               upsertJobInfo(
                                   ji.withFinishedAt(
@@ -270,7 +269,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
                                       .withResult(Result.FAILURE)
                                       .withErrorMessage(STALE_JOB_ERROR_MSG),
                                   tenantId))
-                      .collect(Collectors.toList());
+                      .toList();
               return CompositeFuture.join(upserts);
             })
         .<Response>map(cf -> PostErmUsageHarvesterJobsPurgestaleResponse.respond204())

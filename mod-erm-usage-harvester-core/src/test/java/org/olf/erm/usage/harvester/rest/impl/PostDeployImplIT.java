@@ -7,6 +7,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.olf.erm.usage.harvester.TestUtil.shutdownSchedulers;
+import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_TENANTS;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
@@ -62,7 +63,6 @@ public class PostDeployImplIT {
         new JsonObject()
             .put("http.port", port)
             .put("okapiUrl", "http://localhost:" + wireMockRule.port())
-            .put("tenantsPath", "/_/proxy/tenants")
             .put("testing", true));
 
     JsonArray tenantsResponseBody =
@@ -70,7 +70,7 @@ public class PostDeployImplIT {
             .add(new JsonObject().put("id", TENANT))
             .add(new JsonObject().put("id", TENANT2));
     stubFor(
-        get(urlEqualTo("/_/proxy/tenants"))
+        get(urlEqualTo(PATH_TENANTS))
             .willReturn(aResponse().withBody(tenantsResponseBody.encodePrettily())));
 
     PeriodicConfig config =
