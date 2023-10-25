@@ -104,7 +104,10 @@ public class HarvestingIT {
 
   @ClassRule
   public static WireMockRule baseRule =
-      new WireMockRule(wireMockConfig().extensions(new UDPResponseTransformer()).dynamicPort());
+      new WireMockRule(
+          wireMockConfig()
+              .extensions(new UDPResponseTransformer(), new UploadResponseTransformer())
+              .dynamicPort());
 
   @ClassRule
   public static WireMockRule serviceProviderARule =
@@ -191,8 +194,6 @@ public class HarvestingIT {
     baseRule.stubFor(
         put(urlMatching(providerPath + "/.*")).willReturn(aResponse().withStatus(204)));
 
-    baseRule.stubFor(post(urlPathEqualTo(reportsPath)).willReturn(aResponse().withStatus(201)));
-
     // add listAppender to root logger
     org.apache.logging.log4j.core.Logger root =
         (org.apache.logging.log4j.core.Logger) LogManager.getRootLogger();
@@ -238,6 +239,8 @@ public class HarvestingIT {
                             new CounterReports()
                                 .withCounterReports(Collections.emptyList())
                                 .withTotalRecords(0)))));
+
+    baseRule.stubFor(post(urlPathEqualTo(reportsPath)).willReturn(aResponse().withStatus(201)));
 
     serviceProviderARule.stubFor(
         get(anyUrl())
@@ -639,6 +642,100 @@ public class HarvestingIT {
   }
 
   @Test
+  public void testFailedUploadsMax(TestContext context) {
+    UsageDataProvider usageDataProvider = tenantUDPMap.get(TENANTA).get(0);
+    usageDataProvider.getHarvestingConfig().setHarvestingStart("2018-01");
+    usageDataProvider.getHarvestingConfig().setHarvestingEnd("2018-12");
+
+    baseRule.stubFor(
+        post(urlPathEqualTo(reportsPath))
+            .willReturn(aResponse().withStatus(500).withStatusMessage("Internal server error")));
+
+    Async async = context.async();
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
+
+    vertx.setPeriodic(
+        1000,
+        id -> {
+          if (vertx.deploymentIDs().size() <= 1) {
+            context.verify(
+                v -> {
+                  assertThat(
+                          listAppender.getEvents().stream()
+                              .map(LogEvent::getMessage)
+                              .map(Message::getFormattedMessage))
+                      .anyMatch(msg -> msg.contains("Error during processing"));
+                  serviceProviderARule.verify(
+                      1,
+                      getRequestedFor(urlPathEqualTo("/"))
+                          .withQueryParam("begin", equalTo("2018-01-01"))
+                          .withQueryParam("end", equalTo("2018-12-31")));
+                  baseRule.verify(5, postRequestedFor(urlEqualTo(reportsPath)));
+                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
+                });
+            vertx.cancelTimer(id);
+            async.complete();
+          }
+        });
+
+    async.await(10000);
+  }
+
+  @Test
+  public void testFailedUploads(TestContext context) {
+    UsageDataProvider usageDataProvider = tenantUDPMap.get(TENANTA).get(0);
+    usageDataProvider.getHarvestingConfig().setHarvestingStart("2018-01");
+    usageDataProvider.getHarvestingConfig().setHarvestingEnd("2018-12");
+
+    baseRule.stubFor(
+        post(urlPathEqualTo(reportsPath))
+            .willReturn(aResponse().withTransformers("UploadResponseTransformer")));
+
+    Async async = context.async();
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
+
+    vertx.setPeriodic(
+        1000,
+        id -> {
+          if (vertx.deploymentIDs().size() <= 1) {
+            context.verify(
+                v -> {
+                  List<String> messages =
+                      listAppender.getEvents().stream()
+                          .map(LogEvent::getMessage)
+                          .map(Message::getFormattedMessage)
+                          .toList();
+                  assertThat(
+                      messages.stream().anyMatch(msg -> msg.contains("Processing complete")));
+                  assertThat(
+                          messages.stream()
+                              .filter(msg -> msg.contains("Upload") && msg.contains("500")))
+                      .hasSize(4);
+                  serviceProviderARule.verify(
+                      1,
+                      getRequestedFor(urlPathEqualTo("/"))
+                          .withQueryParam("begin", equalTo("2018-01-01"))
+                          .withQueryParam("end", equalTo("2018-12-31")));
+                  baseRule.verify(12, postRequestedFor(urlEqualTo(reportsPath)));
+                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
+                });
+            vertx.cancelTimer(id);
+            async.complete();
+          }
+        });
+
+    async.await(10000);
+  }
+
+  @Test
   public void testProviderFailsInitialization(TestContext context) {
     Async async = context.async();
 
@@ -760,6 +857,38 @@ public class HarvestingIT {
             async.complete();
           }
         });
+  }
+
+  static class UploadResponseTransformer extends ResponseDefinitionTransformer {
+    private int count = 0;
+
+    @Override
+    public ResponseDefinition transform(
+        Request request,
+        ResponseDefinition responseDefinition,
+        FileSource files,
+        Parameters parameters) {
+      count++;
+      ResponseDefinitionBuilder responseDefinitionBuilder = new ResponseDefinitionBuilder();
+      if (count % 3 == 0) {
+        return responseDefinitionBuilder
+            .withStatus(500)
+            .withStatusMessage("Internal server error")
+            .build();
+      } else {
+        return responseDefinitionBuilder.withStatus(201).build();
+      }
+    }
+
+    @Override
+    public boolean applyGlobally() {
+      return false;
+    }
+
+    @Override
+    public String getName() {
+      return "UploadResponseTransformer";
+    }
   }
 
   static class UDPResponseTransformer extends ResponseDefinitionTransformer {
