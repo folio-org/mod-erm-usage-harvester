@@ -8,6 +8,8 @@ USER folio
 ENV VERTICLE_FILE=mod-erm-usage-harvester-bundle-fat.jar
 ENV VERTICLE_HOME=/usr/verticles
 
+ENV OKAPI_URL=http://10.0.2.15:9130
+
 # Copy your fat jar to the container
 COPY mod-erm-usage-harvester-bundle/target/${VERTICLE_FILE} ${VERTICLE_HOME}/
 
