@@ -7,6 +7,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.lessThanOrExactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.moreThanOrExactly;
@@ -644,6 +645,8 @@ public class HarvestingIT {
   @Test
   public void testFailedUploadsMax(TestContext context) {
     UsageDataProvider usageDataProvider = tenantUDPMap.get(TENANTA).get(0);
+    usageDataProvider.getHarvestingConfig().setRequestedReports(List.of("TR"));
+    usageDataProvider.getHarvestingConfig().setReportRelease(5);
     usageDataProvider.getHarvestingConfig().setHarvestingStart("2018-01");
     usageDataProvider.getHarvestingConfig().setHarvestingEnd("2018-12");
 
@@ -673,8 +676,13 @@ public class HarvestingIT {
                       1,
                       getRequestedFor(urlPathEqualTo("/"))
                           .withQueryParam("begin", equalTo("2018-01-01"))
-                          .withQueryParam("end", equalTo("2018-12-31")));
-                  baseRule.verify(5, postRequestedFor(urlEqualTo(reportsPath)));
+                          .withQueryParam("end", equalTo("2018-01-31")));
+                  serviceProviderARule.verify(
+                      moreThanOrExactly(5), getRequestedFor(urlPathEqualTo("/")));
+                  serviceProviderARule.verify(
+                      lessThanOrExactly(9), getRequestedFor(urlPathEqualTo("/")));
+                  baseRule.verify(moreThanOrExactly(5), postRequestedFor(urlEqualTo(reportsPath)));
+                  baseRule.verify(lessThanOrExactly(9), postRequestedFor(urlEqualTo(reportsPath)));
                   baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
                 });
             vertx.cancelTimer(id);

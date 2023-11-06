@@ -109,14 +109,17 @@ public class WorkerVerticle extends AbstractVerticle {
   @Override
   public void stop() {
     finished.tryComplete();
+    queue.clear();
   }
 
   private void undeploy() {
-    vertx
-        .undeploy(context.deploymentID())
-        .onSuccess(v -> logInfo("Undeployed WorkerVericle"))
-        .onFailure(
-            t -> log.error(createMsg("Error undeploying WorkerVerticle: {}", t.getMessage()), t));
+    if (vertx.deploymentIDs().contains(context.deploymentID())) {
+      vertx
+          .undeploy(context.deploymentID())
+          .onSuccess(v -> logInfo("Undeployed WorkerVericle"))
+          .onFailure(
+              t -> log.error(createMsg("Error undeploying WorkerVerticle: {}", t.getMessage()), t));
+    }
   }
 
   private void startNext() {
@@ -226,7 +229,9 @@ public class WorkerVerticle extends AbstractVerticle {
                     ar -> {
                       if (failedUploadCount.get() >= MAX_FAILED_UPLOAD_COUNT) {
                         String msg =
-                            "Stopped after " + MAX_FAILED_UPLOAD_COUNT + " failed uploads in a row";
+                            "Stopping after "
+                                + MAX_FAILED_UPLOAD_COUNT
+                                + " failed uploads in a row";
                         finished.tryFail(msg);
                         undeploy();
                         return failedFuture(msg);
