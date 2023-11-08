@@ -1,3 +1,10 @@
+# 4.4.1
+* [MODEUSHARV-104](https://issues.folio.org/browse/MODEUSHARV-104) Health check not configured in Jenkins pipeline
+* [MODEUSHARV-103](https://issues.folio.org/browse/MODEUSHARV-103) OKAPI_URL environment variable not set in Dockerfile
+* [MODEUSHARV-102](https://issues.folio.org/browse/MODEUSHARV-102) Cease harvesting process when concurrent report uploads fail
+* [MODEUSHARV-101](https://issues.folio.org/browse/MODEUSHARV-101) Concurrency limit during harvesting is not honored
+* [MODEUSHARV-100](https://issues.folio.org/browse/MODEUSHARV-100) High resource consumption when fetching TR reports for multi-month periods
+
 # 4.4.0
 * [MODEUSHARV-98](https://issues.folio.org/browse/MODEUSHARV-98) RMB v35.1.x update
 * [MODEUSHARV-97](https://issues.folio.org/browse/MODEUSHARV-97) Remove configuration file
