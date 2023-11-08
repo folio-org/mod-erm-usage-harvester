@@ -106,13 +106,9 @@ public class WorkerVerticle extends AbstractVerticle {
             });
   }
 
-  @Override
-  public void stop() {
+  private void undeploy() {
     finished.tryComplete();
     queue.clear();
-  }
-
-  private void undeploy() {
     if (vertx.deploymentIDs().contains(context.deploymentID())) {
       vertx
           .undeploy(context.deploymentID())
