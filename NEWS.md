@@ -1,4 +1,5 @@
 # 4.4.1
+* [MODEUSHARV-106](https://issues.folio.org/browse/MODEUSHARV-106) Update module dependencies, RMB v35.1.1, Vert.x v4.4.6
 * [MODEUSHARV-104](https://issues.folio.org/browse/MODEUSHARV-104) Health check not configured in Jenkins pipeline
 * [MODEUSHARV-103](https://issues.folio.org/browse/MODEUSHARV-103) OKAPI_URL environment variable not set in Dockerfile
 * [MODEUSHARV-102](https://issues.folio.org/browse/MODEUSHARV-102) Cease harvesting process when concurrent report uploads fail
