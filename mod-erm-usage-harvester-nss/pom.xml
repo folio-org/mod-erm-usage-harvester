@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.olf</groupId>
     <artifactId>mod-erm-usage-harvester</artifactId>
-    <version>4.4.1</version>
+    <version>4.5.0-SNAPSHOT</version>
   </parent>
   <artifactId>mod-erm-usage-harvester-nss</artifactId>
 
