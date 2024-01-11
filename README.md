@@ -187,23 +187,32 @@ Implementations available at runtime can be listed at `/erm-usage-harvester/impl
 
 ### mod-erm-usage-harvester-cs50
 
-Due to providers responding in various ways the provider response is intercepted and adjusted before
-processing.  
-This is nescessary as some providers use `2xx` status codes to send sushi errors, but the generated
-client expects `2xx` codes to return counter reports and different codes to return sushi errors.  
-So if reponses with status code `2xx` are received, it is checked whether the response data
-structure matches one of the 4 counter master reports (`TR`, `PR`, `DR` and `IR`). If it does match,
-no changes are made to the response. If it does not match, the response gets transformed into
-a `400 - Bad Request` response, preserving the original response body in cases listed below.
+#### Request parameters
+
+To enable the creation of standard views, master reports are retrieved with the following additional parameters:
+
+| Report | Attributes_To_Show                                                                     | Include_Parent_Details |
+| ------ | -------------------------------------------------------------------------------------- | ---------------------- |
+| DR     | Data_Type\|Access_Method                                                               |                        |
+| IR     | Authors\|Publication_Date\|Article_Version\|Data_Type\|YOP\|Access_Type\|Access_Method | True                   |
+| PR     | Data_Type\|Access_Method                                                               |                        |
+| TR     | Data_Type\|Section_Type\|YOP\|Access_Type\|Access_Method                               |                        |
+
+_Example:_  
+`/reports/dr?requestor_id=xxx&customer_id=xxx&begin_date=2021-01&end_date=2021-12&attributes_to_show=Data_Type|Access_Method`
+
+#### Additional processing
+
+Due to providers responding in various ways the provider response is intercepted and adjusted before processing.  
+This is nescessary as some providers use `2xx` status codes to send sushi errors, but the generated client expects `2xx` codes to return counter reports and different codes to return sushi errors.  
+So if reponses with status code `2xx` are received, it is checked whether the response data structure matches one of the 4 counter master reports (`TR`, `PR`, `DR` and `IR`). If it does match, no changes are made to the response. If it does not match, the response gets transformed into a `400 - Bad Request` response, preserving the original response body in cases listed below.
 
 Some observations and how they are handled so far:
 
-* Providers use `2xx` status codes to return sushi errors, not reports (gets routed and handled
-  as `400` with original response body)
+* Providers use `2xx` status codes to return sushi errors, not reports (gets routed and handled as `400` with original response body)
 * Providers return sushi errors as array instead of object (array makes it into the response body)
 * Providers return `"null"` instead of sushi error (returns a `InvalidReportException: null`)
-* Providers return reports with a `Report_Header` that contains a `Exception` object instead of
-  a `Exceptions` array (not handled, will be interpreted as report without `Exceptions`)
+* Providers return reports with a `Report_Header` that contains a `Exception` object instead of a `Exceptions` array (not handled, will be interpreted as report without `Exceptions`)
 
 ## Additional information
 
@@ -216,4 +225,3 @@ at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker).
 
 Other [modules](https://dev.folio.org/source-code/#server-side) are described, with further FOLIO
 Developer documentation at [dev.folio.org](https://dev.folio.org/)
-
