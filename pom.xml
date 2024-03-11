@@ -29,9 +29,11 @@
     <maven.compiler.release>17</maven.compiler.release>
     <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
 
-    <raml-module-builder.version>35.1.1</raml-module-builder.version>
+    <raml-module-builder.version>35.2.0</raml-module-builder.version>
     <ramlfiles_path>${project.basedir}/ramls</ramlfiles_path>
-    <vertx.version>4.4.6</vertx.version>
+    <vertx.version>4.5.4</vertx.version>
+    <aspect.version>1.9.21.1</aspect.version>
+    <aspectj-maven-plugin.version>1.14</aspectj-maven-plugin.version>
     <erm.usage.version>4.6.0</erm.usage.version>
     <erm.usage.counter.version>4.0.0</erm.usage.counter.version>
     <configurations.version>5.7.5</configurations.version>

@@ -154,7 +154,7 @@
       <plugin>
         <groupId>dev.aspectj</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.13.1</version>
+        <version>${aspectj-maven-plugin.version}</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
@@ -184,12 +184,12 @@
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjrt</artifactId>
-            <version>1.9.19</version>
+            <version>${aspect.version}</version>
           </dependency>
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjtools</artifactId>
-            <version>1.9.19</version>
+            <version>${aspect.version}</version>
           </dependency>
         </dependencies>
       </plugin>
