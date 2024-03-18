@@ -1,3 +1,6 @@
+# 4.5.0
+* [MODEUSHARV-107](https://folio-org.atlassian.net/browse/MODEUSHARV-107) Upgrade RMB to v35.2.0
+
 # 4.4.1
 * [MODEUSHARV-106](https://issues.folio.org/browse/MODEUSHARV-106) Update module dependencies, RMB v35.1.1, Vert.x v4.4.6
 * [MODEUSHARV-104](https://issues.folio.org/browse/MODEUSHARV-104) Health check not configured in Jenkins pipeline
