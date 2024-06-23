@@ -31,7 +31,7 @@
 
     <raml-module-builder.version>35.2.0</raml-module-builder.version>
     <ramlfiles_path>${project.basedir}/ramls</ramlfiles_path>
-    <vertx.version>4.5.4</vertx.version>
+    <vertx.version>4.5.8</vertx.version>
     <aspect.version>1.9.21.1</aspect.version>
     <aspectj-maven-plugin.version>1.14</aspectj-maven-plugin.version>
     <erm.usage.version>4.7.0</erm.usage.version>
