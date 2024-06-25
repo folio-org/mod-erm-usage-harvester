@@ -76,14 +76,18 @@ Quartz configuration is located
 in [quartz.properties](mod-erm-usage-harvester-bundle/src/main/resources/org/quartz/quartz.properties)
 . If you wish to use another file, you must define the system property `org.quartz.properties` to
 point to the file you want. You can also set individual quartz properties using system properties (
-e.g. `-Dorg.quartz.threadPool.threadCount=8`).
+e.g. `-Dorg.quartz.threadPool.threadCount=8`). The `org.quartz.threadPool.threadCount` 
+property controls how many providers are harvested concurrently.
 
 ### Hazelcast
 
-The configured `HazelcastJobStore` for Quartz relies on Hazelcast for
-clustering. [hazelcast.xml](mod-erm-usage-harvester-bundle/src/main/resources/hazelcast.xml) is used
-as configuration file. You can specify your own configuration file by setting the `hazelcast.config`
-system property.
+The default Quartz configuration uses the `HazelcastJobStore` for clustering which relies on 
+Hazelcast. By default the [standard configuration](https://github.com/hazelcast/hazelcast/blob/master/hazelcast/src/main/resources/hazelcast-default.xml)
+shipped with hazelcast is used. You can supply your own XML or YAML configuration through the 
+`hazelcast.config` system property or just put it into the working directory. If you're using 
+clustering, make sure that member discovery is working by inspecting the logs. You might want to 
+tailor the Hazelcast configuration to suit your particular deployment environment. You can read
+about Hazelcast discovery mechanisms [here](https://docs.hazelcast.com/hazelcast/5.3/clusters/discovery-mechanisms).
 
 ## Periodic harvesting
 
