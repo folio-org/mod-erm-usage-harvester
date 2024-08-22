@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.periodic;
 
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
+import static java.lang.Boolean.parseBoolean;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -51,8 +52,7 @@ public class HarvestTenantPeriodicJob extends AbstractHarvestJob {
     OkapiClient okapiClient = new OkapiClientImpl(webClient, vertxContext.config());
 
     CompletableFuture<Void> complete =
-        okapiClient
-            .loginSystemUser(getTenantId(), new SystemUser(getTenantId()))
+        loginSystemUserIfEnabled(okapiClient, getTenantId())
             .compose(token -> okapiClient.startHarvester(getTenantId(), token))
             .<Void>compose(
                 resp -> {
@@ -87,5 +87,9 @@ public class HarvestTenantPeriodicJob extends AbstractHarvestJob {
       throw new JobExecutionException(
           String.format("Tenant: %s, error starting harvester: %s", getTenantId(), e.getMessage()));
     }
+  }
+
+  private Future<String> loginSystemUserIfEnabled(OkapiClient okapiClient, String tenantId) {
+    return okapiClient.loginSystemUser(tenantId, new SystemUser(tenantId));
   }
 }

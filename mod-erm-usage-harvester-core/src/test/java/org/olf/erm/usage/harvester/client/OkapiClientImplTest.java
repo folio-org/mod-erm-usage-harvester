@@ -90,6 +90,15 @@ public class OkapiClientImplTest {
   }
 
   @Test
+  public void testLegacyLoginSystemUserDisabled(TestContext context) {
+    String okapiUrl = StringUtils.removeEnd(wireMockRule.url(""), "/");
+    okapiClient = new OkapiClientImpl(WebClient.create(vertx), okapiUrl, false);
+    okapiClient
+      .loginSystemUser(tenantId, SYSTEM_USER)
+      .onComplete(context.asyncAssertSuccess(s -> assertThat(s).isNull()));
+  }
+
+  @Test
   public void testLoginWithExpiryInvalidCookie(TestContext context) {
     stubFor(
         post(urlEqualTo(PATH_LOGIN_EXPIRY))
