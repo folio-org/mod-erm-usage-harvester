@@ -1,5 +1,7 @@
 package org.olf.erm.usage.harvester.client;
 
+import static java.lang.Boolean.TRUE;
+import static java.lang.Boolean.parseBoolean;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_DECODE;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS;
 import static org.olf.erm.usage.harvester.Messages.ERR_MSG_STATUS_WITH_URL;
@@ -27,23 +29,29 @@ public class OkapiClientImpl implements OkapiClient {
   public static final String PATH_LOGIN_EXPIRY = "/authn/login-with-expiry"; // NOSONAR
   public static final String PATH_HARVESTER_START = "/erm-usage-harvester/start"; // NOSONAR
   public static final String PATH_TENANTS = "/_/proxy/tenants"; // NOSONAR
+
+  private static final String ENV_SYSTEM_USER_ENABLED = "SYSTEM_USER_ENABLED";
+
   private final String okapiUrl;
   private final WebClient client;
+  private final boolean isSystemUserEnabled;
 
   public OkapiClientImpl(WebClient webClient, JsonObject cfg) {
     Objects.requireNonNull(cfg);
     this.okapiUrl = cfg.getString("okapiUrl");
     this.client = webClient;
+    this.isSystemUserEnabled = isSystemUserEnabled();
   }
 
-  public OkapiClientImpl(WebClient webClient, String okapiUrl) {
+  public OkapiClientImpl(WebClient webClient, String okapiUrl, boolean isSystemUserEnabled) {
     Objects.requireNonNull(okapiUrl);
     this.okapiUrl = okapiUrl;
     this.client = webClient;
+    this.isSystemUserEnabled = isSystemUserEnabled;
   }
 
   public OkapiClientImpl(String okapiUrl) {
-    this(WebClient.create(VertxUtils.getVertxFromContextOrNew()), okapiUrl);
+    this(WebClient.create(VertxUtils.getVertxFromContextOrNew()), okapiUrl, isSystemUserEnabled());
   }
 
   private HttpResponse<Buffer> throwIfStatusCodeNot201(HttpResponse<Buffer> response) {
@@ -76,6 +84,10 @@ public class OkapiClientImpl implements OkapiClient {
 
   @Override
   public Future<String> loginSystemUser(String tenantId, SystemUser systemUser) {
+    if (!isSystemUserEnabled) {
+      return Future.succeededFuture();
+    }
+
     String loginUrl = okapiUrl + PATH_LOGIN;
     String loginWithExpiryUrl = okapiUrl + PATH_LOGIN_EXPIRY;
 
@@ -156,5 +168,9 @@ public class OkapiClientImpl implements OkapiClient {
     public OkapiClientException(String message) {
       super(message);
     }
+  }
+
+  private static boolean isSystemUserEnabled() {
+    return parseBoolean(Objects.toString(System.getenv(ENV_SYSTEM_USER_ENABLED), TRUE.toString()));
   }
 }
