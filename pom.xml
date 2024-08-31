@@ -37,6 +37,7 @@
     <erm.usage.version>5.0.0-SNAPSHOT</erm.usage.version>
     <erm.usage.counter.version>4.1.0</erm.usage.counter.version>
     <configurations.version>5.10.0</configurations.version>
+    <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
     <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
   </properties>
 
@@ -252,10 +253,21 @@
           </execution>
         </executions>
       </plugin>
-
+      <plugin>
+        <groupId>org.folio</groupId>
+        <artifactId>folio-module-descriptor-validator</artifactId>
+        <version>${folio-module-descriptor-validator.version}</version>
+        <inherited>false</inherited>
+        <executions>
+          <execution>
+            <goals>
+              <goal>validate</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
-
   <distributionManagement>
     <repository>
       <id>folio-nexus</id>
