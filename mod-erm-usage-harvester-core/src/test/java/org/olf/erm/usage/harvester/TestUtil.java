@@ -34,7 +34,7 @@ public class TestUtil {
                 .withHarvestingStatus(HarvestingStatus.ACTIVE)
                 .withHarvestVia(HarvestVia.SUSHI)
                 .withSushiConfig(new SushiConfig().withServiceType("test1"))
-                .withReportRelease(4)
+                .withReportRelease("4")
                 .withHarvestingStart("2017-12")
                 .withHarvestingEnd("2018-04")
                 .withRequestedReports(Arrays.asList("JR1", "JR2", "JR3")));

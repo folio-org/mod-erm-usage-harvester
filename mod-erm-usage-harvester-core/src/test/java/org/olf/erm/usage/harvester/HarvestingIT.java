@@ -127,7 +127,7 @@ public class HarvestingIT {
             .withHarvestingConfig(
                 new HarvestingConfig()
                     .withRequestedReports(List.of("JR1"))
-                    .withReportRelease(4)
+                    .withReportRelease("4")
                     .withHarvestingStart("2018-01")
                     .withHarvestingEnd("2020-04")
                     .withHarvestingStatus(HarvestingStatus.ACTIVE)
@@ -148,7 +148,7 @@ public class HarvestingIT {
             .withHarvestingConfig(
                 new HarvestingConfig()
                     .withRequestedReports(List.of("JR1"))
-                    .withReportRelease(4)
+                    .withReportRelease("4")
                     .withHarvestingStart("2018-01")
                     .withHarvestingEnd("2020-04")
                     .withHarvestingStatus(HarvestingStatus.ACTIVE)
@@ -646,7 +646,7 @@ public class HarvestingIT {
   public void testFailedUploadsMax(TestContext context) {
     UsageDataProvider usageDataProvider = tenantUDPMap.get(TENANTA).get(0);
     usageDataProvider.getHarvestingConfig().setRequestedReports(List.of("TR"));
-    usageDataProvider.getHarvestingConfig().setReportRelease(5);
+    usageDataProvider.getHarvestingConfig().setReportRelease("5");
     usageDataProvider.getHarvestingConfig().setHarvestingStart("2018-01");
     usageDataProvider.getHarvestingConfig().setHarvestingEnd("2018-12");
 
@@ -752,7 +752,7 @@ public class HarvestingIT {
     harvestingConfig.getSushiConfig().setServiceType("wvitpfailinit");
     harvestingConfig
         .withRequestedReports(List.of("TR"))
-        .withReportRelease(5)
+        .withReportRelease("5")
         .withHarvestingStart("2021-01")
         .withHarvestingEnd("2021-03");
 
@@ -835,7 +835,7 @@ public class HarvestingIT {
               harvestingConfig.getSushiConfig().setServiceType("wvitpfail");
               harvestingConfig
                   .withRequestedReports(List.of("TR"))
-                  .withReportRelease(5)
+                  .withReportRelease("5")
                   .withHarvestingStart("2021-01")
                   .withHarvestingEnd("2021-01");
             });
