@@ -242,6 +242,14 @@
       ]
     }
   ],
+  "metadata": {
+    "user": {
+      "type": "system",
+      "permissions": [
+        "ermusageharvester.start.single"
+      ]
+    }
+  },
   "launchDescriptor": {
     "dockerImage": "${project.artifactId}:${project.version}",
     "dockerPull": false,
