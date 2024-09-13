@@ -158,7 +158,7 @@
   "requires": [
     {
       "id": "usage-data-providers",
-      "version": "2.5"
+      "version": "3.0"
     },
     {
       "id": "aggregator-settings",

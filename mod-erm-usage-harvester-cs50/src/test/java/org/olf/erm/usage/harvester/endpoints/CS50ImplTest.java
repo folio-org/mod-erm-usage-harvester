@@ -95,7 +95,7 @@ public class CS50ImplTest {
                 .withRequestorId(REQUESTOR_ID))
         .withHarvestingConfig(
             new HarvestingConfig()
-                .withReportRelease(5)
+                .withReportRelease("5")
                 .withSushiConfig(
                     new SushiConfig()
                         .withServiceUrl("http://localhost:" + wmRule.port() + "/sushi")

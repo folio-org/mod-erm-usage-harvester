@@ -55,7 +55,7 @@ public class CS41ImplTest {
       new UsageDataProvider()
           .withId("67339c41-a3a7-4d19-83e2-c808ab99c8fe")
           .withHarvestingConfig(
-              new HarvestingConfig().withReportRelease(4).withSushiConfig(new SushiConfig()))
+              new HarvestingConfig().withReportRelease("4").withSushiConfig(new SushiConfig()))
           .withSushiCredentials(
               new SushiCredentials().withRequestorId("reqId1").withCustomerId("custId1"));
 
