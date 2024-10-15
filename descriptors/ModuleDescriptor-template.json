@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "erm-usage-harvester",
-      "version": "1.4",
+      "version": "2.0",
       "handlers": [
         {
           "methods": [
@@ -179,13 +179,17 @@
       "permissionName": "ermusageharvester.start-all.get",
       "displayName": "erm-usage-harvester start harvesting all providers",
       "description": "Start harvesting for all providers",
-      "replaces": "ermusageharvester.start"
+      "replaces": [
+        "ermusageharvester.start"
+      ]
     },
     {
       "permissionName": "ermusageharvester.start-single.get",
       "displayName": "erm-usage-harvester start harvesting single provider",
       "description": "Start harvesting for a single provider",
-      "replaces": "ermusageharvester.start.single"
+      "replaces": [
+        "ermusageharvester.start.single"
+      ]
     },
     {
       "permissionName": "ermusageharvester.impl.get",
@@ -216,13 +220,17 @@
       "permissionName": "ermusageharvester.jobs.purge-finished.post",
       "displayName": "erm-usage-harvester purge finished jobs",
       "description": "Purge finished harvester jobs",
-      "replaces": "ermusageharvester.jobs.purge"
+      "replaces": [
+        "ermusageharvester.jobs.purge"
+      ]
     },
     {
       "permissionName": "ermusageharvester.jobs.purge-stale.post",
       "displayName": "erm-usage-harvester purge stale jobs",
       "description": "Purge stale harvester jobs",
-      "replaces": "ermusageharvester.jobs.purge"
+      "replaces": [
+        "ermusageharvester.jobs.purge"
+      ]
     },
     {
       "permissionName": "ermusageharvester.all",
