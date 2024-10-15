@@ -101,7 +101,7 @@
           ],
           "pathPattern": "/erm-usage-harvester/jobs/purgefinished",
           "permissionsRequired": [
-            "ermusageharvester.jobs.purge"
+            "ermusageharvester.jobs.purge-finished.post"
           ]
         },
         {
@@ -110,7 +110,7 @@
           ],
           "pathPattern": "/erm-usage-harvester/jobs/purgestale",
           "permissionsRequired": [
-            "ermusageharvester.jobs.purge"
+            "ermusageharvester.jobs.purge-stale.post"
           ]
         }
       ]
@@ -149,7 +149,8 @@
           "delay": "30",
           "modulePermissions": [
             "configuration.entries.collection.get",
-            "ermusageharvester.jobs.purge"
+            "ermusageharvester.jobs.purge-finished.post",
+            "ermusageharvester.jobs.purge-stale.post"
           ]
         }
       ]
@@ -212,9 +213,16 @@
       "description": "Get harvester jobs"
     },
     {
-      "permissionName": "ermusageharvester.jobs.purge",
+      "permissionName": "ermusageharvester.jobs.purge-finished.post",
       "displayName": "erm-usage-harvester purge finished jobs",
-      "description": "Purge finished harvester jobs"
+      "description": "Purge finished harvester jobs",
+      "replaces": "ermusageharvester.jobs.purge"
+    },
+    {
+      "permissionName": "ermusageharvester.jobs.purge-stale.post",
+      "displayName": "erm-usage-harvester purge stale jobs",
+      "description": "Purge stale harvester jobs",
+      "replaces": "ermusageharvester.jobs.purge"
     },
     {
       "permissionName": "ermusageharvester.all",
@@ -228,7 +236,8 @@
         "ermusageharvester.periodic.post",
         "ermusageharvester.periodic.delete",
         "ermusageharvester.jobs.get",
-        "ermusageharvester.jobs.purge"
+        "ermusageharvester.jobs.purge-finished.post",
+        "ermusageharvester.jobs.purge-stale.post"
       ]
     }
   ],
