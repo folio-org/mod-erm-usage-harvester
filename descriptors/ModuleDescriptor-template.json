@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "erm-usage-harvester",
-      "version": "1.4",
+      "version": "2.0",
       "handlers": [
         {
           "methods": [
@@ -12,7 +12,7 @@
           ],
           "pathPattern": "/erm-usage-harvester/start",
           "permissionsRequired": [
-            "ermusageharvester.start"
+            "ermusageharvester.start-all.get"
           ],
           "modulePermissions": [
             "usagedataproviders.collection.get",
@@ -34,7 +34,7 @@
           ],
           "pathPattern": "/erm-usage-harvester/start/{id}",
           "permissionsRequired": [
-            "ermusageharvester.start.single"
+            "ermusageharvester.start-single.get"
           ],
           "modulePermissions": [
             "usagedataproviders.collection.get",
@@ -101,7 +101,7 @@
           ],
           "pathPattern": "/erm-usage-harvester/jobs/purgefinished",
           "permissionsRequired": [
-            "ermusageharvester.jobs.purge"
+            "ermusageharvester.jobs.purge-finished.post"
           ]
         },
         {
@@ -110,7 +110,7 @@
           ],
           "pathPattern": "/erm-usage-harvester/jobs/purgestale",
           "permissionsRequired": [
-            "ermusageharvester.jobs.purge"
+            "ermusageharvester.jobs.purge-stale.post"
           ]
         }
       ]
@@ -149,7 +149,8 @@
           "delay": "30",
           "modulePermissions": [
             "configuration.entries.collection.get",
-            "ermusageharvester.jobs.purge"
+            "ermusageharvester.jobs.purge-finished.post",
+            "ermusageharvester.jobs.purge-stale.post"
           ]
         }
       ]
@@ -175,17 +176,20 @@
   ],
   "permissionSets": [
     {
-      "permissionName": "ermusageharvester.start",
+      "permissionName": "ermusageharvester.start-all.get",
       "displayName": "erm-usage-harvester start harvesting all providers",
       "description": "Start harvesting for all providers",
-      "subPermissions": [
-        "ermusageharvester.start.single"
+      "replaces": [
+        "ermusageharvester.start"
       ]
     },
     {
-      "permissionName": "ermusageharvester.start.single",
+      "permissionName": "ermusageharvester.start-single.get",
       "displayName": "erm-usage-harvester start harvesting single provider",
-      "description": "Start harvesting for a single provider"
+      "description": "Start harvesting for a single provider",
+      "replaces": [
+        "ermusageharvester.start.single"
+      ]
     },
     {
       "permissionName": "ermusageharvester.impl.get",
@@ -213,32 +217,35 @@
       "description": "Get harvester jobs"
     },
     {
-      "permissionName": "ermusageharvester.jobs.purge",
+      "permissionName": "ermusageharvester.jobs.purge-finished.post",
       "displayName": "erm-usage-harvester purge finished jobs",
-      "description": "Purge finished harvester jobs"
+      "description": "Purge finished harvester jobs",
+      "replaces": [
+        "ermusageharvester.jobs.purge"
+      ]
+    },
+    {
+      "permissionName": "ermusageharvester.jobs.purge-stale.post",
+      "displayName": "erm-usage-harvester purge stale jobs",
+      "description": "Purge stale harvester jobs",
+      "replaces": [
+        "ermusageharvester.jobs.purge"
+      ]
     },
     {
       "permissionName": "ermusageharvester.all",
       "displayName": "erm-usage-harvester all",
       "description": "All permissions for the mod-erm-harvester module",
       "subPermissions": [
-        "ermusageharvester.start",
-        "ermusageharvester.start.single",
+        "ermusageharvester.start-all.get",
+        "ermusageharvester.start-single.get",
         "ermusageharvester.impl.get",
         "ermusageharvester.periodic.get",
         "ermusageharvester.periodic.post",
         "ermusageharvester.periodic.delete",
         "ermusageharvester.jobs.get",
-        "ermusageharvester.jobs.purge"
-      ]
-    },
-    {
-      "permissionName": "ermusageharvester.readonly",
-      "displayName": "erm-usage-harvester readonly",
-      "description": "Read-only permissions for the mod-erm-harvester module",
-      "subPermissions": [
-        "ermusageharvester.impl.get",
-        "ermusageharvester.periodic.get"
+        "ermusageharvester.jobs.purge-finished.post",
+        "ermusageharvester.jobs.purge-stale.post"
       ]
     }
   ],
