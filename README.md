@@ -1,6 +1,6 @@
 # mod-erm-usage-harvester
 
-Copyright (C) 2018-2023 The Open Library Foundation
+Copyright (C) 2018-2024 The Open Library Foundation
 
 This software is distributed under the terms of the Apache License, Version 2.0. See the
 file "[LICENSE](LICENSE)" for more information.
@@ -91,12 +91,12 @@ about Hazelcast discovery mechanisms [here](https://docs.hazelcast.com/hazelcast
 
 ## Periodic harvesting
 
-Periodic harvesting requires the module to login as a user. User credentials are set separately for
-each tenant through the environment variables `{tenant}_USER_NAME` and `{tenant}_USER_PASS`,
-where `{tenant}` is a placeholder for the tenant id. The user needs to have
-the `ermusageharvester.start` permission.
+Periodic harvesting requires the module to log in using user credentials. These credentials are
+defined separately for each tenant via the environment variables `{TENANT}_USER_NAME` and
+`{TENANT}_USER_PASS`, where `{TENANT}` serves as a placeholder for the tenant ID and must be in
+uppercase. The user also needs the `ermusageharvester.start-all.get` permission.
 
-Example:
+Example for tenant 'diku':
 
 ```
 DIKU_USER_NAME=mod-erm-usage-harvester
