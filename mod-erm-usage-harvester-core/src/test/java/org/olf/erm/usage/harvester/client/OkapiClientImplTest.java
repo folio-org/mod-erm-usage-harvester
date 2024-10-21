@@ -7,6 +7,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.client.OkapiClientImpl.MSG_SYSTEM_USER_LOGIN_DISABLED;
 import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_LOGIN;
 import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_LOGIN_EXPIRY;
 import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_TENANTS;
@@ -43,12 +44,14 @@ public class OkapiClientImplTest {
   private static final String tenantId = "diku";
   private static Vertx vertx;
   private OkapiClient okapiClient;
+  private String okapiUrl;
 
   @Before
   public void setup() {
     vertx = Vertx.vertx();
     JsonObject cfg = new JsonObject();
-    cfg.put("okapiUrl", StringUtils.removeEnd(wireMockRule.url(""), "/"));
+    okapiUrl = StringUtils.removeEnd(wireMockRule.url(""), "/");
+    cfg.put("okapiUrl", okapiUrl);
     okapiClient = new OkapiClientImpl(WebClient.create(vertx), cfg);
   }
 
@@ -90,12 +93,13 @@ public class OkapiClientImplTest {
   }
 
   @Test
-  public void testLegacyLoginSystemUserDisabled(TestContext context) {
-    String okapiUrl = StringUtils.removeEnd(wireMockRule.url(""), "/");
+  public void testSystemUserDisabled(TestContext context) {
     okapiClient = new OkapiClientImpl(WebClient.create(vertx), okapiUrl, false);
     okapiClient
-      .loginSystemUser(tenantId, SYSTEM_USER)
-      .onComplete(context.asyncAssertSuccess(s -> assertThat(s).isNull()));
+        .loginSystemUser(tenantId, SYSTEM_USER)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> assertThat(t).hasMessage(MSG_SYSTEM_USER_LOGIN_DISABLED)));
   }
 
   @Test
