@@ -196,6 +196,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Number timestamp,
       String providerId,
       String query,
+      String totalRecords,
       int offset,
       int limit,
       Map<String, String> okapiHeaders,
