@@ -32,7 +32,7 @@ public class ExtUsageDataProvidersClientImpl extends UsageDataProvidersClient
 
   @Override
   public Future<Void> updateUDPLastHarvestingDate(UsageDataProvider udp, Date date) {
-    return super.putUsageDataProvidersById(udp.getId(), null, udp.withHarvestingDate(date))
+    return super.putUsageDataProvidersById(udp.getId(), udp.withHarvestingDate(date))
         .transform(
             ar -> {
               if (ar.succeeded()) {
@@ -61,13 +61,13 @@ public class ExtUsageDataProvidersClientImpl extends UsageDataProvidersClient
         String.format("(harvestingConfig.harvestingStatus=%s)", HarvestingStatus.ACTIVE);
 
     return super.getUsageDataProviders(
-            queryStr, null, UsageDataProvidersGetOrder.ASC, 0, Integer.MAX_VALUE, null)
+            queryStr, null, UsageDataProvidersGetOrder.ASC, null, 0, Integer.MAX_VALUE)
         .transform(ar -> getResponseBodyIfStatus200(ar, UsageDataProviders.class));
   }
 
   @Override
   public Future<UsageDataProvider> getActiveProviderById(String providerId) {
-    return super.getUsageDataProvidersById(providerId, null)
+    return super.getUsageDataProvidersById(providerId)
         .transform(ar -> getResponseBodyIfStatus200(ar, UsageDataProvider.class))
         .transform(
             ar ->

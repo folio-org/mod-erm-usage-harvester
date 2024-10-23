@@ -45,7 +45,7 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
     String queryStr =
         String.format(
             "(providerId=%s AND yearMonth=%s AND reportName==%s)", providerId, month, reportName);
-    return super.getCounterReports(tiny, queryStr, null, null, 0, 1, null)
+    return super.getCounterReports(tiny, queryStr, null, null, null, 0, 1)
         .transform(ar -> getResponseBodyIfStatus200(ar, CounterReports.class))
         .flatMap(
             collection ->
@@ -63,14 +63,14 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
             existing -> {
               if (existing == null) { // no report found
                 // POST the report
-                return this.postCounterReports(null, report);
+                return this.postCounterReports(report);
               } else {
                 requestUrl.updateAndGet(s -> s += "/" + existing.getId());
                 if (report.getFailedAttempts() != null) {
                   report.setFailedAttempts(existing.getFailedAttempts() + 1);
                 }
                 report.setId(existing.getId());
-                return this.putCounterReportsById(report.getId(), null, report);
+                return this.putCounterReportsById(report.getId(), report);
               }
             });
   }
@@ -142,7 +142,7 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
                 + "reportName==%s AND yearMonth>=%s AND yearMonth<=%s)",
             providerId, maxFailedAttempts, reportName, start.toString(), end.toString());
 
-    return super.getCounterReports(true, queryStr, null, null, 0, Integer.MAX_VALUE, null)
+    return super.getCounterReports(true, queryStr, null, null, null, 0, Integer.MAX_VALUE)
         .transform(ar -> getResponseBodyIfStatus200(ar, CounterReports.class))
         .flatMap(
             result -> {
