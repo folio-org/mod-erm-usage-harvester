@@ -34,7 +34,7 @@ public class ExtAggregatorSettingsClientImpl extends AggregatorSettingsClient
       return failedFuture(format("No aggregator present for provider %s", provider.getLabel()));
     }
 
-    return super.getAggregatorSettingsById(aggregator.getId(), null)
+    return super.getAggregatorSettingsById(aggregator.getId())
         .transform(ar -> getResponseBodyIfStatus200(ar, AggregatorSetting.class))
         .transform(
             ar ->
