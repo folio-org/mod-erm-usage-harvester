@@ -1,3 +1,15 @@
+# 5.0.0
+* [EUREKA-288](https://folio-org.atlassian.net/browse/EUREKA-288) mod-erm-usage-harvester - add support for disabling system user creation/mgmt/use
+* [MODEUSHARV-109](https://folio-org.atlassian.net/browse/MODEUSHARV-109) Vert.x 4.5.8, hazelcast 5.3.5, drop hazelcast-aws/hazelcast-kubernetes
+* [MODEUSHARV-110](https://folio-org.atlassian.net/browse/MODEUSHARV-110) Review and cleanup Module Descriptor for mod-erm-usage-harvester
+* [MODEUSHARV-111](https://folio-org.atlassian.net/browse/MODEUSHARV-111) Update to usage-data-providers 3.0
+* [MODEUSHARV-112](https://folio-org.atlassian.net/browse/MODEUSHARV-112) Fail with error message when SYSTEM_USER_ENABLED=false
+* [MODEUSHARV-115](https://folio-org.atlassian.net/browse/MODEUSHARV-115) Add support for counter-reports interface 4.0
+* [MODEUSHARV-116](https://folio-org.atlassian.net/browse/MODEUSHARV-116) Add support for aggregator-settings 2.0
+* [MODEUSHARV-118](https://folio-org.atlassian.net/browse/MODEUSHARV-118) Update 'Periodic harvesting' section in README
+* [MODEUSHARV-119](https://folio-org.atlassian.net/browse/MODEUSHARV-119) Upgrade RMB to v35.3.0
+* [MODEUSHARV-120](https://folio-org.atlassian.net/browse/MODEUSHARV-120) Adjust API parameters of client implementations
+
 # 4.5.0
 * [MODEUSHARV-107](https://folio-org.atlassian.net/browse/MODEUSHARV-107) Upgrade RMB to v35.2.0
 

@@ -4,7 +4,7 @@
 
   <groupId>org.olf</groupId>
   <artifactId>mod-erm-usage-harvester</artifactId>
-  <version>5.0.0-SNAPSHOT</version>
+  <version>5.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <licenses>
@@ -34,7 +34,7 @@
     <vertx.version>4.5.10</vertx.version>
     <aspect.version>1.9.22.1</aspect.version>
     <aspectj-maven-plugin.version>1.14</aspectj-maven-plugin.version>
-    <erm.usage.version>5.0.0-SNAPSHOT</erm.usage.version>
+    <erm.usage.version>5.0.0</erm.usage.version>
     <erm.usage.counter.version>4.1.0</erm.usage.counter.version>
     <configurations.version>5.10.0</configurations.version>
     <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
