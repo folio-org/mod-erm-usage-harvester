@@ -1,0 +1,6 @@
+{
+  "Code": 2010,
+  "Message": "Requestor is Not Authorized to Access Usage for Institution",
+  "Help_URL": "http://example.com",
+  "Data": "string"
+}

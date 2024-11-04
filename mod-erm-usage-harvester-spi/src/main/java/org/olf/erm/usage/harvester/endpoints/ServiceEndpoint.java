@@ -28,17 +28,17 @@ public interface ServiceEndpoint {
    * Fetches a report from a provider and returns a list containing a {@link CounterReport} for each
    * month in the requested range.
    *
-   * <p>The returned Future should fail with {@link InvalidReportException} if the fetched report
-   * contains any COUNTER exceptions. Use a {@link TooManyRequestsException} to signal that too
-   * many requests are made.
-   *
    * <p>Use {@link ServiceEndpoint#createCounterReport(String, String, UsageDataProvider,
    * YearMonth)} for creating a {@link CounterReport}
    *
    * @param report requested report type
    * @param beginDate start date (e.g. "2018-01-01")
    * @param endDate end date (e.g. "2018-12-31")
-   * @return List of {@link CounterReport}
+   * @return Future with a List of {@link CounterReport}
+   * @throws InvalidReportException if the fetched report contains any COUNTER exceptions
+   * @throws InvalidServiceURLException if the service URL is invalid
+   * @throws TooManyRequestsException to signal that too many requests are made
+   * @throws UnsupportedReportTypeException if the requested report type is not supported
    */
   Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate);
 
@@ -48,7 +48,7 @@ public interface ServiceEndpoint {
     cr.setId(UUID.randomUUID().toString());
     cr.setYearMonth(yearMonth.toString());
     cr.setReportName(reportName);
-    cr.setRelease(provider.getHarvestingConfig().getReportRelease().toString());
+    cr.setRelease(provider.getHarvestingConfig().getReportRelease());
     cr.setProviderId(provider.getId());
     cr.setDownloadTime(Date.from(Instant.now()));
     if (reportData != null) {

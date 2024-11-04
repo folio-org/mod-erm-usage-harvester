@@ -21,6 +21,7 @@
     <module>mod-erm-usage-harvester-cs41</module>
     <module>mod-erm-usage-harvester-cs50</module>
     <module>mod-erm-usage-harvester-bundle</module>
+    <module>mod-erm-usage-harvester-cs51</module>
   </modules>
 
   <properties>
@@ -35,7 +36,7 @@
     <aspect.version>1.9.22.1</aspect.version>
     <aspectj-maven-plugin.version>1.14</aspectj-maven-plugin.version>
     <erm.usage.version>5.0.0</erm.usage.version>
-    <erm.usage.counter.version>4.1.0</erm.usage.counter.version>
+    <erm.usage.counter.version>4.2.0-SNAPSHOT</erm.usage.counter.version>
     <configurations.version>5.10.0</configurations.version>
     <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
     <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
@@ -80,6 +81,11 @@
       <dependency>
         <groupId>org.olf</groupId>
         <artifactId>mod-erm-usage-counter50</artifactId>
+        <version>${erm.usage.counter.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.olf</groupId>
+        <artifactId>mod-erm-usage-counter51</artifactId>
         <version>${erm.usage.counter.version}</version>
       </dependency>
       <dependency>
