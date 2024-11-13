@@ -1,3 +1,6 @@
+# 5.0.1
+* [MODEUSHARV-125](https://folio-org.atlassian.net/browse/MODEUSHARV-125) Add missing `configuration` interface to module descriptor
+
 # 5.0.0
 * [EUREKA-288](https://folio-org.atlassian.net/browse/EUREKA-288) mod-erm-usage-harvester - add support for disabling system user creation/mgmt/use
 * [MODEUSHARV-109](https://folio-org.atlassian.net/browse/MODEUSHARV-109) Vert.x 4.5.8, hazelcast 5.3.5, drop hazelcast-aws/hazelcast-kubernetes
