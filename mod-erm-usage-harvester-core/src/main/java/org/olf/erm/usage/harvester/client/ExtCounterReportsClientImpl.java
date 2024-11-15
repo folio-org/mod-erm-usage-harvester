@@ -4,7 +4,6 @@ import static io.vertx.core.Future.succeededFuture;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.HttpResponseUtil.getResponseBodyIfStatus200;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
@@ -84,8 +83,6 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
 
     Promise<List<FetchItem>> promise = Promise.promise();
 
-    // TODO: check for date Strings to not be empty
-    // TODO: check for nulls
     YearMonth startMonth =
         getYearMonthFromString(provider.getHarvestingConfig().getHarvestingStart());
     YearMonth endMonth =
@@ -94,17 +91,22 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
 
     List<FetchItem> fetchList = new ArrayList<>();
 
-    @SuppressWarnings({"rawtypes", "java:S3740"})
-    List<Future> futures = new ArrayList<>();
+    List<Future<Void>> futures = new ArrayList<>();
+    String reportRelease = provider.getHarvestingConfig().getReportRelease();
     provider
         .getHarvestingConfig()
         .getRequestedReports()
         .forEach(
             reportName ->
                 futures.add(
-                    this.getValidMonths(
-                            provider.getId(), reportName, startMonth, endMonth, maxFailedAttempts)
-                        .map(
+                    getValidMonths(
+                            provider.getId(),
+                            reportName,
+                            reportRelease,
+                            startMonth,
+                            endMonth,
+                            maxFailedAttempts)
+                        .compose(
                             list -> {
                               List<YearMonth> arrayList =
                                   DateUtil.getYearMonths(startMonth, endMonth);
@@ -119,7 +121,7 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
                               return Future.succeededFuture();
                             })));
 
-    CompositeFuture.all(futures)
+    Future.all(futures)
         .onComplete(
             ar -> {
               if (ar.succeeded()) {
@@ -134,13 +136,20 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
 
   @Override
   public Future<List<YearMonth>> getValidMonths(
-      String providerId, String reportName, YearMonth start, YearMonth end, int maxFailedAttempts) {
+      String providerId,
+      String reportName,
+      String release,
+      YearMonth start,
+      YearMonth end,
+      int maxFailedAttempts) {
     String queryStr =
         String.format(
-            "(providerId=%s AND "
-                + "((cql.allRecords=1 NOT failedAttempts=\"\") OR (failedAttempts>=%s)) AND "
-                + "reportName==%s AND yearMonth>=%s AND yearMonth<=%s)",
-            providerId, maxFailedAttempts, reportName, start.toString(), end.toString());
+            """
+            (providerId=%s AND release=%s AND \
+            ((cql.allRecords=1 NOT failedAttempts="") OR (failedAttempts>=%s)) AND \
+            reportName==%s AND yearMonth>=%s AND yearMonth<=%s)
+            """,
+            providerId, release, maxFailedAttempts, reportName, start.toString(), end.toString());
 
     return super.getCounterReports(true, queryStr, null, null, null, 0, Integer.MAX_VALUE)
         .transform(ar -> getResponseBodyIfStatus200(ar, CounterReports.class))
