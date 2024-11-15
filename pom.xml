@@ -39,6 +39,9 @@
     <erm.usage.counter.version>4.2.0-SNAPSHOT</erm.usage.counter.version>
     <configurations.version>5.10.0</configurations.version>
     <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
+    <spotless.version>2.43.0</spotless.version>
+    <google-java-format.version>1.24.0</google-java-format.version>
+
     <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
   </properties>
 
@@ -159,6 +162,22 @@
     </pluginManagement>
 
     <plugins>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless.version}</version>
+        <configuration>
+          <ratchetFrom>origin/master</ratchetFrom>
+          <java>
+            <googleJavaFormat>
+              <version>${google-java-format.version}</version>
+              <style>GOOGLE</style>
+              <reflowLongStrings>true</reflowLongStrings>
+              <formatJavadoc>true</formatJavadoc>
+            </googleJavaFormat>
+          </java>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
