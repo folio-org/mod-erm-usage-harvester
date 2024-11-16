@@ -11,11 +11,8 @@ import org.olf.erm.usage.harvester.FetchItem;
 
 public interface ExtCounterReportsClient {
 
-  /**
-   * completes with the found report or null if none is found fails otherwise
-   */
-  Future<CounterReport> getReport(
-      String providerId, String reportName, String month, boolean tiny);
+  /** completes with the found report or null if none is found fails otherwise */
+  Future<CounterReport> getReport(CounterReport report, boolean tiny);
 
   Future<HttpResponse<Buffer>> upsertReport(CounterReport report);
 
@@ -32,10 +29,16 @@ public interface ExtCounterReportsClient {
    *
    * @param providerId providerId
    * @param reportName reportType
+   * @param reportRelease report release
    * @param start start month
    * @param end end month
    * @param maxFailedAttempts number of max failed attempts
    */
   Future<List<YearMonth>> getValidMonths(
-      String providerId, String reportName, YearMonth start, YearMonth end, int maxFailedAttempts);
+      String providerId,
+      String reportName,
+      String reportRelease,
+      YearMonth start,
+      YearMonth end,
+      int maxFailedAttempts);
 }

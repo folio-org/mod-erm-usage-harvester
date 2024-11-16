@@ -111,7 +111,7 @@ public class ExtCounterReportsClientImplTest {
     stubFor(get(urlPathEqualTo(PATH)).willReturn(aResponse().withStatus(200).withBody(encode)));
 
     counterReportsClient
-        .getValidMonths("providerId", "JR1", YearMonth.of(2017, 12), YearMonth.of(2018, 2), 5)
+        .getValidMonths("providerId", "JR1", "4", YearMonth.of(2017, 12), YearMonth.of(2018, 2), 5)
         .onComplete(
             context.asyncAssertSuccess(
                 list ->
@@ -127,7 +127,7 @@ public class ExtCounterReportsClientImplTest {
   public void testGetValidMonthsFail(TestContext context) {
     stubFor(get(urlPathEqualTo(PATH)).willReturn(aResponse().withStatus(500)));
     counterReportsClient
-        .getValidMonths("providerId", "JR1", YearMonth.of(2017, 12), YearMonth.of(2018, 2), 5)
+        .getValidMonths("providerId", "JR1", "4", YearMonth.of(2017, 12), YearMonth.of(2018, 2), 5)
         .onComplete(
             context.asyncAssertFailure(
                 t ->
