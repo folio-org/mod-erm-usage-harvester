@@ -39,11 +39,15 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
   }
 
   @Override
-  public Future<CounterReport> getReport(
-      String providerId, String reportName, String month, boolean tiny) {
+  public Future<CounterReport> getReport(CounterReport report, boolean tiny) {
+    String providerId = report.getProviderId();
+    String release = report.getRelease();
+    String reportName = report.getReportName();
+    String month = report.getYearMonth();
     String queryStr =
         String.format(
-            "(providerId=%s AND yearMonth=%s AND reportName==%s)", providerId, month, reportName);
+            "(providerId=%s AND release=%s AND yearMonth=%s AND reportName==%s)",
+            providerId, release, month, reportName);
     return super.getCounterReports(tiny, queryStr, null, null, null, 0, 1)
         .transform(ar -> getResponseBodyIfStatus200(ar, CounterReports.class))
         .flatMap(
@@ -56,8 +60,7 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
   @Override
   public Future<HttpResponse<Buffer>> upsertReport(CounterReport report) {
     AtomicReference<String> requestUrl = new AtomicReference<>(okapiUrl + PATH);
-    return this.getReport(
-            report.getProviderId(), report.getReportName(), report.getYearMonth(), true)
+    return this.getReport(report, true)
         .flatMap(
             existing -> {
               if (existing == null) { // no report found

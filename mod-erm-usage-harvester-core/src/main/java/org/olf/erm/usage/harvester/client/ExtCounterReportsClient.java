@@ -12,7 +12,7 @@ import org.olf.erm.usage.harvester.FetchItem;
 public interface ExtCounterReportsClient {
 
   /** completes with the found report or null if none is found fails otherwise */
-  Future<CounterReport> getReport(String providerId, String reportName, String month, boolean tiny);
+  Future<CounterReport> getReport(CounterReport report, boolean tiny);
 
   Future<HttpResponse<Buffer>> upsertReport(CounterReport report);
 
