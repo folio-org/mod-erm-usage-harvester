@@ -46,7 +46,7 @@ public class CS51Impl implements ServiceEndpoint {
   private final String providerId;
   private final Vertx vertx;
   private final ApiClient apiClient;
-  private final ObjectMapper objectMapper = Counter51Utils.createDefaultObjectMapper();
+  private final ObjectMapper objectMapper = Counter51Utils.getDefaultObjectMapper();
 
   public CS51Impl(UsageDataProvider provider) {
     requireNonNull(provider);
