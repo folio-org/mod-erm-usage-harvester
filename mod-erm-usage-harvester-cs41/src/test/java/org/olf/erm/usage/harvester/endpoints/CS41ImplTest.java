@@ -17,6 +17,7 @@ import io.vertx.core.json.Json;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import jakarta.xml.bind.JAXB;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
@@ -27,7 +28,6 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import javax.xml.bind.JAXB;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.SushiConfig;
@@ -194,7 +194,7 @@ public class CS41ImplTest {
                               Arrays.asList(
                                   "Error getting report",
                                   "status code 500",
-                                  "TestHeaderKey",
+                                  "testheaderkey",
                                   "TestHeaderValue"));
                       async.complete();
                     }));
