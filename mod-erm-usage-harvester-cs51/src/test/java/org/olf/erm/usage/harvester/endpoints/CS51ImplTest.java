@@ -52,8 +52,7 @@ class CS51ImplTest {
   private static final String BEGIN_DATE = "2022-01";
   private static final String END_DATE = "2022-03";
   private static final String REPORT_TR = "TR";
-  private static final String MSG_NOT_AUTHORIZED_EXCEPTION =
-      "Requestor Not Authorized to Access Service";
+  private static final String MSG_USAGE_NOT_READY = "Usage Not Ready for Requested Dates";
   private static final String MSG_UNRECOGNIZED_FIELD = "Unrecognized field \"Database\"";
   private static UsageDataProvider provider;
 
@@ -200,7 +199,7 @@ class CS51ImplTest {
                           assertThat(ar.succeeded()).isFalse();
                           assertThat(ar.cause())
                               .isInstanceOf(InvalidReportException.class)
-                              .hasMessageContaining(MSG_NOT_AUTHORIZED_EXCEPTION);
+                              .hasMessageContaining(MSG_USAGE_NOT_READY);
                         })
                     .completeNow());
   }

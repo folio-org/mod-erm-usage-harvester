@@ -50,10 +50,11 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-rx-java2</artifactId>
     </dependency>
+    <!-- stick to 2.4.0: https://github.com/quartz-scheduler/quartz/issues/1298 -->
     <dependency>
       <groupId>org.quartz-scheduler</groupId>
       <artifactId>quartz</artifactId>
-      <version>2.3.2</version>
+      <version>2.4.0</version>
     </dependency>
 
     <dependency>
@@ -78,14 +79,14 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.github.tomakehurst</groupId>
-      <artifactId>wiremock-jre8-standalone</artifactId>
-      <version>2.35.1</version>
+      <groupId>org.wiremock</groupId>
+      <artifactId>wiremock-standalone</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
-      <version>5.0.1</version>
+      <version>5.5.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
