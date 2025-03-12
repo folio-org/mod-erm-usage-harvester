@@ -1,3 +1,12 @@
+# 5.1.0
+* [MODEUSHARV-133](https://folio-org.atlassian.net/browse/MODEUSHARV-133) Update `maven-surefire-plugin` and `maven-failsafe-plugin`
+* [MODEUSHARV-132](https://folio-org.atlassian.net/browse/MODEUSHARV-132) Upgrade to Java 21
+* [MODEUSHARV-130](https://folio-org.atlassian.net/browse/MODEUSHARV-130) Update Apache CXF to v4.1.0
+* Update test sample data
+* [MODEUSHARV-127](https://folio-org.atlassian.net/browse/MODEUSHARV-127) Counter-reports client not considering report release version
+* Add `spotless-maven-plugin` and update `CONTRIBUTING.md`
+* [MODEUSHARV-113](https://folio-org.atlassian.net/browse/MODEUSHARV-113) Provide ServiceEndpoint implementation for COUNTER 5.1
+
 # 5.0.2
 * [MODEUSHARV-128](https://folio-org.atlassian.net/browse/MODEUSHARV-128) Add missing `okapi` interface to module descriptor
 
