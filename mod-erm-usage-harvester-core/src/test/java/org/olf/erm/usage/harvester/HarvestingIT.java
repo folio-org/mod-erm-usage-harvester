@@ -73,10 +73,10 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
+import org.olf.erm.usage.harvester.client.SettingsClientImpl;
 import org.quartz.SchedulerException;
 
 @RunWith(VertxUnitRunner.class)
@@ -177,7 +177,7 @@ public class HarvestingIT {
             .willReturn(aResponse().proxiedFrom("http://localhost:" + httpPort)));
 
     baseRule.stubFor(
-        get(urlPathEqualTo(ExtConfigurationsClientImpl.PATH))
+        get(urlPathEqualTo(SettingsClientImpl.ENTRIES_PATH))
             .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
     JsonArray tenantsJsonArray =

@@ -29,11 +29,6 @@
       <version>${erm.usage.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>mod-configuration-client</artifactId>
-      <version>${configurations.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.olf</groupId>
       <artifactId>mod-erm-usage-harvester-spi</artifactId>
       <version>${project.parent.version}</version>

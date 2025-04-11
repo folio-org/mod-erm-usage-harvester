@@ -37,7 +37,6 @@
     <aspectj-maven-plugin.version>1.14</aspectj-maven-plugin.version>
     <erm.usage.version>5.1.0</erm.usage.version>
     <erm.usage.counter.version>5.0.0</erm.usage.counter.version>
-    <configurations.version>5.10.0</configurations.version>
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
     <spotless.version>2.44.3</spotless.version>
     <google-java-format.version>1.25.2</google-java-format.version>
