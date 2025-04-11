@@ -12,10 +12,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static io.restassured.RestAssured.given;
 import static java.time.ZoneOffset.UTC;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.folio.rest.impl.ErmUsageHarvesterAPI.DEFAULT_DAYS_TO_KEEP_LOGS;
+import static org.olf.erm.usage.harvester.Constants.DEFAULT_DAYS_TO_KEEP_LOGS;
 import static org.folio.rest.impl.ErmUsageHarvesterAPI.STALE_JOB_ERROR_MSG;
 import static org.folio.rest.impl.ErmUsageHarvesterAPI.TABLE_NAME_JOBS;
 import static org.folio.rest.jaxrs.model.JobInfo.Result.FAILURE;
+import static org.olf.erm.usage.harvester.Constants.SETTINGS_KEY_DAYS_TO_KEEP_LOGS;
+import static org.olf.erm.usage.harvester.Constants.SETTINGS_SCOPE_HARVESTER;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -47,7 +49,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.rest.impl.ErmUsageHarvesterAPI;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.JobInfo;
@@ -62,6 +63,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.ClockProvider;
+import org.olf.erm.usage.harvester.Constants;
 import org.olf.erm.usage.harvester.PostgresContainerRule;
 
 @RunWith(VertxUnitRunner.class)
@@ -291,8 +293,8 @@ public class ErmUsageHarvesterJobsAPIIT {
         .withConfigs(
             List.of(
                 new Config()
-                    .withModule(ErmUsageHarvesterAPI.CONFIG_MODULE)
-                    .withConfigName(ErmUsageHarvesterAPI.CONFIG_NAME)
+                    .withModule(SETTINGS_SCOPE_HARVESTER)
+                    .withConfigName(SETTINGS_KEY_DAYS_TO_KEEP_LOGS)
                     .withValue(value)));
   }
 

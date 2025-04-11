@@ -5,6 +5,9 @@ import static io.vertx.core.Future.succeededFuture;
 import static io.vertx.core.http.HttpMethod.POST;
 import static org.folio.okapi.common.XOkapiHeaders.TENANT;
 import static org.folio.okapi.common.XOkapiHeaders.TOKEN;
+import static org.olf.erm.usage.harvester.Constants.DEFAULT_DAYS_TO_KEEP_LOGS;
+import static org.olf.erm.usage.harvester.Constants.SETTINGS_KEY_DAYS_TO_KEEP_LOGS;
+import static org.olf.erm.usage.harvester.Constants.SETTINGS_SCOPE_HARVESTER;
 import static org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl.NO_ENTRY;
 import static org.olf.erm.usage.harvester.periodic.JobInfoUtil.upsertJobInfo;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
@@ -40,6 +43,7 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.olf.erm.usage.harvester.ClockProvider;
+import org.olf.erm.usage.harvester.Constants;
 import org.olf.erm.usage.harvester.Messages;
 import org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
@@ -72,10 +76,6 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
         }
         return resp;
       };
-
-  public static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
-  public static final String CONFIG_NAME = "daysToKeepLogs";
-  public static final int DEFAULT_DAYS_TO_KEEP_LOGS = 60;
 
   private static final Logger log = LoggerFactory.getLogger(ErmUsageHarvesterAPI.class);
 
@@ -301,7 +301,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
         .onComplete(
             ar ->
                 configurationsClient
-                    .getModConfigurationValue(CONFIG_MODULE, CONFIG_NAME)
+                    .getModConfigurationValue(SETTINGS_SCOPE_HARVESTER, SETTINGS_KEY_DAYS_TO_KEEP_LOGS)
                     .transform(
                         ar2 -> {
                           if (ar2.succeeded()) {

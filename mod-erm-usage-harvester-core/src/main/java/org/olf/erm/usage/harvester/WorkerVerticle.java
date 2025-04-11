@@ -2,6 +2,8 @@ package org.olf.erm.usage.harvester;
 
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
+import static org.olf.erm.usage.harvester.Constants.SETTINGS_KEY_MAX_FAILED_ATTEMPTS;
+import static org.olf.erm.usage.harvester.Constants.SETTINGS_SCOPE_HARVESTER;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
 import static org.olf.erm.usage.harvester.FetchListUtil.expand;
@@ -33,8 +35,6 @@ import org.slf4j.LoggerFactory;
 public class WorkerVerticle extends AbstractVerticle {
 
   private static final Logger log = LoggerFactory.getLogger(WorkerVerticle.class);
-  private static final String CONFIG_MODULE = "ERM-USAGE-HARVESTER";
-  private static final String CONFIG_NAME = "maxFailedAttempts";
   private static final int RETRY_COUNT_TOO_MANY_REQUESTS = 2;
   private static final int MAX_FAILED_UPLOAD_COUNT = 5;
   private final ExtConfigurationsClient configurationsClient;
@@ -239,13 +239,14 @@ public class WorkerVerticle extends AbstractVerticle {
 
   private Future<Integer> getMaxFailedAttempts() {
     return configurationsClient
-        .getModConfigurationValue(CONFIG_MODULE, CONFIG_NAME)
+        .getModConfigurationValue(
+          SETTINGS_SCOPE_HARVESTER, SETTINGS_KEY_MAX_FAILED_ATTEMPTS)
         .map(Integer::parseInt)
         .onFailure(
             t ->
-                logInfo("Failed getting config value {}: {}", CONFIG_NAME, getMessageOrToString(t)))
+                logInfo("Failed getting config value {}: {}", SETTINGS_KEY_MAX_FAILED_ATTEMPTS, getMessageOrToString(t)))
         .otherwise(5)
-        .onSuccess(s -> logInfo("Using config value {}={}", CONFIG_NAME, s));
+        .onSuccess(s -> logInfo("Using config value {}={}", SETTINGS_KEY_MAX_FAILED_ATTEMPTS, s));
   }
 
   private Future<List<FetchItem>> getFetchList(int maxFailedAttempts) {
