@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester;
 
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
+import static org.olf.erm.usage.harvester.Constants.DEFAULT_MAX_FAILED_ATTEMPTS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_KEY_MAX_FAILED_ATTEMPTS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_SCOPE_HARVESTER;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
@@ -26,6 +27,7 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.client.ExtConfigurationsClient;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
+import org.olf.erm.usage.harvester.client.SettingsClient;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
@@ -37,7 +39,7 @@ public class WorkerVerticle extends AbstractVerticle {
   private static final Logger log = LoggerFactory.getLogger(WorkerVerticle.class);
   private static final int RETRY_COUNT_TOO_MANY_REQUESTS = 2;
   private static final int MAX_FAILED_UPLOAD_COUNT = 5;
-  private final ExtConfigurationsClient configurationsClient;
+  private final SettingsClient settingsClient;
   private final ExtCounterReportsClient counterReportsClient;
   private final ExtUsageDataProvidersClient usageDataProvidersClient;
   private final UsageDataProvider usageDataProvider;
@@ -50,14 +52,14 @@ public class WorkerVerticle extends AbstractVerticle {
   private int maxConcurrency;
 
   public WorkerVerticle(
-      ExtConfigurationsClient configurationsClient,
+      SettingsClient settingsClient,
       ExtCounterReportsClient counterReportsClient,
       ExtUsageDataProvidersClient usageDataProvidersClient,
       String tenantId,
       UsageDataProvider usageDataProvider,
       ServiceEndpoint serviceEndpoint,
       int initialConcurrency) {
-    this.configurationsClient = configurationsClient;
+    this.settingsClient = settingsClient;
     this.counterReportsClient = counterReportsClient;
     this.usageDataProvidersClient = usageDataProvidersClient;
     this.tenantId = tenantId;
@@ -193,9 +195,7 @@ public class WorkerVerticle extends AbstractVerticle {
       List<CounterReport> list, Function<CounterReport, Future<Void>> method) {
     return list.stream()
         .reduce(
-            Future.succeededFuture(),
-            (acc, item) -> acc.compose(v -> method.apply(item)),
-            (a, b) -> a);
+            succeededFuture(), (acc, item) -> acc.compose(v -> method.apply(item)), (a, b) -> a);
   }
 
   private Future<Void> uploadReports(List<CounterReport> crs) {
@@ -238,14 +238,20 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   private Future<Integer> getMaxFailedAttempts() {
-    return configurationsClient
-        .getModConfigurationValue(
-          SETTINGS_SCOPE_HARVESTER, SETTINGS_KEY_MAX_FAILED_ATTEMPTS)
-        .map(Integer::parseInt)
+    return settingsClient
+        .getValue(SETTINGS_SCOPE_HARVESTER, SETTINGS_KEY_MAX_FAILED_ATTEMPTS)
+        .compose(
+            optional ->
+                optional
+                    .map(o -> succeededFuture((Integer) o))
+                    .orElse(failedFuture("No config value found")))
         .onFailure(
             t ->
-                logInfo("Failed getting config value {}: {}", SETTINGS_KEY_MAX_FAILED_ATTEMPTS, getMessageOrToString(t)))
-        .otherwise(5)
+                logInfo(
+                    "Failed getting config value {}: {}",
+                    SETTINGS_KEY_MAX_FAILED_ATTEMPTS,
+                    getMessageOrToString(t)))
+        .otherwise(DEFAULT_MAX_FAILED_ATTEMPTS)
         .onSuccess(s -> logInfo("Using config value {}={}", SETTINGS_KEY_MAX_FAILED_ATTEMPTS, s));
   }
 

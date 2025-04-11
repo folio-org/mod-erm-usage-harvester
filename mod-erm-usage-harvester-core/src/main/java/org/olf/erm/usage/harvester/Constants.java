@@ -6,6 +6,7 @@ public class Constants {
   public static final String SETTINGS_KEY_DAYS_TO_KEEP_LOGS = "daysToKeepLogs";
   public static final String SETTINGS_KEY_MAX_FAILED_ATTEMPTS = "maxFailedAttempts";
   public static final int DEFAULT_DAYS_TO_KEEP_LOGS = 60;
+  public static final int DEFAULT_MAX_FAILED_ATTEMPTS = 5;
 
   private Constants() {}
 }
