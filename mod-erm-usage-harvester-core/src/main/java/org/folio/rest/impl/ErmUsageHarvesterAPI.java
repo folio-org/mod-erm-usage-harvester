@@ -8,7 +8,6 @@ import static org.folio.okapi.common.XOkapiHeaders.TOKEN;
 import static org.olf.erm.usage.harvester.Constants.DEFAULT_DAYS_TO_KEEP_LOGS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_KEY_DAYS_TO_KEEP_LOGS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_SCOPE_HARVESTER;
-import static org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl.NO_ENTRY;
 import static org.olf.erm.usage.harvester.periodic.JobInfoUtil.upsertJobInfo;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 
@@ -22,6 +21,7 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
@@ -43,10 +43,10 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.olf.erm.usage.harvester.ClockProvider;
-import org.olf.erm.usage.harvester.Constants;
 import org.olf.erm.usage.harvester.Messages;
-import org.olf.erm.usage.harvester.client.ExtConfigurationsClientImpl;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
+import org.olf.erm.usage.harvester.client.SettingsClient;
+import org.olf.erm.usage.harvester.client.SettingsClientImpl;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
 import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
@@ -291,34 +291,28 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     String tenantId = okapiHeaders.get(TENANT);
     String token = okapiHeaders.get(TOKEN);
     OkapiClientImpl okapiClient = new OkapiClientImpl(okapiUrl);
-    ExtConfigurationsClientImpl configurationsClient =
-        new ExtConfigurationsClientImpl(okapiUrl, tenantId, token);
-
+    SettingsClient settingsClient =
+        new SettingsClientImpl(okapiUrl, tenantId, token, WebClient.create(vertxContext.owner()));
     okapiClient
         .sendRequest(POST, "/erm-usage-harvester/jobs/purgestale", tenantId, token)
         .map(throwIfStatusCodeNot204)
         .onFailure(t -> log.error("Error during cleanup: {}", t.toString()))
         .onComplete(
             ar ->
-                configurationsClient
-                    .getModConfigurationValue(SETTINGS_SCOPE_HARVESTER, SETTINGS_KEY_DAYS_TO_KEEP_LOGS)
-                    .transform(
-                        ar2 -> {
-                          if (ar2.succeeded()) {
-                            int days = Integer.parseInt(ar2.result());
-                            if (days < 0) {
-                              return failedFuture("Received invalid configuration value");
-                            } else {
-                              return succeededFuture(days);
-                            }
-                          } else {
-                            if (NO_ENTRY.equals(ar2.cause().getMessage())) {
-                              return succeededFuture(DEFAULT_DAYS_TO_KEEP_LOGS);
-                            } else {
-                              return failedFuture("Failed getting configuration value");
-                            }
-                          }
-                        })
+                settingsClient
+                    .getValue(SETTINGS_SCOPE_HARVESTER, SETTINGS_KEY_DAYS_TO_KEEP_LOGS)
+                    .recover(t -> failedFuture("Failed getting settings value"))
+                    .compose(
+                        optional ->
+                            optional
+                                .<Future<Integer>>map(
+                                    o -> {
+                                      Integer days = (Integer) o;
+                                      return days < 0
+                                          ? failedFuture("Received invalid settings value")
+                                          : succeededFuture(days);
+                                    })
+                                .orElse(succeededFuture(DEFAULT_DAYS_TO_KEEP_LOGS)))
                     .map(i -> getCurrentTimestampMinus(i, ChronoUnit.DAYS))
                     .compose(
                         timestamp ->

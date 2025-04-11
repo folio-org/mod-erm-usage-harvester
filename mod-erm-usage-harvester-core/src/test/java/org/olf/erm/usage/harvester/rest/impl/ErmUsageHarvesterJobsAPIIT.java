@@ -11,11 +11,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static io.restassured.RestAssured.given;
 import static java.time.ZoneOffset.UTC;
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.Constants.DEFAULT_DAYS_TO_KEEP_LOGS;
 import static org.folio.rest.impl.ErmUsageHarvesterAPI.STALE_JOB_ERROR_MSG;
 import static org.folio.rest.impl.ErmUsageHarvesterAPI.TABLE_NAME_JOBS;
 import static org.folio.rest.jaxrs.model.JobInfo.Result.FAILURE;
+import static org.olf.erm.usage.harvester.Constants.DEFAULT_DAYS_TO_KEEP_LOGS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_KEY_DAYS_TO_KEEP_LOGS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_SCOPE_HARVESTER;
 
@@ -49,21 +50,21 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.rest.jaxrs.model.Config;
-import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.JobInfo;
 import org.folio.rest.jaxrs.model.JobInfos;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.settings.Entries;
+import org.folio.settings.Entry;
+import org.folio.settings.ResultInfo;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.ClockProvider;
-import org.olf.erm.usage.harvester.Constants;
 import org.olf.erm.usage.harvester.PostgresContainerRule;
 
 @RunWith(VertxUnitRunner.class)
@@ -84,7 +85,7 @@ public class ErmUsageHarvesterJobsAPIIT {
   private static final String PURGE_PATH_SEGMENT = "/purgefinished";
   private static final String PURGE_PATH = BASE_PATH + PURGE_PATH_SEGMENT;
   private static final String PURGE_STALE_PATH = BASE_PATH + "/purgestale";
-  private static final String CONFIG_PATH = "/configurations/entries";
+  private static final String SETTINGS_PATH = "/settings/entries";
   private static final String CLEANUP_PATH_SEGMENT = "/cleanup";
 
   private static JobInfos expectedJobInfos;
@@ -288,14 +289,15 @@ public class ErmUsageHarvesterJobsAPIIT {
     }
   }
 
-  private Configs createConfigurationResponseObject(String value) {
-    return new Configs()
-        .withConfigs(
+  private Entries createSettingsResponse(Object value) {
+    return new Entries()
+        .withItems(
             List.of(
-                new Config()
-                    .withModule(SETTINGS_SCOPE_HARVESTER)
-                    .withConfigName(SETTINGS_KEY_DAYS_TO_KEEP_LOGS)
-                    .withValue(value)));
+                new Entry()
+                    .withScope(SETTINGS_SCOPE_HARVESTER)
+                    .withKey(SETTINGS_KEY_DAYS_TO_KEEP_LOGS)
+                    .withValue(value)))
+        .withResultInfo(new ResultInfo().withTotalRecords(1));
   }
 
   @Test
@@ -303,44 +305,50 @@ public class ErmUsageHarvesterJobsAPIIT {
     okapiMockRule.stubFor(post(urlPathEqualTo(PURGE_PATH)).willReturn(noContent()));
     okapiMockRule.stubFor(post(urlPathEqualTo(PURGE_STALE_PATH)).willReturn(noContent()));
 
-    // failed to get configuration value
-    okapiMockRule.stubFor(WireMock.get(urlPathEqualTo(CONFIG_PATH)).willReturn(serverError()));
+    // failed to get settings value
+    okapiMockRule.stubFor(WireMock.get(urlPathEqualTo(SETTINGS_PATH)).willReturn(serverError()));
     given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
     verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(CONFIG_PATH)));
+    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
     verify(0, postRequestedFor(urlPathEqualTo(PURGE_PATH)));
 
-    // configuration value is set to null
+    // settings value is set to null
     okapiMockRule.resetRequests();
     okapiMockRule.stubFor(
-        WireMock.get(urlPathEqualTo(CONFIG_PATH))
-            .willReturn(okJson(Json.encode(createConfigurationResponseObject(null)))));
+        WireMock.get(urlPathEqualTo(SETTINGS_PATH))
+            .willReturn(okJson(Json.encode(createSettingsResponse(null)))));
     given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
     verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(CONFIG_PATH)));
-    verify(0, postRequestedFor(urlPathEqualTo(PURGE_PATH)));
+    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
+    verify(1, postRequestedFor(urlPathEqualTo(PURGE_PATH)));
 
-    // configuration value is set to invalid value
+    // settings value is set to invalid value
     okapiMockRule.resetRequests();
     okapiMockRule.stubFor(
-        WireMock.get(urlPathEqualTo(CONFIG_PATH))
-            .willReturn(okJson(Json.encode(createConfigurationResponseObject("-10")))));
+        WireMock.get(urlPathEqualTo(SETTINGS_PATH))
+            .willReturn(okJson(Json.encode(createSettingsResponse(-10)))));
     given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
     verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(CONFIG_PATH)));
+    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
     verify(0, postRequestedFor(urlPathEqualTo(PURGE_PATH)));
 
     // set fixed clock
     LocalDateTime testDateTime = LocalDateTime.of(2000, 1, 30, 8, 5, 3, 123);
     ClockProvider.setClock(Clock.fixed(testDateTime.toInstant(UTC), UTC));
 
-    // no configuration entry is found
+    // no settings entry is found
     okapiMockRule.resetRequests();
     okapiMockRule.stubFor(
-        WireMock.get(urlPathEqualTo(CONFIG_PATH)).willReturn(okJson(Json.encode(new Configs()))));
+        WireMock.get(urlPathEqualTo(SETTINGS_PATH))
+            .willReturn(
+                okJson(
+                    Json.encode(
+                        new Entries()
+                            .withItems(emptyList())
+                            .withResultInfo(new ResultInfo().withTotalRecords(0))))));
     given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
     verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(CONFIG_PATH)));
+    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
     long expectedTimestamp =
         testDateTime
             .minus(DEFAULT_DAYS_TO_KEEP_LOGS, ChronoUnit.DAYS)
@@ -353,14 +361,14 @@ public class ErmUsageHarvesterJobsAPIIT {
             .withHeader(XOkapiHeaders.TENANT, equalTo(TENANT))
             .withHeader(XOkapiHeaders.TOKEN, equalTo(TOKEN)));
 
-    // configuration value is set to 10
+    // settings value is set to 10
     okapiMockRule.resetRequests();
     okapiMockRule.stubFor(
-        WireMock.get(urlPathEqualTo(CONFIG_PATH))
-            .willReturn(okJson(Json.encode(createConfigurationResponseObject("10")))));
+        WireMock.get(urlPathEqualTo(SETTINGS_PATH))
+            .willReturn(okJson(Json.encode(createSettingsResponse(10)))));
     given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
     verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(CONFIG_PATH)));
+    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
     expectedTimestamp = testDateTime.minus(10, ChronoUnit.DAYS).toInstant(UTC).toEpochMilli();
     verify(
         1,
@@ -375,7 +383,7 @@ public class ErmUsageHarvesterJobsAPIIT {
     okapiMockRule.stubFor(post(urlPathEqualTo(PURGE_STALE_PATH)).willReturn(serverError()));
     given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
     verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(CONFIG_PATH)));
+    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
     verify(1, postRequestedFor(urlPathEqualTo(PURGE_PATH)));
   }
 
