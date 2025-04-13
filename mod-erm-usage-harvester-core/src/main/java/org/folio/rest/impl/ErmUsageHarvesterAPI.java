@@ -44,6 +44,7 @@ import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.olf.erm.usage.harvester.ClockProvider;
 import org.olf.erm.usage.harvester.Messages;
+import org.olf.erm.usage.harvester.client.OkapiClient;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.olf.erm.usage.harvester.client.SettingsClient;
 import org.olf.erm.usage.harvester.client.SettingsClientImpl;
@@ -61,6 +62,9 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
   public static final String TABLE_NAME_JOBS = "jobs";
   public static final String STALE_JOB_ERROR_MSG = "Stale job";
   public static final String MESSAGE_NO_TOKEN = "No token provided";
+  private static final String PATH_PURGE_STALE = "/erm-usage-harvester/jobs/purgestale"; // NOSONAR
+  private static final String PATH_PURGE_FINISHED_TEMPLATE =
+      "/erm-usage-harvester/jobs/purgefinished?timestamp=%d"; // NOSONAR
 
   private static final Criteria finishedCriteria =
       new Criteria().addField("'finishedAt'").setJSONB(true).setOperation("IS NOT NULL");
@@ -282,6 +286,44 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     return Instant.now(ClockProvider.getClock()).minus(amountToSubstract, unit).toEpochMilli();
   }
 
+  private Future<Long> calculatePurgeTimestampFromSettings(SettingsClient settingsClient) {
+    return settingsClient
+        .getValue(SETTINGS_SCOPE_HARVESTER, SETTINGS_KEY_DAYS_TO_KEEP_LOGS)
+        .recover(t -> failedFuture("Failed getting settings value"))
+        .compose(
+            optional ->
+                optional
+                    .<Future<Integer>>map(
+                        o -> {
+                          Integer days = (Integer) o;
+                          return days < 0
+                              ? failedFuture("Received invalid settings value")
+                              : succeededFuture(days);
+                        })
+                    .orElse(succeededFuture(DEFAULT_DAYS_TO_KEEP_LOGS)))
+        .map(i -> getCurrentTimestampMinus(i, ChronoUnit.DAYS));
+  }
+
+  private Future<Void> callPurgeStaleJobs(
+      OkapiClient okapiClient, Map<String, String> okapiHeaders) {
+    return okapiClient
+        .sendRequest(POST, PATH_PURGE_STALE, okapiHeaders.get(TENANT), okapiHeaders.get(TOKEN))
+        .map(throwIfStatusCodeNot204)
+        .mapEmpty();
+  }
+
+  private Future<Void> callPurgeFinishedJobs(
+      OkapiClient okapiClient, Map<String, String> okapiHeaders, Long timestamp) {
+    return okapiClient
+        .sendRequest(
+            POST,
+            PATH_PURGE_FINISHED_TEMPLATE.formatted(timestamp),
+            okapiHeaders.get(TENANT),
+            okapiHeaders.get(TOKEN))
+        .map(throwIfStatusCodeNot204)
+        .mapEmpty();
+  }
+
   @Override
   public void postErmUsageHarvesterJobsCleanup(
       Map<String, String> okapiHeaders,
@@ -290,46 +332,20 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     String okapiUrl = vertxContext.config().getString("okapiUrl");
     String tenantId = okapiHeaders.get(TENANT);
     String token = okapiHeaders.get(TOKEN);
-    OkapiClientImpl okapiClient = new OkapiClientImpl(okapiUrl);
+    OkapiClient okapiClient = new OkapiClientImpl(okapiUrl);
     SettingsClient settingsClient =
         new SettingsClientImpl(okapiUrl, tenantId, token, WebClient.create(vertxContext.owner()));
-    okapiClient
-        .sendRequest(POST, "/erm-usage-harvester/jobs/purgestale", tenantId, token)
-        .map(throwIfStatusCodeNot204)
+
+    callPurgeStaleJobs(okapiClient, okapiHeaders)
+        .onFailure(t -> log.error("Error during cleanup: {}", t.toString()))
+        .recover(t -> succeededFuture())
+        .compose(v -> calculatePurgeTimestampFromSettings(settingsClient))
+        .compose(timestamp -> callPurgeFinishedJobs(okapiClient, okapiHeaders, timestamp))
         .onFailure(t -> log.error("Error during cleanup: {}", t.toString()))
         .onComplete(
-            ar ->
-                settingsClient
-                    .getValue(SETTINGS_SCOPE_HARVESTER, SETTINGS_KEY_DAYS_TO_KEEP_LOGS)
-                    .recover(t -> failedFuture("Failed getting settings value"))
-                    .compose(
-                        optional ->
-                            optional
-                                .<Future<Integer>>map(
-                                    o -> {
-                                      Integer days = (Integer) o;
-                                      return days < 0
-                                          ? failedFuture("Received invalid settings value")
-                                          : succeededFuture(days);
-                                    })
-                                .orElse(succeededFuture(DEFAULT_DAYS_TO_KEEP_LOGS)))
-                    .map(i -> getCurrentTimestampMinus(i, ChronoUnit.DAYS))
-                    .compose(
-                        timestamp ->
-                            okapiClient
-                                .sendRequest(
-                                    POST,
-                                    "/erm-usage-harvester/jobs/purgefinished?timestamp="
-                                        + timestamp,
-                                    tenantId,
-                                    token)
-                                .map(throwIfStatusCodeNot204))
-                    .onFailure(t -> log.error("Error during cleanup: {}", t.toString()))
-                    .onComplete(
-                        ar2 ->
-                            asyncResultHandler.handle(
-                                succeededFuture(
-                                    PostErmUsageHarvesterJobsCleanupResponse.respond204()))));
+            v ->
+                asyncResultHandler.handle(
+                    succeededFuture(PostErmUsageHarvesterJobsCleanupResponse.respond204())));
   }
 
   static class UnexpectedStatusCodeException extends RuntimeException {
