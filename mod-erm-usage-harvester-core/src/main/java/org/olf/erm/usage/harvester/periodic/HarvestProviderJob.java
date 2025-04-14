@@ -43,8 +43,7 @@ public class HarvestProviderJob extends AbstractHarvestJob {
     }
 
     WebClient webClient = WebClient.create(vertxContext.owner());
-    SettingsClient settingsClient =
-      new SettingsClientImpl(okapiUrl, tenantId, token, webClient);
+    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, token, webClient);
     ExtAggregatorSettingsClient aggregatorSettingsClient =
         new ExtAggregatorSettingsClientImpl(okapiUrl, tenantId, token, webClient);
     ExtCounterReportsClient counterReportsClient =
