@@ -29,11 +29,6 @@
       <version>${erm.usage.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>mod-configuration-client</artifactId>
-      <version>${configurations.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.olf</groupId>
       <artifactId>mod-erm-usage-harvester-spi</artifactId>
       <version>${project.parent.version}</version>
@@ -80,11 +75,6 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-unit</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.wiremock</groupId>
-      <artifactId>wiremock-standalone</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -187,6 +177,25 @@
             <version>${aspect.version}</version>
           </dependency>
         </dependencies>
+      </plugin>
+
+      <plugin>
+        <groupId>org.jsonschema2pojo</groupId>
+        <artifactId>jsonschema2pojo-maven-plugin</artifactId>
+        <version>1.2.2</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <sourceDirectory>${project.basedir}/src/main/resources/schemas</sourceDirectory>
+          <targetPackage>org.folio</targetPackage>
+          <annotationStyle>jackson2</annotationStyle>
+          <generateBuilders>true</generateBuilders>
+        </configuration>
       </plugin>
 
       <plugin>
