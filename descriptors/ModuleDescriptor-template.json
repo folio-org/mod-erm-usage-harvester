@@ -176,8 +176,8 @@
   ],
   "optional": [
     {
-      "id": "configuration",
-      "version": "2.0"
+      "id": "settings",
+      "version": "1.2"
     },
     {
       "id": "okapi",
