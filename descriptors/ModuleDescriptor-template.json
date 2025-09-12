@@ -25,7 +25,8 @@
             "counterreports.item.post",
             "counterreports.item.put",
             "counterreports.item.delete",
-            "configuration.entries.collection.get"
+            "mod-settings.entries.collection.get",
+            "mod-settings.global.read.mod-erm-usage-harvester"
           ]
         },
         {
@@ -47,7 +48,8 @@
             "counterreports.item.post",
             "counterreports.item.put",
             "counterreports.item.delete",
-            "configuration.entries.collection.get"
+            "mod-settings.entries.collection.get",
+            "mod-settings.global.read.mod-erm-usage-harvester"
           ]
         },
         {
@@ -148,7 +150,8 @@
           "unit": "minute",
           "delay": "30",
           "modulePermissions": [
-            "configuration.entries.collection.get",
+            "mod-settings.entries.collection.get",
+            "mod-settings.global.read.mod-erm-usage-harvester",
             "ermusageharvester.jobs.purge-finished.post",
             "ermusageharvester.jobs.purge-stale.post"
           ]
