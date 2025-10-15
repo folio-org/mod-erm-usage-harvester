@@ -26,7 +26,7 @@
             "counterreports.item.put",
             "counterreports.item.delete",
             "mod-settings.entries.collection.get",
-            "mod-settings.global.read.mod-erm-usage-harvester"
+            "mod-settings.global.read.mod-erm-usage-harvester.manage"
           ]
         },
         {
@@ -49,7 +49,7 @@
             "counterreports.item.put",
             "counterreports.item.delete",
             "mod-settings.entries.collection.get",
-            "mod-settings.global.read.mod-erm-usage-harvester"
+            "mod-settings.global.read.mod-erm-usage-harvester.manage"
           ]
         },
         {
@@ -151,7 +151,7 @@
           "delay": "30",
           "modulePermissions": [
             "mod-settings.entries.collection.get",
-            "mod-settings.global.read.mod-erm-usage-harvester",
+            "mod-settings.global.read.mod-erm-usage-harvester.manage",
             "ermusageharvester.jobs.purge-finished.post",
             "ermusageharvester.jobs.purge-stale.post"
           ]
@@ -260,6 +260,14 @@
         "ermusageharvester.jobs.purge-finished.post",
         "ermusageharvester.jobs.purge-stale.post"
       ]
+    },
+    {
+      "permissionName": "mod-settings.global.read.mod-erm-usage-harvester.manage",
+      "displayName": "Read settings for mod-erm-usage-harvester"
+    },
+    {
+      "permissionName": "mod-settings.global.write.mod-erm-usage-harvester.manage",
+      "displayName": "Write settings for mod-erm-usage-harvester"
     }
   ],
   "metadata": {
