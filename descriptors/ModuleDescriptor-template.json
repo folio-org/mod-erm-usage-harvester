@@ -274,7 +274,7 @@
     "user": {
       "type": "system",
       "permissions": [
-        "ermusageharvester.start.single"
+        "ermusageharvester.start-all.get"
       ]
     }
   },
