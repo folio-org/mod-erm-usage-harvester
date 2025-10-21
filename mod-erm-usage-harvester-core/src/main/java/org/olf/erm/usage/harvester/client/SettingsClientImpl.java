@@ -47,4 +47,21 @@ public class SettingsClientImpl implements SettingsClient {
                   : Optional.ofNullable(resp.body().getItems().getFirst().getValue());
             });
   }
+
+  /**
+   * Parses a settings value as an Integer. Handles both String and Integer values.
+   *
+   * @param value the value to parse
+   * @return the parsed Integer value
+   * @throws IllegalArgumentException if the value cannot be parsed as an Integer
+   */
+  public static Integer parseIntegerValue(Object value) {
+    if (value instanceof Integer i) {
+      return i;
+    }
+    if (value instanceof String s) {
+      return Integer.parseInt(s);
+    }
+    throw new IllegalArgumentException("Cannot parse value as Integer: " + value);
+  }
 }

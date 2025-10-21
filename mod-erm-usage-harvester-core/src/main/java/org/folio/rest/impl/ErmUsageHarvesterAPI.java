@@ -295,12 +295,13 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
                 optional
                     .<Future<Integer>>map(
                         o -> {
-                          Integer days = (Integer) o;
+                          Integer days = SettingsClientImpl.parseIntegerValue(o);
                           return days < 0
                               ? failedFuture("Received invalid settings value")
                               : succeededFuture(days);
                         })
                     .orElse(succeededFuture(DEFAULT_DAYS_TO_KEEP_LOGS)))
+        .onSuccess(s -> log.info("Using config value {}={}", SETTINGS_KEY_DAYS_TO_KEEP_LOGS, s))
         .map(i -> getCurrentTimestampMinus(i, ChronoUnit.DAYS));
   }
 
