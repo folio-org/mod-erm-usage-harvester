@@ -9,9 +9,11 @@ import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.olf.erm.usage.harvester.client.SettingsClientImpl.ENTRIES_PATH;
 import static org.olf.erm.usage.harvester.client.SettingsClientImpl.QUERY_PARAM;
 import static org.olf.erm.usage.harvester.client.SettingsClientImpl.QUERY_TEMPLATE;
+import static org.olf.erm.usage.harvester.client.SettingsClientImpl.parseIntegerValue;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -141,5 +143,45 @@ class SettingsClientImplTest {
         new SettingsClientImpl(
             LOCALHOST_URL_TEMPLATE.formatted(nextFreePort), TENANT, TOKEN, webClient);
     unavailableClient.getValue(SCOPE, KEY).onComplete(context.failingThenComplete());
+  }
+
+  private static Stream<Object> provideValidIntegerValues() {
+    return Stream.of("5", "0", "-10", "2147483647", "-2147483648", 5, 0, -10, 2147483647);
+  }
+
+  private static Stream<Object> provideInvalidIntegerValues() {
+    return Stream.of(
+        "abc",
+        "12.5",
+        "",
+        "  ",
+        true,
+        false,
+        Json.decodeValue("{ \"foo\": 123}"),
+        Json.decodeValue("[ 1, 2, 3 ]"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideValidIntegerValues")
+  void testParseIntegerValueWithValidInputs(Object input) {
+    Integer result = parseIntegerValue(input);
+    if (input instanceof String s) {
+      assertThat(result).isEqualTo(Integer.parseInt(s));
+    } else {
+      assertThat(result).isEqualTo(input);
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideInvalidIntegerValues")
+  void testParseIntegerValueWithInvalidInputs(Object input) {
+    assertThatThrownBy(() -> parseIntegerValue(input)).isInstanceOf(Exception.class);
+  }
+
+  @Test
+  void testParseIntegerValueWithNull() {
+    assertThatThrownBy(() -> parseIntegerValue(null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Cannot parse value as Integer");
   }
 }

@@ -27,6 +27,7 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
 import org.olf.erm.usage.harvester.client.SettingsClient;
+import org.olf.erm.usage.harvester.client.SettingsClientImpl;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
@@ -242,7 +243,7 @@ public class WorkerVerticle extends AbstractVerticle {
         .compose(
             optional ->
                 optional
-                    .map(o -> succeededFuture((Integer) o))
+                    .map(o -> succeededFuture(SettingsClientImpl.parseIntegerValue(o)))
                     .orElse(failedFuture("No config value found")))
         .onFailure(
             t ->
