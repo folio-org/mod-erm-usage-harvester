@@ -168,7 +168,7 @@ Implementations available at runtime can be listed at `/erm-usage-harvester/impl
       "isAggregator": false
     },
     {
-      "name": "Counter-Sushi 5.0",
+      "name": "Counter 5.0",
       "description": "Implementation for Counter/Sushi 5",
       "type": "cs50",
       "isAggregator": false

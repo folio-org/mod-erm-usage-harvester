@@ -12,7 +12,7 @@ public class CS50Provider implements ServiceEndpointProvider {
 
   @Override
   public String getServiceName() {
-    return "Counter-Sushi 5.0";
+    return "Counter 5.0";
   }
 
   @Override
