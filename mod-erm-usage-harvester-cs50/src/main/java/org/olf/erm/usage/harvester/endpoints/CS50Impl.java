@@ -5,6 +5,7 @@ import static java.util.Objects.requireNonNull;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.base.Strings;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -12,6 +13,7 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.core.net.ProxyOptions;
 import io.vertx.core.net.ProxyType;
 import io.vertx.ext.web.client.WebClientOptions;
@@ -41,6 +43,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CS50Impl implements ServiceEndpoint {
+
+  static {
+    /* Vert.x 4.5.22 introduced java.time.Duration in ProxyOptions, which requires Jackson's
+    JSR310 module for serialization. */
+    DatabindCodec.mapper().registerModule(new JavaTimeModule());
+    DatabindCodec.prettyMapper().registerModule(new JavaTimeModule());
+  }
 
   public static final int MAX_ERROR_BODY_LENGTH = 2000;
   private static final Logger LOG = LoggerFactory.getLogger(CS50Impl.class);
