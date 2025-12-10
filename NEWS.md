@@ -1,3 +1,9 @@
+# 5.0.3 
+* [MODEUS-214](https://folio-org.atlassian.net/browse/MODEUS-214) RMB 35.3.1, Vert.x 4.5.22
+
+* 5.0.2
+* [MODEUSHARV-128](https://folio-org.atlassian.net/browse/MODEUSHARV-128) Add missing `okapi` interface to module descriptor
+
 # 5.0.1
 * [MODEUSHARV-125](https://folio-org.atlassian.net/browse/MODEUSHARV-125) Add missing `configuration` interface to module descriptor
 
