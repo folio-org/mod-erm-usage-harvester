@@ -1,3 +1,6 @@
+# 5.1.1
+* [MODEUSHARV-153](https://folio-org.atlassian.net/browse/MODEUSHARV-153) RMB Logging release - RMB 35.4.1, Vert.x 4.5.22
+
 # 5.1.0
 * [MODEUSHARV-133](https://folio-org.atlassian.net/browse/MODEUSHARV-133) Update `maven-surefire-plugin` and `maven-failsafe-plugin`
 * [MODEUSHARV-132](https://folio-org.atlassian.net/browse/MODEUSHARV-132) Upgrade to Java 21
