@@ -8,7 +8,7 @@
   <parent>
     <groupId>org.olf</groupId>
     <artifactId>mod-erm-usage-harvester</artifactId>
-    <version>5.1.1-SNAPSHOT</version>
+    <version>5.1.1</version>
   </parent>
 
   <dependencies>
