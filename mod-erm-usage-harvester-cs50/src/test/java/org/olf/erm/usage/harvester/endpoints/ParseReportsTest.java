@@ -33,7 +33,7 @@ public class ParseReportsTest {
 
   public ParseReportsTest(String resourceName, String className) throws ClassNotFoundException {
     this.resourceName = "reports/" + resourceName;
-    this.clazz = Class.forName("org.openapitools.client.model." + className);
+    this.clazz = Class.forName("org.openapitools.counter50.model." + className);
   }
 
   @Test

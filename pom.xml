@@ -94,6 +94,11 @@
       </dependency>
       <dependency>
         <groupId>org.olf</groupId>
+        <artifactId>mod-erm-usage-counter50-client</artifactId>
+        <version>${erm.usage.counter.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.olf</groupId>
         <artifactId>mod-erm-usage-counter51</artifactId>
         <version>${erm.usage.counter.version}</version>
       </dependency>
