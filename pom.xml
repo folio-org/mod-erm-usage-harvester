@@ -103,9 +103,19 @@
         <version>${erm.usage.counter.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.olf</groupId>
+        <artifactId>mod-erm-usage-counter51-client</artifactId>
+        <version>${erm.usage.counter.version}</version>
+      </dependency>
+      <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
         <version>33.4.0-jre</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.20.0</version>
       </dependency>
       <dependency>
         <groupId>org.wiremock</groupId>

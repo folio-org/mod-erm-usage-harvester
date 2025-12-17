@@ -1,0 +1,68 @@
+{
+  "Report_Header": {
+    "Release": "5.1",
+    "Report_ID": "TR",
+    "Report_Name": "Title Report",
+    "Created": "2023-02-15T09:11:12Z",
+    "Created_By": "Sample Publisher",
+    "Institution_ID": {
+      "ISNI": [
+        "1234123412341234"
+      ]
+    },
+    "Institution_Name": "Sample Institution",
+    "Registry_Record": "https://registry.countermetrics.org/platform/99999999-9999-9999-9999-999999999999",
+    "Report_Attributes": {
+      "Attributes_To_Show": [
+        "YOP",
+        "Access_Type",
+        "Access_Method"
+      ]
+    },
+    "Report_Filters": {
+      "Begin_Date": "2022-01-01",
+      "End_Date": "2022-03-31"
+    },
+    "Custom_Vendor_Field": "custom_value",
+    "Extra_Metadata": {
+      "internal_id": "12345",
+      "processing_timestamp": "2023-02-15T10:00:00Z"
+    }
+  },
+  "Report_Items": [
+    {
+      "Title": "Title 1",
+      "Publisher": "Sample Publisher",
+      "Publisher_ID": {
+        "ISNI": [
+          "4321432143214321"
+        ]
+      },
+      "Platform": "Platform 1",
+      "Item_ID": {
+        "DOI": "10.9999/xxxxt01",
+        "Proprietary": "P1:T01",
+        "ISBN": "979-8-88888-888-8",
+        "URI": "https://doi.org/10.9999/xxxxt01"
+      },
+      "Attribute_Performance": [
+        {
+          "Data_Type": "Book",
+          "YOP": "2022",
+          "Access_Type": "Controlled",
+          "Access_Method": "Regular",
+          "Performance": {
+            "Total_Item_Requests": {
+              "2022-01": 662,
+              "2022-02": 748,
+              "2022-03": 797
+            }
+          }
+        }
+      ],
+      "Vendor_Specific_Data": "vendor_data_123",
+      "Internal_Reference": "ref-abc-123"
+    }
+  ],
+  "Extra_Report_Field": "should_be_ignored"
+}

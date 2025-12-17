@@ -17,7 +17,11 @@
     </dependency>
     <dependency>
       <groupId>org.olf</groupId>
-      <artifactId>mod-erm-usage-counter51</artifactId>
+      <artifactId>mod-erm-usage-counter51-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
     </dependency>
   </dependencies>
 </project>

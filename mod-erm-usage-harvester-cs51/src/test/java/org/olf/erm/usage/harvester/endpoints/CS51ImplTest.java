@@ -32,7 +32,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.openapitools.counter51client.ApiException;
+import org.olf.erm.usage.counter51.client.Counter51ClientException;
 
 @ExtendWith(VertxExtension.class)
 class CS51ImplTest {
@@ -219,7 +219,7 @@ class CS51ImplTest {
                         () -> {
                           assertThat(ar.succeeded()).isFalse();
                           assertThat(ar.cause())
-                              .isInstanceOf(ApiException.class)
+                              .isInstanceOf(Counter51ClientException.class)
                               .hasMessageContaining(MSG_UNRECOGNIZED_FIELD);
                         })
                     .completeNow());
@@ -257,9 +257,140 @@ class CS51ImplTest {
                         () -> {
                           assertThat(ar.failed()).isTrue();
                           assertThat(ar.cause())
-                              .isInstanceOf(ApiException.class)
+                              .isInstanceOf(Counter51ClientException.class)
                               .hasMessageContaining(
                                   "Requestor is Not Authorized to Access Usage for Institution");
+                        })
+                    .completeNow());
+  }
+
+  @Test
+  void test404ResponseWithBody(VertxTestContext testContext) {
+    String errorBody =
+        "{\"Severity\":\"Error\",\"Code\":3030,\"Message\":\"No Usage Available for Requested"
+            + " Dates\"}";
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404).withBody(errorBody)));
+
+    new CS51Impl(provider)
+        .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+        .onComplete(
+            ar ->
+                testContext
+                    .verify(
+                        () -> {
+                          assertThat(ar.failed()).isTrue();
+                          assertThat(ar.cause())
+                              .isInstanceOfSatisfying(
+                                  Counter51ClientException.class,
+                                  ex -> {
+                                    assertThat(ex).hasMessage("HTTP 404: Not Found - " + errorBody);
+                                    assertThat(ex.getStatusCode()).isEqualTo(404);
+                                    assertThat(ex.getResponseBody()).isEqualTo(errorBody);
+                                  });
+                        })
+                    .completeNow());
+  }
+
+  @Test
+  void test404ResponseWithEmptyBody(VertxTestContext testContext) {
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404).withBody("")));
+
+    new CS51Impl(provider)
+        .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+        .onComplete(
+            ar ->
+                testContext
+                    .verify(
+                        () -> {
+                          assertThat(ar.failed()).isTrue();
+                          assertThat(ar.cause())
+                              .isInstanceOfSatisfying(
+                                  Counter51ClientException.class,
+                                  ex -> {
+                                    assertThat(ex).hasMessage("HTTP 404: Not Found - [no body]");
+                                    assertThat(ex.getStatusCode()).isEqualTo(404);
+                                    assertThat(ex.getResponseBody()).isEqualTo("[no body]");
+                                  });
+                        })
+                    .completeNow());
+  }
+
+  @Test
+  void test500ResponseWithHtmlBody(VertxTestContext testContext) {
+    String htmlBody = "<!DOCTYPE html><html><body>Internal Server Error</body></html>";
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(500).withBody(htmlBody)));
+
+    new CS51Impl(provider)
+        .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+        .onComplete(
+            ar ->
+                testContext
+                    .verify(
+                        () -> {
+                          assertThat(ar.failed()).isTrue();
+                          assertThat(ar.cause())
+                              .isInstanceOfSatisfying(
+                                  Counter51ClientException.class,
+                                  ex -> {
+                                    assertThat(ex)
+                                        .hasMessage("HTTP 500: Server Error - " + htmlBody);
+                                    assertThat(ex.getStatusCode()).isEqualTo(500);
+                                    assertThat(ex.getResponseBody()).isEqualTo(htmlBody);
+                                  });
+                        })
+                    .completeNow());
+  }
+
+  @Test
+  void testResponseBodyAbbreviation(VertxTestContext testContext) {
+    String longBody = "A".repeat(2500);
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404).withBody(longBody)));
+
+    new CS51Impl(provider)
+        .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+        .onComplete(
+            ar ->
+                testContext
+                    .verify(
+                        () -> {
+                          assertThat(ar.failed()).isTrue();
+                          assertThat(ar.cause())
+                              .isInstanceOfSatisfying(
+                                  Counter51ClientException.class,
+                                  ex -> {
+                                    String expectedMessage =
+                                        "HTTP 404: Not Found - " + "A".repeat(1997) + "...";
+                                    assertThat(ex).hasMessage(expectedMessage);
+                                    assertThat(ex.getStatusCode()).isEqualTo(404);
+                                    assertThat(ex.getResponseBody()).isEqualTo(longBody);
+                                    assertThat(ex.getResponseBody()).hasSize(2500);
+                                  });
+                        })
+                    .completeNow());
+  }
+
+  @Test
+  void testFetchReportWithAdditionalAttributes(VertxTestContext testContext) {
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR))
+            .willReturn(
+                aResponse().withStatus(200).withBodyFile("TR_with_additional_attributes.json")));
+
+    new CS51Impl(provider)
+        .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+        .onComplete(
+            ar ->
+                testContext
+                    .verify(
+                        () -> {
+                          assertThat(ar.succeeded()).isFalse();
+                          assertThat(ar.cause())
+                              .isInstanceOf(Counter51ClientException.class)
+                              .hasMessageContaining("Unrecognized field");
                         })
                     .completeNow());
   }
