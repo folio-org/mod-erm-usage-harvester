@@ -1,6 +1,7 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import static org.apache.commons.lang3.StringUtils.abbreviate;
+import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_ERROR_BODY_LENGTH;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -21,8 +22,6 @@ import org.olf.erm.usage.counter51.client.Counter51ClientException;
  * suffix. The full body is still available via Counter51ClientException.getResponseBody().
  */
 public class ExtendedCounter51Client extends Counter51Client {
-
-  private static final int MAX_ERROR_BODY_LENGTH = 2000;
 
   public ExtendedCounter51Client(
       Vertx vertx, WebClientOptions options, String baseUrl, Counter51Auth auth) {

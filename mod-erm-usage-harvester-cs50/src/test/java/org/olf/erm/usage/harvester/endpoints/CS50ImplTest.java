@@ -7,6 +7,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_ERROR_BODY_LENGTH;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
@@ -329,7 +330,8 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessage(StringUtils.abbreviate(expectedReportStr, 2000));
+                  assertThat(t)
+                      .hasMessage(StringUtils.abbreviate(expectedReportStr, MAX_ERROR_BODY_LENGTH));
                   verifyApiCall();
                 }));
   }

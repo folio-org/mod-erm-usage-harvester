@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import static io.vertx.core.Future.failedFuture;
 import static org.apache.commons.lang3.StringUtils.abbreviate;
+import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_ERROR_BODY_LENGTH;
 import static org.olf.erm.usage.harvester.endpoints.JsonUtil.isJsonArray;
 
 import io.vertx.core.Future;
@@ -20,8 +21,6 @@ import org.openapitools.counter50.model.SUSHIErrorModel;
  * proper 4xx/5xx codes. This client detects these cases and properly categorizes them as errors.
  */
 public class ExtendedCounter50Client extends Counter50Client {
-
-  private static final int MAX_ERROR_BODY_LENGTH = 2000;
 
   public ExtendedCounter50Client(
       Vertx vertx, WebClientOptions options, String baseUrl, Counter50Auth auth) {
