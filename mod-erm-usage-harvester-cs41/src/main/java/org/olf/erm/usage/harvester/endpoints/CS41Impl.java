@@ -2,7 +2,6 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import jakarta.xml.ws.BindingProvider;
 import java.net.InetSocketAddress;
@@ -153,13 +152,11 @@ public class CS41Impl implements ServiceEndpoint {
   @Override
   public Future<List<CounterReport>> fetchReport(
       String reportType, String beginDate, String endDate) {
-    Promise<List<CounterReport>> promise = Promise.promise();
-
     Context context = Vertx.currentContext();
     if (context == null) context = Vertx.vertx().getOrCreateContext();
 
-    context.executeBlocking(
-        block -> {
+    return context.executeBlocking(
+        () -> {
           CounterReportResponse counterReportResponse;
           try {
             ReportRequest reportRequest = createReportRequest(reportType, beginDate, endDate);
@@ -169,8 +166,7 @@ public class CS41Impl implements ServiceEndpoint {
                 ExceptionUtils.getThrowableList(e).stream()
                     .map(Throwable::getMessage)
                     .collect(Collectors.joining(", "));
-            block.fail("Error getting report: " + messages);
-            return;
+            throw new CS41Exception("Error getting report: " + messages);
           }
 
           List<Exception> exceptions = Counter4Utils.getExceptions(counterReportResponse);
@@ -179,19 +175,15 @@ public class CS41Impl implements ServiceEndpoint {
               && !counterReportResponse.getReport().getReport().isEmpty()) {
             Report reportResult = counterReportResponse.getReport().getReport().get(0);
             try {
-              List<CounterReport> counterReportList =
-                  createCounterReportList(reportResult, reportType, provider);
-              promise.complete(counterReportList);
+              return createCounterReportList(reportResult, reportType, provider);
             } catch (java.lang.Exception e) {
-              promise.fail(new InvalidReportException(e));
+              throw new InvalidReportException(e);
             }
           } else {
-            block.fail(new InvalidReportException(Counter4Utils.getErrorMessages(exceptions)));
+            throw new InvalidReportException(Counter4Utils.getErrorMessages(exceptions));
           }
         },
-        false,
-        promise);
-    return promise.future();
+        false);
   }
 
   static class CS41Exception extends RuntimeException {
