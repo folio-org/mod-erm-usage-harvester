@@ -52,10 +52,9 @@ public class ErmUsageHarvesterAPITest {
     RestAssured.port = port;
     RestAssured.basePath = "erm-usage-harvester";
     RestAssured.defaultParser = Parser.JSON;
-    vertx.deployVerticle(
-        "org.folio.rest.RestVerticle",
-        new DeploymentOptions().setConfig(cfg),
-        context.asyncAssertSuccess());
+    vertx
+        .deployVerticle("org.folio.rest.RestVerticle", new DeploymentOptions().setConfig(cfg))
+        .onComplete(context.asyncAssertSuccess());
   }
 
   @Before
@@ -64,8 +63,8 @@ public class ErmUsageHarvesterAPITest {
   }
 
   @AfterClass
-  public static void afterClass(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
+  public static void afterClass() {
+    vertx.close();
     RestAssured.reset();
   }
 

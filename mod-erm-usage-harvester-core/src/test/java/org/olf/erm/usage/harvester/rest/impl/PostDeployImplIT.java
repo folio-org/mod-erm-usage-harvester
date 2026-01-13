@@ -95,15 +95,15 @@ public class PostDeployImplIT {
 
     scheduler.getListenerManager().addSchedulerListener(new SchedulerListenerAsyncCountdown(async));
     options.getConfig().put("testing", false);
-    vertx.deployVerticle(
-        RestVerticle.class.getName(),
-        options,
-        context.asyncAssertSuccess(
-            s ->
-                vertx.setTimer(
-                    2000 // give listener some time to execute
-                    ,
-                    l -> async.countDown())));
+    vertx
+        .deployVerticle(RestVerticle.class.getName(), options)
+        .onComplete(
+            context.asyncAssertSuccess(
+                s ->
+                    vertx.setTimer(
+                        2000 // give listener some time to execute
+                        ,
+                        l -> async.countDown())));
 
     async.awaitSuccess(5000);
     assertThat(scheduler.checkExists(new JobKey(PERIODIC_JOB_KEY, TENANT))).isTrue();

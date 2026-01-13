@@ -55,44 +55,33 @@ public class WorkerVerticleITProvider2 implements ServiceEndpointProvider {
           return Future.failedFuture(e);
         }
 
-        Promise<HttpResponse<Buffer>> promise = Promise.promise();
-        client
+        return client
             .getAbs(provider.getHarvestingConfig().getSushiConfig().getServiceUrl().concat("/"))
             .addQueryParam("report", report)
             .addQueryParam("begin", beginDate)
             .addQueryParam("end", endDate)
-            .send(promise);
-
-        Promise<List<CounterReport>> promise2 = Promise.promise();
-        promise
-            .future()
-            .onFailure(promise2::fail)
-            .onSuccess(
+            .send()
+            .map(
                 resp -> {
                   if (beginDate.equals("2018-01-01") && endDate.equals("2018-12-31")) {
-                    promise2.fail(new InvalidReportException("Missing data for Month 2018-03"));
+                    throw new InvalidReportException("Missing data for Month 2018-03");
                   } else if (beginDate.equals("2018-03-01") && endDate.equals("2018-03-31")) {
-                    promise2.fail(new InvalidReportException("No data for Month 2018-03"));
+                    throw new InvalidReportException("No data for Month 2018-03");
                   } else {
                     List<YearMonth> months = DateUtil.getYearMonths(beginDate, endDate);
-                    List<CounterReport> resultList =
-                        months.stream()
-                            .map(
-                                ym ->
-                                    new CounterReport()
-                                        .withReportName(report)
-                                        .withReport(
-                                            new Report()
-                                                .withAdditionalProperty("month", ym.toString()))
-                                        .withRelease("4")
-                                        .withProviderId("providerId")
-                                        .withYearMonth(ym.toString()))
-                            .collect(Collectors.toList());
-                    promise2.complete(resultList);
+                    return months.stream()
+                        .map(
+                            ym ->
+                                new CounterReport()
+                                    .withReportName(report)
+                                    .withReport(
+                                        new Report().withAdditionalProperty("month", ym.toString()))
+                                    .withRelease("4")
+                                    .withProviderId("providerId")
+                                    .withYearMonth(ym.toString()))
+                        .toList();
                   }
                 });
-
-        return promise2.future();
       }
     };
   }

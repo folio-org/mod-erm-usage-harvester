@@ -201,10 +201,9 @@ public class HarvestingIT {
     listAppender.start();
     root.addAppender(listAppender);
 
-    vertx.deployVerticle(
-        RestVerticle.class.getName(),
-        new DeploymentOptions().setConfig(cfg),
-        context.asyncAssertSuccess());
+    vertx
+        .deployVerticle(RestVerticle.class.getName(), new DeploymentOptions().setConfig(cfg))
+        .onComplete(context.asyncAssertSuccess());
   }
 
   @AfterClass

@@ -264,9 +264,9 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
                 .addCriterion(notFinishedCritera))
         .flatMap(
             res -> {
-              List<Future> upserts =
+              List<Future<String>> upserts =
                   res.getResults().stream()
-                      .<Future>map(
+                      .map(
                           ji ->
                               upsertJobInfo(
                                   ji.withFinishedAt(
@@ -275,7 +275,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
                                       .withErrorMessage(STALE_JOB_ERROR_MSG),
                                   tenantId))
                       .toList();
-              return CompositeFuture.join(upserts);
+              return Future.join(upserts);
             })
         .<Response>map(cf -> PostErmUsageHarvesterJobsPurgestaleResponse.respond204())
         .otherwise(PostErmUsageHarvesterJobsPurgestaleResponse::respond500WithTextPlain)

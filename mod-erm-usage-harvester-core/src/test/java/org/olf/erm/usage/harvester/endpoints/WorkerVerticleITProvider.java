@@ -49,38 +49,27 @@ public class WorkerVerticleITProvider implements ServiceEndpointProvider {
           String report, String beginDate, String endDate) {
         log.info("Fetching report {} {} {}", report, beginDate, endDate);
 
-        Promise<HttpResponse<Buffer>> promise = Promise.promise();
-        client
+        return client
             .getAbs(provider.getHarvestingConfig().getSushiConfig().getServiceUrl().concat("/"))
             .addQueryParam("report", report)
             .addQueryParam("begin", beginDate)
             .addQueryParam("end", endDate)
-            .send(promise);
-
-        Promise<List<CounterReport>> promise2 = Promise.promise();
-        promise
-            .future()
-            .onFailure(promise2::fail)
-            .onSuccess(
+            .send()
+            .map(
                 resp -> {
                   List<YearMonth> months = DateUtil.getYearMonths(beginDate, endDate);
-                  List<CounterReport> resultList =
-                      months.stream()
-                          .map(
-                              ym ->
-                                  new CounterReport()
-                                      .withReportName(report)
-                                      .withReport(
-                                          new Report()
-                                              .withAdditionalProperty("month", ym.toString()))
-                                      .withRelease("4")
-                                      .withProviderId("providerId")
-                                      .withYearMonth(ym.toString()))
-                          .collect(Collectors.toList());
-                  promise2.complete(resultList);
+                  return months.stream()
+                      .map(
+                          ym ->
+                              new CounterReport()
+                                  .withReportName(report)
+                                  .withReport(
+                                      new Report().withAdditionalProperty("month", ym.toString()))
+                                  .withRelease("4")
+                                  .withProviderId("providerId")
+                                  .withYearMonth(ym.toString()))
+                      .toList();
                 });
-
-        return promise2.future();
       }
     };
   }

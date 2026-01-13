@@ -56,8 +56,8 @@ public class OkapiClientImplTest {
   }
 
   @After
-  public void after(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
+  public void after() {
+    vertx.close();
   }
 
   @Test
