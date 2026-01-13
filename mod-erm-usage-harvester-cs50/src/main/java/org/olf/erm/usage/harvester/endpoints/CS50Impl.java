@@ -82,7 +82,7 @@ public class CS50Impl implements ServiceEndpoint {
   private Future<List<CounterReport>> createCounterReportList(
       Object report, String reportType, UsageDataProvider provider) {
     return vertx.executeBlocking(
-        bch -> {
+        () -> {
           List<Object> splitReports;
           try {
             splitReports = Counter5Utils.split(report);
@@ -90,7 +90,7 @@ public class CS50Impl implements ServiceEndpoint {
             throw new CS50Exception(e);
           }
 
-          bch.complete(
+          return
               splitReports.stream()
                   .map(
                       r -> {
@@ -103,7 +103,7 @@ public class CS50Impl implements ServiceEndpoint {
                         return ServiceEndpoint.createCounterReport(
                             Json.encode(r), reportType, provider, yearMonthsFromReport.get(0));
                       })
-                  .collect(Collectors.toList()));
+                  .toList();
         });
   }
 
