@@ -32,7 +32,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.olf.erm.usage.counter51.client.Counter51ClientException;
 
 @ExtendWith(VertxExtension.class)
 class CS51ImplTest {
@@ -219,7 +218,7 @@ class CS51ImplTest {
                         () -> {
                           assertThat(ar.succeeded()).isFalse();
                           assertThat(ar.cause())
-                              .isInstanceOf(Counter51ClientException.class)
+                              .isInstanceOf(InvalidReportException.class)
                               .hasMessageContaining(MSG_UNRECOGNIZED_FIELD);
                         })
                     .completeNow());
@@ -257,7 +256,7 @@ class CS51ImplTest {
                         () -> {
                           assertThat(ar.failed()).isTrue();
                           assertThat(ar.cause())
-                              .isInstanceOf(Counter51ClientException.class)
+                              .isInstanceOf(ServiceEndpointException.class)
                               .hasMessageContaining(
                                   "Requestor is Not Authorized to Access Usage for Institution");
                         })
@@ -282,7 +281,7 @@ class CS51ImplTest {
                           assertThat(ar.failed()).isTrue();
                           assertThat(ar.cause())
                               .isInstanceOfSatisfying(
-                                  Counter51ClientException.class,
+                                  ServiceEndpointException.class,
                                   ex -> {
                                     assertThat(ex).hasMessage("HTTP 404: Not Found - " + errorBody);
                                     assertThat(ex.getStatusCode()).isEqualTo(404);
@@ -307,7 +306,7 @@ class CS51ImplTest {
                           assertThat(ar.failed()).isTrue();
                           assertThat(ar.cause())
                               .isInstanceOfSatisfying(
-                                  Counter51ClientException.class,
+                                  ServiceEndpointException.class,
                                   ex -> {
                                     assertThat(ex).hasMessage("HTTP 404: Not Found - [no body]");
                                     assertThat(ex.getStatusCode()).isEqualTo(404);
@@ -333,7 +332,7 @@ class CS51ImplTest {
                           assertThat(ar.failed()).isTrue();
                           assertThat(ar.cause())
                               .isInstanceOfSatisfying(
-                                  Counter51ClientException.class,
+                                  ServiceEndpointException.class,
                                   ex -> {
                                     assertThat(ex)
                                         .hasMessage("HTTP 500: Server Error - " + htmlBody);
@@ -360,7 +359,7 @@ class CS51ImplTest {
                           assertThat(ar.failed()).isTrue();
                           assertThat(ar.cause())
                               .isInstanceOfSatisfying(
-                                  Counter51ClientException.class,
+                                  ServiceEndpointException.class,
                                   ex -> {
                                     String expectedMessage =
                                         "HTTP 404: Not Found - " + "A".repeat(1997) + "...";
@@ -389,7 +388,7 @@ class CS51ImplTest {
                         () -> {
                           assertThat(ar.succeeded()).isFalse();
                           assertThat(ar.cause())
-                              .isInstanceOf(Counter51ClientException.class)
+                              .isInstanceOf(InvalidReportException.class)
                               .hasMessageContaining("Unrecognized field");
                         })
                     .completeNow());

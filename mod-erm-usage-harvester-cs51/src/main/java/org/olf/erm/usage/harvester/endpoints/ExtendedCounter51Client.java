@@ -1,8 +1,5 @@
 package org.olf.erm.usage.harvester.endpoints;
 
-import static org.apache.commons.lang3.StringUtils.abbreviate;
-import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_ERROR_BODY_LENGTH;
-
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -10,16 +7,16 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClientOptions;
 import org.olf.erm.usage.counter51.client.Counter51Auth;
 import org.olf.erm.usage.counter51.client.Counter51Client;
-import org.olf.erm.usage.counter51.client.Counter51ClientException;
 
 /**
- * Extended Counter 5.1 client that detects 429 (Too Many Requests) errors at the response level and
- * includes the response body in error messages.
+ * Extended Counter 5.1 client with custom error handling.
  *
- * <p>Error message format: "HTTP {statusCode}: {statusMessage} - {responseBody}"
+ * <p>Rate limit errors (429) are wrapped in {@link TooManyRequestsException}. Other HTTP errors are
+ * wrapped in {@link ServiceEndpointException} with format: "HTTP {statusCode}: {statusMessage} -
+ * {responseBody}". The full body is available via {@link
+ * ServiceEndpointException#getResponseBody()}.
  *
- * <p>Response bodies longer than 2000 characters are abbreviated in the message with a "..."
- * suffix. The full body is still available via Counter51ClientException.getResponseBody().
+ * <p>Parse errors (malformed responses) are wrapped in {@link InvalidReportException}.
  */
 public class ExtendedCounter51Client extends Counter51Client {
 
@@ -29,23 +26,19 @@ public class ExtendedCounter51Client extends Counter51Client {
   }
 
   @Override
+  protected <T> Future<T> handleParseError(
+      Buffer buffer, int statusCode, Class<T> responseType, Exception parseException) {
+    return Future.failedFuture(new InvalidReportException(parseException));
+  }
+
+  @Override
   protected <T> Future<T> handleErrorResponse(HttpResponse<Buffer> response) {
     if (response.statusCode() == 429) {
       return Future.failedFuture(new TooManyRequestsException());
     }
 
-    // Format message with abbreviated response body: "HTTP 404: Not Found - {body}"
     String body = response.body() != null ? response.body().toString() : "";
-    if (body.isEmpty()) {
-      body = "[no body]";
-    }
-
-    // Abbreviate body for the message (full body still stored in exception.responseBody)
-    String bodyAbbr = abbreviate(body, MAX_ERROR_BODY_LENGTH);
-
-    String message =
-        "HTTP " + response.statusCode() + ": " + response.statusMessage() + " - " + bodyAbbr;
-
-    return Future.failedFuture(new Counter51ClientException(message, response.statusCode(), body));
+    return Future.failedFuture(
+        new ServiceEndpointException(response.statusCode(), response.statusMessage(), body));
   }
 }

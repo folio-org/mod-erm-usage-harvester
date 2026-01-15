@@ -331,7 +331,9 @@ public class CS50ImplTest {
             context.asyncAssertFailure(
                 t -> {
                   assertThat(t)
-                      .hasMessage(StringUtils.abbreviate(expectedReportStr, MAX_ERROR_BODY_LENGTH));
+                      .hasMessage(
+                          "HTTP 400: Bad Request - "
+                              + StringUtils.abbreviate(expectedReportStr, MAX_ERROR_BODY_LENGTH));
                   verifyApiCall();
                 }));
   }
@@ -357,7 +359,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessage(errStr);
+                  assertThat(t).hasMessage("HTTP 400: Bad Request - " + errStr);
                   verifyApiCall();
                 }));
   }
@@ -396,7 +398,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessage(errStr);
+                  assertThat(t).hasMessage("HTTP 400: Bad Request - " + errStr);
                   verifyApiCall();
                 }));
   }
