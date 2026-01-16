@@ -5,7 +5,6 @@ import static java.util.Objects.requireNonNull;
 
 import io.vertx.core.Context;
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.ThreadingModel;
 import io.vertx.ext.web.client.WebClient;
 import java.util.concurrent.CompletableFuture;
 import org.folio.rest.jaxrs.model.UsageDataProvider;

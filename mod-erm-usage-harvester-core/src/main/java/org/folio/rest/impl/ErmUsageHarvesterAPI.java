@@ -13,7 +13,6 @@ import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_K
 
 import com.google.common.base.Strings;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
