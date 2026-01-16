@@ -11,8 +11,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.ext.web.client.WebClientOptions;
 import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.util.Date;
@@ -25,11 +27,7 @@ import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter51.Counter51Utils;
-import org.openapitools.counter51client.ApiClient;
-import org.openapitools.counter51client.api.DrDatabaseReportApi;
-import org.openapitools.counter51client.api.IrItemReportApi;
-import org.openapitools.counter51client.api.PrPlatformReportApi;
-import org.openapitools.counter51client.api.TrTitleReportApi;
+import org.olf.erm.usage.counter51.client.Counter51Auth;
 
 public class CS51Impl implements ServiceEndpoint {
 
@@ -38,14 +36,13 @@ public class CS51Impl implements ServiceEndpoint {
       "Authors|Publication_Date|Article_Version|YOP|Access_Type|Access_Method";
   public static final String ATTRIBUTES_TO_SHOW_PR = "Access_Method";
   public static final String ATTRIBUTES_TO_SHOW_TR = "YOP|Access_Type|Access_Method";
+
   private final String customerId;
-  private final String requestorId;
-  private final String apiKey;
   private final String reportRelease;
   private final String platform;
   private final String providerId;
   private final Vertx vertx;
-  private final ApiClient apiClient;
+  private final ExtendedCounter51Client client;
   private final ObjectMapper objectMapper = Counter51Utils.getDefaultObjectMapper();
 
   public CS51Impl(UsageDataProvider provider) {
@@ -55,123 +52,38 @@ public class CS51Impl implements ServiceEndpoint {
     SushiConfig sushiConfig = requireNonNull(provider.getHarvestingConfig().getSushiConfig());
 
     String serviceUrlStr = requireNonNull(sushiConfig.getServiceUrl());
-    URL serviceUrl;
     try {
-      serviceUrl = new URL(serviceUrlStr);
-    } catch (MalformedURLException e) {
+      new URI(serviceUrlStr).toURL();
+    } catch (MalformedURLException | URISyntaxException | IllegalArgumentException e) {
       throw new InvalidServiceURLException(serviceUrlStr);
     }
+
     this.customerId = requireNonNull(sushiCredentials.getCustomerId());
-    this.requestorId = sushiCredentials.getRequestorId();
-    this.apiKey = sushiCredentials.getApiKey();
+    String requestorId = sushiCredentials.getRequestorId();
+    String apiKey = sushiCredentials.getApiKey();
     this.platform = sushiCredentials.getPlatform();
     this.reportRelease = requireNonNull(harvestingConfig.getReportRelease());
     this.providerId = requireNonNull(provider.getId());
 
-    this.apiClient = new ApiClient();
-    apiClient.setObjectMapper(objectMapper);
-    apiClient.setHost(serviceUrl.getHost());
-    apiClient.setPort(serviceUrl.getPort());
-    apiClient.setBasePath(serviceUrl.getPath());
-    apiClient.setScheme(serviceUrl.getProtocol());
-    apiClient.setResponseInterceptor(
-        resp -> {
-          if (resp.statusCode() == 429) {
-            throw new TooManyRequestsException();
-          }
-        });
-
     Context context = Vertx.currentContext();
     this.vertx = context == null ? Vertx.vertx() : context.owner();
+
+    Counter51Auth auth = new Counter51Auth(apiKey, requestorId);
+    WebClientOptions webClientOptions = new WebClientOptions().setIdleTimeout(60);
+    this.client = new ExtendedCounter51Client(vertx, webClientOptions, serviceUrlStr, auth);
   }
 
   private Future<ObjectNode> callClientMethod(String reportName, String beginDate, String endDate) {
-    return vertx.executeBlocking(
-        () -> {
-          Object report =
-              switch (reportName) {
-                case "TR" ->
-                    new TrTitleReportApi(apiClient)
-                        .getR51ReportsTr(
-                            customerId,
-                            beginDate,
-                            endDate,
-                            requestorId,
-                            apiKey,
-                            platform,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            ATTRIBUTES_TO_SHOW_TR,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null);
-                case "PR" ->
-                    new PrPlatformReportApi(apiClient)
-                        .getR51ReportsPr(
-                            customerId,
-                            beginDate,
-                            endDate,
-                            requestorId,
-                            apiKey,
-                            platform,
-                            null,
-                            null,
-                            null,
-                            ATTRIBUTES_TO_SHOW_PR,
-                            null,
-                            null,
-                            null,
-                            null);
-                case "DR" ->
-                    new DrDatabaseReportApi(apiClient)
-                        .getR51ReportsDr(
-                            customerId,
-                            beginDate,
-                            endDate,
-                            requestorId,
-                            apiKey,
-                            platform,
-                            null,
-                            null,
-                            null,
-                            ATTRIBUTES_TO_SHOW_DR,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null);
-                case "IR" ->
-                    new IrItemReportApi(apiClient)
-                        .getR51ReportsIr(
-                            customerId,
-                            beginDate,
-                            endDate,
-                            requestorId,
-                            apiKey,
-                            platform,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            ATTRIBUTES_TO_SHOW_IR,
-                            null,
-                            "True",
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null);
-                default -> throw new UnsupportedReportTypeException(reportName);
-              };
-          return objectMapper.convertValue(report, ObjectNode.class);
-        });
+    Future<?> reportFuture =
+        switch (reportName) {
+          case "TR" -> client.getReportsTR(customerId, beginDate, endDate, platform);
+          case "PR" -> client.getReportsPR(customerId, beginDate, endDate, platform);
+          case "DR" -> client.getReportsDR(customerId, beginDate, endDate, platform);
+          case "IR" -> client.getReportsIR(customerId, beginDate, endDate, platform);
+          default -> Future.failedFuture(new UnsupportedReportTypeException(reportName));
+        };
+
+    return reportFuture.map(report -> objectMapper.convertValue(report, ObjectNode.class));
   }
 
   private Future<List<CounterReport>> splitReport(ObjectNode objectNode, String reportName) {

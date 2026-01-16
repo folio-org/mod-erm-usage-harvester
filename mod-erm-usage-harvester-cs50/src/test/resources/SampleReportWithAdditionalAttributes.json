@@ -1,0 +1,65 @@
+{
+  "Report_Header": {
+    "Created": "2020-11-30T09:47:31-08:00",
+    "Created_By": "HighWire Press Inc.",
+    "Customer_ID": "custId",
+    "Report_ID": "TR_J1",
+    "Release": "5",
+    "Report_Name": "Journal Requests (Excluding OA_Gold)",
+    "Institution_Name": "instName",
+    "Institution_ID": [
+      {
+        "Type": "Proprietary",
+        "Value": "HighWire:custId"
+      }
+    ],
+    "Report_Filters": [
+      {
+        "Name": "Begin_Date",
+        "Value": "2018-10-01"
+      },
+      {
+        "Name": "End_Date",
+        "Value": "2018-10-31"
+      }
+    ],
+    "Report_Attributes": [],
+    "Exceptions": [],
+    "Custom_Vendor_Field": "custom_value",
+    "Extra_Metadata": {
+      "internal_id": "12345",
+      "processing_timestamp": "2020-11-30T10:00:00Z"
+    }
+  },
+  "Report_Items": [
+    {
+      "Title": "Antimicrobial Agents and Chemotherapy",
+      "Item_ID": [
+        {
+          "Type": "DOI",
+          "Value": "10.1128/eissn.1098-6596"
+        }
+      ],
+      "Platform": "HighWire Press",
+      "Publisher": "American Society for Microbiology",
+      "Publisher_ID": [],
+      "Performance": [
+        {
+          "Period": {
+            "Begin_Date": "2018-10-01",
+            "End_Date": "2018-10-31"
+          },
+          "Instance": [
+            {
+              "Metric_Type": "Total_Item_Requests",
+              "Count": 28
+            }
+          ]
+        }
+      ],
+      "Vendor_Specific_Data": "vendor_data_123",
+      "Internal_Reference": "ref-abc-123"
+    }
+  ],
+  "Extra_Report_Field": "should_be_ignored"
+}

@@ -36,7 +36,7 @@
     <aspect.version>1.9.22.1</aspect.version>
     <aspectj-maven-plugin.version>1.14</aspectj-maven-plugin.version>
     <erm.usage.version>5.1.0</erm.usage.version>
-    <erm.usage.counter.version>5.0.0</erm.usage.counter.version>
+    <erm.usage.counter.version>6.0.0-SNAPSHOT</erm.usage.counter.version>
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
     <spotless.version>2.44.3</spotless.version>
     <google-java-format.version>1.25.2</google-java-format.version>
@@ -94,13 +94,28 @@
       </dependency>
       <dependency>
         <groupId>org.olf</groupId>
+        <artifactId>mod-erm-usage-counter50-client</artifactId>
+        <version>${erm.usage.counter.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.olf</groupId>
         <artifactId>mod-erm-usage-counter51</artifactId>
+        <version>${erm.usage.counter.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.olf</groupId>
+        <artifactId>mod-erm-usage-counter51-client</artifactId>
         <version>${erm.usage.counter.version}</version>
       </dependency>
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
         <version>33.4.0-jre</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.20.0</version>
       </dependency>
       <dependency>
         <groupId>org.wiremock</groupId>

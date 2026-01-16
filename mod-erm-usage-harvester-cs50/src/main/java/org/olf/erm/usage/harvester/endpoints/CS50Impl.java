@@ -5,17 +5,13 @@ import static java.util.Objects.requireNonNull;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
-import com.google.common.base.Strings;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.ProxyOptions;
 import io.vertx.core.net.ProxyType;
 import io.vertx.ext.web.client.WebClientOptions;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URI;
@@ -28,24 +24,21 @@ import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter50.Counter5Utils;
 import org.olf.erm.usage.counter50.Counter5Utils.Counter5UtilsException;
-import org.openapitools.client.ApiClient.AuthInfo;
-import org.openapitools.client.CounterApiClient;
-import org.openapitools.client.api.CounterDefaultApiImpl;
-import org.openapitools.client.model.COUNTERDatabaseReport;
-import org.openapitools.client.model.COUNTERItemReport;
-import org.openapitools.client.model.COUNTERPlatformReport;
-import org.openapitools.client.model.COUNTERTitleReport;
-import org.openapitools.client.model.SUSHIErrorModel;
-import org.openapitools.client.model.SUSHIReportHeader;
+import org.olf.erm.usage.counter50.client.Counter50Auth;
+import org.openapitools.counter50.model.COUNTERDatabaseReport;
+import org.openapitools.counter50.model.COUNTERItemReport;
+import org.openapitools.counter50.model.COUNTERPlatformReport;
+import org.openapitools.counter50.model.COUNTERTitleReport;
+import org.openapitools.counter50.model.SUSHIErrorModel;
+import org.openapitools.counter50.model.SUSHIReportHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CS50Impl implements ServiceEndpoint {
 
-  public static final int MAX_ERROR_BODY_LENGTH = 2000;
   private static final Logger LOG = LoggerFactory.getLogger(CS50Impl.class);
   private final UsageDataProvider provider;
-  private final CounterDefaultApiImpl client;
+  private final ExtendedCounter50Client client;
 
   private final Vertx vertx;
 
@@ -61,7 +54,7 @@ public class CS50Impl implements ServiceEndpoint {
 
     String apiKey = provider.getSushiCredentials().getApiKey();
     String reqId = provider.getSushiCredentials().getRequestorId();
-    AuthInfo authInfo = createAuthInfo(apiKey, reqId);
+    Counter50Auth auth = new Counter50Auth(apiKey, reqId);
 
     WebClientOptions webClientOptions = new WebClientOptions();
     try {
@@ -82,22 +75,8 @@ public class CS50Impl implements ServiceEndpoint {
     Context context = Vertx.currentContext();
     vertx = context == null ? Vertx.vertx() : context.owner();
 
-    JsonObject config = JsonObject.mapFrom(webClientOptions).put("timeout", 60000);
-    CounterApiClient counterApiClient = new CounterApiClient(vertx, config);
-    counterApiClient.setBasePath(baseUrl);
-
-    client = new CounterDefaultApiImpl(counterApiClient, authInfo);
-  }
-
-  private AuthInfo createAuthInfo(String apiKey, String reqId) {
-    AuthInfo authInfo = new AuthInfo();
-    if (!Strings.isNullOrEmpty(apiKey)) {
-      authInfo.addApi_keyAuthentication(apiKey, null);
-    }
-    if (!Strings.isNullOrEmpty(reqId)) {
-      authInfo.addRequestor_idAuthentication(reqId, null);
-    }
-    return authInfo;
+    webClientOptions.setIdleTimeout(60);
+    client = new ExtendedCounter50Client(vertx, webClientOptions, baseUrl, auth);
   }
 
   private Future<List<CounterReport>> createCounterReportList(
@@ -175,35 +154,24 @@ public class CS50Impl implements ServiceEndpoint {
   }
 
   @Override
-  public Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate) {
-    String reportID = report.replace("_", "").toUpperCase();
-
-    Method method;
-    try {
-      method =
-          client
-              .getClass()
-              .getMethod(
-                  "getReports" + reportID, String.class, String.class, String.class, String.class);
-    } catch (NoSuchMethodException e) {
-      LOG.error(e.getMessage(), e);
-      return failedFuture(e);
-    }
-
+  public Future<List<CounterReport>> fetchReport(
+      String reportName, String beginDate, String endDate) {
+    String reportID = reportName.replace("_", "").toUpperCase();
     String customerId = provider.getSushiCredentials().getCustomerId();
     String platform = provider.getSushiCredentials().getPlatform();
 
-    Promise<List<CounterReport>> promise = Promise.promise();
-    try {
-      ((Future<Object>) method.invoke(client, customerId, beginDate, endDate, platform))
-          .map(this::failIfInvalidReport)
-          .flatMap(r -> createCounterReportList(r, report, provider))
-          .onSuccess(promise::complete)
-          .onFailure(promise::fail);
-    } catch (Exception e) {
-      promise.fail(e);
-    }
-    return promise.future();
+    Future<?> reportFuture =
+        switch (reportID) {
+          case "TR" -> client.getReportsTR(customerId, beginDate, endDate, platform);
+          case "IR" -> client.getReportsIR(customerId, beginDate, endDate, platform);
+          case "DR" -> client.getReportsDR(customerId, beginDate, endDate, platform);
+          case "PR" -> client.getReportsPR(customerId, beginDate, endDate, platform);
+          default -> failedFuture(new UnsupportedReportTypeException(reportName));
+        };
+
+    return reportFuture
+        .map(this::failIfInvalidReport)
+        .flatMap(r -> createCounterReportList(r, reportName, provider));
   }
 
   static class CS50Exception extends RuntimeException {

@@ -17,7 +17,7 @@
     </dependency>
     <dependency>
       <groupId>org.olf</groupId>
-      <artifactId>mod-erm-usage-counter51</artifactId>
+      <artifactId>mod-erm-usage-counter51-client</artifactId>
     </dependency>
   </dependencies>
 </project>

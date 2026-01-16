@@ -7,7 +7,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.endpoints.CS50Impl.MAX_ERROR_BODY_LENGTH;
+import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_ERROR_BODY_LENGTH;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
@@ -42,9 +42,9 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.openapitools.client.model.COUNTERTitleReport;
-import org.openapitools.client.model.SUSHIErrorModel;
-import org.openapitools.client.model.SUSHIReportHeader;
+import org.openapitools.counter50.model.COUNTERTitleReport;
+import org.openapitools.counter50.model.SUSHIErrorModel;
+import org.openapitools.counter50.model.SUSHIReportHeader;
 
 @RunWith(VertxUnitRunner.class)
 public class CS50ImplTest {
@@ -331,7 +331,9 @@ public class CS50ImplTest {
             context.asyncAssertFailure(
                 t -> {
                   assertThat(t)
-                      .hasMessage(StringUtils.abbreviate(expectedReportStr, MAX_ERROR_BODY_LENGTH));
+                      .hasMessage(
+                          "HTTP 400: Bad Request - "
+                              + StringUtils.abbreviate(expectedReportStr, MAX_ERROR_BODY_LENGTH));
                   verifyApiCall();
                 }));
   }
@@ -357,7 +359,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessage(errStr);
+                  assertThat(t).hasMessage("HTTP 400: Bad Request - " + errStr);
                   verifyApiCall();
                 }));
   }
@@ -396,7 +398,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).hasMessage(errStr);
+                  assertThat(t).hasMessage("HTTP 400: Bad Request - " + errStr);
                   verifyApiCall();
                 }));
   }
@@ -455,12 +457,15 @@ public class CS50ImplTest {
   }
 
   @Test
-  public void testFetchReportNoSuchMethod(TestContext context) {
+  public void testFetchReportUnsupportedReport(TestContext context) {
     new CS50Impl(provider)
         .fetchReport("XY_99", BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
-                t -> assertThat(t).isInstanceOf(NoSuchMethodException.class)));
+                t ->
+                    assertThat(t)
+                        .isInstanceOf(UnsupportedReportTypeException.class)
+                        .hasMessage("Unsupported Report Type: XY_99")));
   }
 
   @Test
@@ -570,5 +575,21 @@ public class CS50ImplTest {
                         getRequestedFor(urlPathEqualTo(REPORT_PATH))
                             .withQueryParam(REQUESTOR_ID_QUERY, absent())
                             .withQueryParam(API_KEY_QUERY, absent()))));
+  }
+
+  @Test
+  public void testFetchReportWithAdditionalAttributes(TestContext context) throws IOException {
+    createStubWithResource(200, "SampleReportWithAdditionalAttributes.json");
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t)
+                      .isInstanceOf(InvalidReportException.class)
+                      .hasMessageStartingWith(
+                          "com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException");
+                  verifyApiCall();
+                }));
   }
 }
