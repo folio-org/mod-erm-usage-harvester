@@ -11,10 +11,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.net.ProxyOptions;
-import io.vertx.core.net.ProxyType;
 import io.vertx.ext.web.client.WebClientOptions;
-import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -31,12 +28,8 @@ import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter51.Counter51Utils;
 import org.olf.erm.usage.counter51.client.Counter51Auth;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class CS51Impl implements ServiceEndpoint {
-
-  private static final Logger LOG = LoggerFactory.getLogger(CS51Impl.class);
 
   public static final String ATTRIBUTES_TO_SHOW_DR = "Access_Method";
   public static final String ATTRIBUTES_TO_SHOW_IR =
@@ -77,20 +70,7 @@ public class CS51Impl implements ServiceEndpoint {
 
     Counter51Auth auth = new Counter51Auth(apiKey, requestorId);
     WebClientOptions webClientOptions = new WebClientOptions().setIdleTimeout(60);
-    try {
-      getProxy(new URI(serviceUrlStr))
-          .ifPresent(
-              p -> {
-                InetSocketAddress addr = (InetSocketAddress) p.address();
-                webClientOptions.setProxyOptions(
-                    new ProxyOptions()
-                        .setHost(addr.getHostString())
-                        .setPort(addr.getPort())
-                        .setType(ProxyType.HTTP));
-              });
-    } catch (URISyntaxException e) {
-      LOG.error("Error getting proxy: {}", e.getMessage());
-    }
+    getProxyOptions(serviceUrlStr).ifPresent(webClientOptions::setProxyOptions);
     this.client = new ExtendedCounter51Client(vertx, webClientOptions, serviceUrlStr, auth);
   }
 
