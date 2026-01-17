@@ -11,6 +11,10 @@
     <version>5.2.0-SNAPSHOT</version>
   </parent>
 
+  <properties>
+    <argLine/> <!-- required for when not running jacoco -->
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.folio</groupId>
@@ -269,7 +273,7 @@
         <configuration>
           <useSystemClassLoader>false</useSystemClassLoader>
           <argLine>
-            @{argLine}
+            @{argLine} <!-- required when running jacoco -->
             --add-opens java.base/java.util=ALL-UNNAMED
             --add-opens java.base/java.lang=ALL-UNNAMED
           </argLine>
