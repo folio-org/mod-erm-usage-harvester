@@ -127,8 +127,8 @@ public class ErmUsageHarvesterJobsAPIIT {
   }
 
   @AfterClass
-  public static void afterClass(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
+  public static void afterClass() {
+    vertx.close();
     RestAssured.reset();
   }
 

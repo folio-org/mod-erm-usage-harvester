@@ -18,7 +18,6 @@ import java.net.URI;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -82,7 +81,7 @@ public class CS50Impl implements ServiceEndpoint {
   private Future<List<CounterReport>> createCounterReportList(
       Object report, String reportType, UsageDataProvider provider) {
     return vertx.executeBlocking(
-        bch -> {
+        () -> {
           List<Object> splitReports;
           try {
             splitReports = Counter5Utils.split(report);
@@ -90,20 +89,18 @@ public class CS50Impl implements ServiceEndpoint {
             throw new CS50Exception(e);
           }
 
-          bch.complete(
-              splitReports.stream()
-                  .map(
-                      r -> {
-                        List<YearMonth> yearMonthsFromReport =
-                            Counter5Utils.getYearMonthFromReport(r);
-                        if (yearMonthsFromReport.size() != 1) {
-                          throw new CS50Exception("Split report size not equal to 1");
-                        }
+          return splitReports.stream()
+              .map(
+                  r -> {
+                    List<YearMonth> yearMonthsFromReport = Counter5Utils.getYearMonthFromReport(r);
+                    if (yearMonthsFromReport.size() != 1) {
+                      throw new CS50Exception("Split report size not equal to 1");
+                    }
 
-                        return ServiceEndpoint.createCounterReport(
-                            Json.encode(r), reportType, provider, yearMonthsFromReport.get(0));
-                      })
-                  .collect(Collectors.toList()));
+                    return ServiceEndpoint.createCounterReport(
+                        Json.encode(r), reportType, provider, yearMonthsFromReport.get(0));
+                  })
+              .toList();
         });
   }
 

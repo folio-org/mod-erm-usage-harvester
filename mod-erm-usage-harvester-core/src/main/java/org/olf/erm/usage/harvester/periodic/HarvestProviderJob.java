@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester.periodic;
 
+import static io.vertx.core.ThreadingModel.WORKER;
 import static java.util.Objects.requireNonNull;
 
 import io.vertx.core.Context;
@@ -79,7 +80,7 @@ public class HarvestProviderJob extends AbstractHarvestJob {
       CompletableFuture<String> cfDeploy =
           vertxContext
               .owner()
-              .deployVerticle(workerVerticle, new DeploymentOptions().setWorker(true))
+              .deployVerticle(workerVerticle, new DeploymentOptions().setThreadingModel(WORKER))
               .toCompletionStage()
               .toCompletableFuture();
 

@@ -57,7 +57,9 @@ public class ErmUsageHarvesterPeriodicAPIIT {
 
     DeploymentOptions options = new DeploymentOptions();
     options.setConfig(new JsonObject().put("http.port", port).put("testing", true));
-    vertx.deployVerticle(RestVerticle.class.getName(), options, context.asyncAssertSuccess());
+    vertx
+        .deployVerticle(RestVerticle.class.getName(), options)
+        .onComplete(context.asyncAssertSuccess());
   }
 
   @AfterClass

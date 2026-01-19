@@ -14,7 +14,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.io.Resources;
 import io.netty.handler.codec.http.QueryStringDecoder;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.ext.unit.Async;
@@ -149,7 +148,7 @@ public class NSSTest {
 
     Future<List<CounterReport>> f1 = sep.fetchReport("JR1", "2018-01-01", "2018-31-01");
     Future<List<CounterReport>> f2 = sep.fetchReport("JR1", "2018-02-01", "2018-02-28");
-    CompositeFuture.join(f1, f2)
+    Future.join(f1, f2)
         .onComplete(
             v -> {
               context.verify(

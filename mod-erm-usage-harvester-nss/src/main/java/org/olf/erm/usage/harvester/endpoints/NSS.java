@@ -2,7 +2,6 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import io.netty.handler.codec.http.QueryStringEncoder;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.net.ProxyOptions;
 import io.vertx.ext.web.client.WebClient;
@@ -116,49 +115,33 @@ public class NSS implements ServiceEndpoint {
       return Future.failedFuture("Could not create request URL due to missing parameters.");
     }
 
-    Promise<List<CounterReport>> promise = Promise.promise();
-    try {
-      client
-          .getAbs(url)
-          .send(
-              ar -> {
-                if (ar.succeeded()) {
-                  if (ar.result().statusCode() == 200) {
-                    String result = ar.result().bodyAsString();
-                    CounterReportResponse reportResponse =
-                        JAXB.unmarshal(new StringReader(result), CounterReportResponse.class);
-                    List<Exception> exceptions = Counter4Utils.getExceptions(reportResponse);
-                    if (exceptions.isEmpty()
-                        && reportResponse.getReport() != null
-                        && !reportResponse.getReport().getReport().isEmpty()) {
-                      Report report = reportResponse.getReport().getReport().get(0);
-                      try {
-                        List<CounterReport> counterReportList =
-                            createCounterReportList(report, reportType, provider);
-                        promise.complete(counterReportList);
-                      } catch (java.lang.Exception e) {
-                        promise.fail(new InvalidReportException(e));
-                      }
-                    } else {
-                      promise.fail(
-                          new InvalidReportException(Counter4Utils.getErrorMessages(exceptions)));
-                    }
-                  } else {
-                    promise.fail(
-                        url
-                            + " - "
-                            + ar.result().statusCode()
-                            + " : "
-                            + ar.result().statusMessage());
+    return client
+        .getAbs(url)
+        .send()
+        .map(
+            resp -> {
+              if (resp.statusCode() == 200) {
+                String result = resp.bodyAsString();
+                CounterReportResponse reportResponse =
+                    JAXB.unmarshal(new StringReader(result), CounterReportResponse.class);
+                List<Exception> exceptions = Counter4Utils.getExceptions(reportResponse);
+                if (exceptions.isEmpty()
+                    && reportResponse.getReport() != null
+                    && !reportResponse.getReport().getReport().isEmpty()) {
+                  Report report = reportResponse.getReport().getReport().get(0);
+                  try {
+                    return createCounterReportList(report, reportType, provider);
+                  } catch (java.lang.Exception e) {
+                    throw new InvalidReportException(e);
                   }
                 } else {
-                  promise.fail(ar.cause());
+                  throw new InvalidReportException(Counter4Utils.getErrorMessages(exceptions));
                 }
-              });
-    } catch (java.lang.Exception e) {
-      return Future.failedFuture(e);
-    }
-    return promise.future();
+              } else {
+                throw new NSSException(
+                    url + " - " + resp.statusCode() + " : " + resp.statusMessage());
+              }
+            });
   }
 
   static class NSSException extends RuntimeException {
