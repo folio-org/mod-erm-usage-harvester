@@ -36,19 +36,17 @@ public class InitImpl implements InitAPI {
   }
 
   private boolean configureOkapiUrl(Context context) {
-    // Read okapiUrl from OKAPI_URL environment variable
     String okapiUrl = System.getenv("OKAPI_URL");
-    if (Strings.isNullOrEmpty(okapiUrl)) {
-      LOG.info("Environment variable 'OKAPI_URL' not set");
-    } else {
+    if (!Strings.isNullOrEmpty(okapiUrl)) {
       LOG.info("Setting okapiUrl from environment variable OKAPI_URL: {}", okapiUrl);
       context.config().put("okapiUrl", okapiUrl);
-    }
-
-    // Validate that okapiUrl is configured
-    okapiUrl = context.config().getString("okapiUrl");
-    if (Strings.isNullOrEmpty(okapiUrl)) {
-      return false;
+    } else {
+      // OKAPI_URL not set, check if okapiUrl was configured via other means
+      // (e.g. -conf parameter, DeploymentOptions, or vertx-config module)
+      okapiUrl = context.config().getString("okapiUrl");
+      if (Strings.isNullOrEmpty(okapiUrl)) {
+        return false;
+      }
     }
 
     LOG.info("Using okapiUrl: {}", okapiUrl);
@@ -56,18 +54,18 @@ public class InitImpl implements InitAPI {
   }
 
   private void logProxyConfiguration() {
-    try {
-      ProxySelector.getDefault().select(new URI("http://google.com")).stream()
-          .filter(p -> p.address() != null)
-          .findFirst()
-          .ifPresent(p -> LOG.info("HTTP Proxy found: {}", p.address()));
+    logProxy("http://google.com", "HTTP");
+    logProxy("https://google.com", "HTTPS");
+  }
 
-      ProxySelector.getDefault().select(new URI("https://google.com")).stream()
+  private void logProxy(String uri, String protocol) {
+    try {
+      ProxySelector.getDefault().select(new URI(uri)).stream()
           .filter(p -> p.address() != null)
           .findFirst()
-          .ifPresent(p -> LOG.info("HTTPS Proxy found: {}", p.address()));
+          .ifPresent(p -> LOG.info("{} Proxy found: {}", protocol, p.address()));
     } catch (URISyntaxException e) {
-      LOG.error("Error checking proxy configuration: {}", e.getMessage(), e);
+      LOG.error("Error checking {} proxy configuration: {}", protocol, e.getMessage(), e);
     }
   }
 }
