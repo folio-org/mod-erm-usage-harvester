@@ -9,15 +9,9 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.core.net.ProxyOptions;
-import io.vertx.core.net.ProxyType;
 import io.vertx.ext.web.client.WebClientOptions;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.URI;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -30,12 +24,9 @@ import org.openapitools.counter50.model.COUNTERPlatformReport;
 import org.openapitools.counter50.model.COUNTERTitleReport;
 import org.openapitools.counter50.model.SUSHIErrorModel;
 import org.openapitools.counter50.model.SUSHIReportHeader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class CS50Impl implements ServiceEndpoint {
 
-  private static final Logger LOG = LoggerFactory.getLogger(CS50Impl.class);
   private final UsageDataProvider provider;
   private final ExtendedCounter50Client client;
 
@@ -56,20 +47,7 @@ public class CS50Impl implements ServiceEndpoint {
     Counter50Auth auth = new Counter50Auth(apiKey, reqId);
 
     WebClientOptions webClientOptions = new WebClientOptions();
-    try {
-      Optional<Proxy> proxy = getProxy(new URI(baseUrl));
-      proxy.ifPresent(
-          p -> {
-            ProxyOptions proxyOptions = new ProxyOptions();
-            InetSocketAddress addr = (InetSocketAddress) p.address();
-            proxyOptions.setHost(addr.getHostString());
-            proxyOptions.setPort(addr.getPort());
-            proxyOptions.setType(ProxyType.HTTP);
-            webClientOptions.setProxyOptions(proxyOptions);
-          });
-    } catch (Exception e) {
-      LOG.error("Error getting proxy: {}", e.getMessage());
-    }
+    getProxyOptions(baseUrl).ifPresent(webClientOptions::setProxyOptions);
 
     Context context = Vertx.currentContext();
     vertx = context == null ? Vertx.vertx() : context.owner();

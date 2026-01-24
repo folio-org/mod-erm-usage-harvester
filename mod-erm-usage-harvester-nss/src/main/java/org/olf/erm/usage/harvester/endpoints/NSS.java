@@ -3,13 +3,10 @@ package org.olf.erm.usage.harvester.endpoints;
 import io.netty.handler.codec.http.QueryStringEncoder;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.net.ProxyOptions;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import jakarta.xml.bind.JAXB;
 import java.io.StringReader;
-import java.net.InetSocketAddress;
-import java.net.URI;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
@@ -27,12 +24,9 @@ import org.niso.schemas.sushi.Exception;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
 import org.olf.erm.usage.counter41.Counter4Utils;
 import org.olf.erm.usage.counter41.Counter4Utils.ReportSplitException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class NSS implements ServiceEndpoint {
 
-  private static final Logger LOG = LoggerFactory.getLogger(NSS.class);
   private final WebClient client;
   private final UsageDataProvider provider;
   private final AggregatorSetting aggregator;
@@ -47,17 +41,8 @@ public class NSS implements ServiceEndpoint {
     this.aggregator = aggregator;
 
     WebClientOptions options = new WebClientOptions();
-    try {
-      getProxy(new URI(aggregator.getServiceUrl()))
-          .ifPresent(
-              p -> {
-                InetSocketAddress addr = (InetSocketAddress) p.address();
-                options.setProxyOptions(
-                    new ProxyOptions().setHost(addr.getHostString()).setPort(addr.getPort()));
-              });
-    } catch (java.lang.Exception e) {
-      LOG.error("Error getting proxy: {}", e.getMessage());
-    }
+    getProxyOptions(aggregator != null ? aggregator.getServiceUrl() : null)
+        .ifPresent(options::setProxyOptions);
     this.client = WebClient.create(vertx, options);
   }
 

@@ -19,6 +19,15 @@ import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.Proxy.Type;
+import java.net.ProxySelector;
+import java.net.SocketAddress;
+import java.net.URI;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Stream;
@@ -38,6 +47,10 @@ class CS51ImplTest {
 
   @RegisterExtension
   private static final WireMockExtension serviceMock =
+      WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
+
+  @RegisterExtension
+  private static final WireMockExtension proxyMock =
       WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
 
   private static final String REQUESTOR_ID = "reqId123";
@@ -392,5 +405,41 @@ class CS51ImplTest {
                               .hasMessageContaining("Unrecognized field");
                         })
                     .completeNow());
+  }
+
+  @Test
+  void testProxy(VertxTestContext testContext) {
+    ProxySelector defaultProxySelector = ProxySelector.getDefault();
+    try {
+      ProxySelector.setDefault(
+          new ProxySelector() {
+            @Override
+            public List<Proxy> select(URI uri) {
+              return Collections.singletonList(
+                  new Proxy(Type.HTTP, new InetSocketAddress("localhost", proxyMock.getPort())));
+            }
+
+            @Override
+            public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {
+              // no-op
+            }
+          });
+
+      proxyMock.stubFor(get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404)));
+
+      new CS51Impl(provider)
+          .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+          .onComplete(
+              ar ->
+                  testContext
+                      .verify(
+                          () -> {
+                            proxyMock.verify(1, getRequestedFor(urlPathEqualTo(PATH_TR)));
+                            serviceMock.verify(0, getRequestedFor(urlPathEqualTo(PATH_TR)));
+                          })
+                      .completeNow());
+    } finally {
+      ProxySelector.setDefault(defaultProxySelector);
+    }
   }
 }

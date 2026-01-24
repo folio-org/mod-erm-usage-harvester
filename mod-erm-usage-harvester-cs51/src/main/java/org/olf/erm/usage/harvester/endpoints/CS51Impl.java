@@ -70,6 +70,7 @@ public class CS51Impl implements ServiceEndpoint {
 
     Counter51Auth auth = new Counter51Auth(apiKey, requestorId);
     WebClientOptions webClientOptions = new WebClientOptions().setIdleTimeout(60);
+    getProxyOptions(serviceUrlStr).ifPresent(webClientOptions::setProxyOptions);
     this.client = new ExtendedCounter51Client(vertx, webClientOptions, serviceUrlStr, auth);
   }
 
