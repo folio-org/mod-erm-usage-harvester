@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.client;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import org.folio.rest.jaxrs.model.Aggregator;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
@@ -14,9 +15,11 @@ public class ServiceEndpointFactory {
 
   private static final Logger log = LoggerFactory.getLogger(ServiceEndpointFactory.class);
   private final ExtAggregatorSettingsClient aggregatorSettingsClient;
+  private final Vertx vertx;
 
-  public ServiceEndpointFactory(ExtAggregatorSettingsClient aggregatorSettingsClient) {
+  public ServiceEndpointFactory(ExtAggregatorSettingsClient aggregatorSettingsClient, Vertx vertx) {
     this.aggregatorSettingsClient = aggregatorSettingsClient;
+    this.vertx = vertx;
   }
 
   public Future<ServiceEndpoint> createServiceEndpoint(UsageDataProvider usageDataProvider) {
@@ -40,7 +43,7 @@ public class ServiceEndpointFactory {
         .future()
         .compose(
             as -> {
-              ServiceEndpoint sep = ServiceEndpoint.create(usageDataProvider, as);
+              ServiceEndpoint sep = ServiceEndpoint.create(usageDataProvider, as, vertx);
               if (sep != null) {
                 sepPromise.complete(sep);
               } else {

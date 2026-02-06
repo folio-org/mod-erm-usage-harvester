@@ -12,9 +12,11 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
+import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.ext.web.client.WebClient;
 import java.io.IOException;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.Before;
@@ -33,7 +35,8 @@ public class ExtAggregatorSettingsClientImplTest {
   @Before
   public void setUp() {
     aggregatorSettingsClient =
-        new ExtAggregatorSettingsClientImpl(wireMockRule.baseUrl(), "someTenant", "someToken");
+        new ExtAggregatorSettingsClientImpl(
+            wireMockRule.baseUrl(), "someTenant", "someToken", WebClient.create(Vertx.vertx()));
   }
 
   @Test

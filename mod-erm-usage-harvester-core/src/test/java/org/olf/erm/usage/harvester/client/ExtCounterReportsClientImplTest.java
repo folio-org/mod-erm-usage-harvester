@@ -20,9 +20,11 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.ext.web.client.WebClient;
 import java.io.IOException;
 import java.time.YearMonth;
 import java.util.Arrays;
@@ -62,7 +64,8 @@ public class ExtCounterReportsClientImplTest {
   @Before
   public void setUp() {
     counterReportsClient =
-        new ExtCounterReportsClientImpl(wireMockRule.baseUrl(), "someTenant", "someToken");
+        new ExtCounterReportsClientImpl(
+            wireMockRule.baseUrl(), "someTenant", "someToken", WebClient.create(Vertx.vertx()));
   }
 
   private CounterReports createCounterSampleReports() {

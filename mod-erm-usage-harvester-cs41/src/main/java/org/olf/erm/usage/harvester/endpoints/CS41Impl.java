@@ -1,6 +1,7 @@
 package org.olf.erm.usage.harvester.endpoints;
 
-import io.vertx.core.Context;
+import static java.util.Objects.requireNonNull;
+
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import jakarta.xml.ws.BindingProvider;
@@ -45,8 +46,9 @@ import sushiservice.SushiServiceInterface;
 
 public class CS41Impl implements ServiceEndpoint {
 
-  private UsageDataProvider provider;
-  private SushiServiceInterface port;
+  private final UsageDataProvider provider;
+  private final SushiServiceInterface port;
+  private final Vertx vertx;
   private static final Logger LOG = LoggerFactory.getLogger(CS41Impl.class);
 
   private ReportRequest createReportRequest(String report, String beginDate, String endDate) {
@@ -82,8 +84,9 @@ public class CS41Impl implements ServiceEndpoint {
     return request;
   }
 
-  public CS41Impl(UsageDataProvider provider) {
+  public CS41Impl(UsageDataProvider provider, Vertx vertx) {
     this.provider = provider;
+    this.vertx = requireNonNull(vertx);
 
     SushiService service = new SushiService();
     QName next = service.getPorts().next();
@@ -92,7 +95,7 @@ public class CS41Impl implements ServiceEndpoint {
     String serviceUrl = provider.getHarvestingConfig().getSushiConfig().getServiceUrl();
 
     try {
-      getProxy(new URI(serviceUrl))
+      WebClients.getProxy(new URI(serviceUrl))
           .ifPresent(
               p -> {
                 InetSocketAddress addr = (InetSocketAddress) p.address();
@@ -152,10 +155,7 @@ public class CS41Impl implements ServiceEndpoint {
   @Override
   public Future<List<CounterReport>> fetchReport(
       String reportType, String beginDate, String endDate) {
-    Context context = Vertx.currentContext();
-    if (context == null) context = Vertx.vertx().getOrCreateContext();
-
-    return context.executeBlocking(
+    return vertx.executeBlocking(
         () -> {
           CounterReportResponse counterReportResponse;
           try {

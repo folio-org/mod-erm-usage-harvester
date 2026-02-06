@@ -3,20 +3,13 @@ package org.olf.erm.usage.harvester.endpoints;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.core.net.ProxyOptions;
-import io.vertx.core.net.ProxyType;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.ProxySelector;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.UUID;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
@@ -71,8 +64,10 @@ public interface ServiceEndpoint {
     return Lists.newArrayList(loader.iterator());
   }
 
-  static ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
+  static ServiceEndpoint create(
+      UsageDataProvider provider, AggregatorSetting aggregator, Vertx vertx) {
     Objects.requireNonNull(provider);
+    Objects.requireNonNull(vertx);
 
     String serviceType;
     if (Objects.isNull(aggregator)) {
@@ -95,51 +90,11 @@ public interface ServiceEndpoint {
         ServiceLoader.load(ServiceEndpointProvider.class);
     for (ServiceEndpointProvider p : loader) {
       if (p.getServiceType().equals(serviceType)) {
-        return p.create(provider, aggregator);
+        return p.create(provider, aggregator, vertx);
       }
     }
 
     LOG.error("No implementation found for serviceType '{}'", serviceType);
     return null;
-  }
-
-  /**
-   * Returns a proxy for the given URI using the system's default {@link ProxySelector}.
-   *
-   * @param uri the URI to get a proxy for
-   * @return an Optional containing the first proxy with a non-null address, or empty if none found
-   */
-  default Optional<Proxy> getProxy(URI uri) {
-    return ProxySelector.getDefault().select(uri).stream()
-        .filter(p -> p.address() != null)
-        .findFirst();
-  }
-
-  /**
-   * Returns Vert.x {@link ProxyOptions} for the given URL using the system's default proxy
-   * settings.
-   *
-   * @param url the URL to get proxy options for
-   * @return an Optional containing ProxyOptions if a proxy is configured, or empty if no proxy is
-   *     needed or the URL is null/invalid
-   */
-  default Optional<ProxyOptions> getProxyOptions(String url) {
-    if (url == null) {
-      return Optional.empty();
-    }
-    try {
-      return getProxy(new URI(url))
-          .map(
-              p -> {
-                InetSocketAddress addr = (InetSocketAddress) p.address();
-                return new ProxyOptions()
-                    .setHost(addr.getHostString())
-                    .setPort(addr.getPort())
-                    .setType(ProxyType.HTTP);
-              });
-    } catch (URISyntaxException e) {
-      LOG.error("Error getting proxy for URL '{}': {}", url, e.getMessage());
-      return Optional.empty();
-    }
   }
 }

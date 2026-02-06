@@ -4,7 +4,6 @@ import io.netty.handler.codec.http.QueryStringEncoder;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.ext.web.client.WebClient;
-import io.vertx.ext.web.client.WebClientOptions;
 import jakarta.xml.bind.JAXB;
 import java.io.StringReader;
 import java.time.YearMonth;
@@ -31,19 +30,10 @@ public class NSS implements ServiceEndpoint {
   private final UsageDataProvider provider;
   private final AggregatorSetting aggregator;
 
-  public NSS(UsageDataProvider provider, AggregatorSetting aggregator) {
-    Vertx vertx;
-    if (Vertx.currentContext() == null) vertx = Vertx.vertx();
-    else {
-      vertx = Vertx.currentContext().owner();
-    }
+  public NSS(UsageDataProvider provider, AggregatorSetting aggregator, Vertx vertx) {
     this.provider = provider;
     this.aggregator = aggregator;
-
-    WebClientOptions options = new WebClientOptions();
-    getProxyOptions(aggregator != null ? aggregator.getServiceUrl() : null)
-        .ifPresent(options::setProxyOptions);
-    this.client = WebClient.create(vertx, options);
+    this.client = WebClients.external(vertx);
   }
 
   public String buildURL(String report, String begin, String end) {

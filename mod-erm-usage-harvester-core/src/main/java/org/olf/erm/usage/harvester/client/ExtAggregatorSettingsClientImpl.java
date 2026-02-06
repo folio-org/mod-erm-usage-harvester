@@ -11,16 +11,11 @@ import org.folio.rest.client.AggregatorSettingsClient;
 import org.folio.rest.jaxrs.model.Aggregator;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.folio.rest.tools.utils.VertxUtils;
 
 public class ExtAggregatorSettingsClientImpl extends AggregatorSettingsClient
     implements ExtAggregatorSettingsClient {
 
   public static final String PATH = "/aggregator-settings";
-
-  public ExtAggregatorSettingsClientImpl(String okapiUrl, String tenantId, String token) {
-    super(okapiUrl, tenantId, token, WebClient.create(VertxUtils.getVertxFromContextOrNew()));
-  }
 
   public ExtAggregatorSettingsClientImpl(
       String okapiUrl, String tenantId, String token, WebClient webClient) {

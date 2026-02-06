@@ -20,7 +20,6 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpResponse;
-import io.vertx.ext.web.client.WebClient;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
@@ -49,6 +48,7 @@ import org.olf.erm.usage.harvester.client.SettingsClient;
 import org.olf.erm.usage.harvester.client.SettingsClientImpl;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
+import org.olf.erm.usage.harvester.endpoints.WebClients;
 import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -332,9 +332,9 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     String okapiUrl = vertxContext.config().getString("okapiUrl");
     String tenantId = okapiHeaders.get(TENANT);
     String token = okapiHeaders.get(TOKEN);
-    OkapiClient okapiClient = new OkapiClientImpl(okapiUrl);
-    SettingsClient settingsClient =
-        new SettingsClientImpl(okapiUrl, tenantId, token, WebClient.create(vertxContext.owner()));
+    var webClient = WebClients.internal(vertxContext.owner());
+    OkapiClient okapiClient = new OkapiClientImpl(webClient, vertxContext.config());
+    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, token, webClient);
 
     callPurgeStaleJobs(okapiClient, okapiHeaders)
         .onFailure(t -> log.error("Error during cleanup: {}", t.toString()))

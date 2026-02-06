@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import java.util.Collections;
 import java.util.List;
@@ -35,7 +36,7 @@ public interface ServiceEndpointProvider {
     return false;
   }
 
-  ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator);
+  ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator, Vertx vertx);
 
   default List<String> getConfigurationParameters() {
     return Collections.emptyList();

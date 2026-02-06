@@ -18,7 +18,6 @@ import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.CounterReports;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.folio.rest.tools.utils.VertxUtils;
 import org.olf.erm.usage.harvester.DateUtil;
 import org.olf.erm.usage.harvester.FetchItem;
 
@@ -27,10 +26,6 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
 
   public static final String PATH = "/counter-reports";
   private final String okapiUrl;
-
-  public ExtCounterReportsClientImpl(String okapiUrl, String tenantId, String token) {
-    this(okapiUrl, tenantId, token, WebClient.create(VertxUtils.getVertxFromContextOrNew()));
-  }
 
   public ExtCounterReportsClientImpl(
       String okapiUrl, String tenantId, String token, WebClient webClient) {

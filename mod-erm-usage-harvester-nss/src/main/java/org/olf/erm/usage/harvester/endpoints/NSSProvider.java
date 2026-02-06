@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import io.vertx.core.Vertx;
 import java.util.Arrays;
 import java.util.List;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
@@ -33,7 +34,8 @@ public class NSSProvider implements ServiceEndpointProvider {
   }
 
   @Override
-  public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
-    return new NSS(provider, aggregator);
+  public ServiceEndpoint create(
+      UsageDataProvider provider, AggregatorSetting aggregator, Vertx vertx) {
+    return new NSS(provider, aggregator, vertx);
   }
 }

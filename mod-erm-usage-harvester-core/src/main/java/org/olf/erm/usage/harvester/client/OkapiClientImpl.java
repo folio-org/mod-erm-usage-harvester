@@ -20,7 +20,6 @@ import java.util.Objects;
 import java.util.Optional;
 import javax.ws.rs.core.MediaType;
 import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.rest.tools.utils.VertxUtils;
 import org.olf.erm.usage.harvester.SystemUser;
 
 public class OkapiClientImpl implements OkapiClient {
@@ -49,10 +48,6 @@ public class OkapiClientImpl implements OkapiClient {
     this.okapiUrl = okapiUrl;
     this.client = webClient;
     this.isSystemUserEnabled = isSystemUserEnabled;
-  }
-
-  public OkapiClientImpl(String okapiUrl) {
-    this(WebClient.create(VertxUtils.getVertxFromContextOrNew()), okapiUrl, isSystemUserEnabled());
   }
 
   private HttpResponse<Buffer> throwIfStatusCodeNot201(HttpResponse<Buffer> response) {

@@ -17,6 +17,7 @@ import static org.olf.erm.usage.harvester.endpoints.UnsupportedReportTypeExcepti
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
+import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
@@ -36,6 +37,7 @@ import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -67,9 +69,11 @@ class CS51ImplTest {
   private static final String MSG_USAGE_NOT_READY = "Usage Not Ready for Requested Dates";
   private static final String MSG_UNRECOGNIZED_FIELD = "Unrecognized field \"Database\"";
   private static UsageDataProvider provider;
+  private static Vertx vertx;
 
   @BeforeAll
   static void beforeAll() {
+    vertx = Vertx.vertx();
     provider =
         new UsageDataProvider()
             .withId("519803f7-4f5e-4224-8eda-9d56ef2af48a")
@@ -85,6 +89,11 @@ class CS51ImplTest {
                     .withSushiConfig(
                         new SushiConfig()
                             .withServiceUrl(serviceMock.getRuntimeInfo().getHttpBaseUrl())));
+  }
+
+  @BeforeEach
+  void beforeEach() {
+    WebClients.reset();
   }
 
   private static Stream<Entry<String, Map<String, String>>> testRequestParametersProvider() {
@@ -114,7 +123,7 @@ class CS51ImplTest {
             .withQueryParam("platform", equalTo(PLATFORM));
     params.getValue().forEach((k, v) -> requestPatternBuilder.withQueryParam(k, equalTo(v)));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(params.getKey(), BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -129,7 +138,7 @@ class CS51ImplTest {
     String path = BASE_PATH + reportName.toLowerCase();
     serviceMock.stubFor(get(urlPathEqualTo(path)).willReturn(aResponse().withStatus(404)));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(reportName, BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -154,7 +163,7 @@ class CS51ImplTest {
             .withHarvestingConfig(
                 new HarvestingConfig()
                     .withSushiConfig(new SushiConfig().withServiceUrl(serviceUrlStr)));
-    assertThatThrownBy(() -> new CS51Impl(invalidProvider))
+    assertThatThrownBy(() -> new CS51Impl(invalidProvider, vertx))
         .isInstanceOf(InvalidServiceURLException.class)
         .hasMessage(String.format(MSG_INVALID_SERVICE_URL, serviceUrlStr));
   }
@@ -165,7 +174,7 @@ class CS51ImplTest {
         get(urlPathEqualTo(PATH_TR))
             .willReturn(aResponse().withStatus(200).withBodyFile("TR.json")));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -201,7 +210,7 @@ class CS51ImplTest {
         get(urlPathEqualTo(PATH_TR))
             .willReturn(aResponse().withStatus(200).withBodyFile("TR_with_exception.json")));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -222,7 +231,7 @@ class CS51ImplTest {
         get(urlPathEqualTo(PATH_TR))
             .willReturn(aResponse().withStatus(200).withBodyFile("TR_invalid.json")));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -241,7 +250,7 @@ class CS51ImplTest {
   void testTooManyRequestsException(VertxTestContext testContext) {
     serviceMock.stubFor(get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(429)));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -260,7 +269,7 @@ class CS51ImplTest {
         get(urlPathEqualTo(PATH_TR))
             .willReturn(aResponse().withStatus(403).withBodyFile("Exception_2010.json")));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -284,7 +293,7 @@ class CS51ImplTest {
     serviceMock.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404).withBody(errorBody)));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -309,7 +318,7 @@ class CS51ImplTest {
     serviceMock.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404).withBody("")));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -335,7 +344,7 @@ class CS51ImplTest {
     serviceMock.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(500).withBody(htmlBody)));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -362,7 +371,7 @@ class CS51ImplTest {
     serviceMock.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404).withBody(longBody)));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -392,7 +401,7 @@ class CS51ImplTest {
             .willReturn(
                 aResponse().withStatus(200).withBodyFile("TR_with_additional_attributes.json")));
 
-    new CS51Impl(provider)
+    new CS51Impl(provider, vertx)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
         .onComplete(
             ar ->
@@ -427,7 +436,7 @@ class CS51ImplTest {
 
       proxyMock.stubFor(get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404)));
 
-      new CS51Impl(provider)
+      new CS51Impl(provider, vertx)
           .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
           .onComplete(
               ar ->
