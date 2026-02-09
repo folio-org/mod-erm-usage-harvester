@@ -5,9 +5,11 @@ import static java.util.Objects.requireNonNull;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
+import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
+import io.vertx.ext.web.client.WebClientOptions;
 import java.time.YearMonth;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
@@ -30,13 +32,12 @@ public class CS50Impl implements ServiceEndpoint {
 
   private final Vertx vertx;
 
-  public CS50Impl(UsageDataProvider provider, Vertx vertx) {
+  public CS50Impl(UsageDataProvider provider) {
     requireNonNull(provider.getSushiCredentials());
     requireNonNull(provider.getHarvestingConfig());
     requireNonNull(provider.getHarvestingConfig().getSushiConfig());
     requireNonNull(provider.getHarvestingConfig().getSushiConfig().getServiceUrl());
     this.provider = provider;
-    this.vertx = requireNonNull(vertx);
 
     String baseUrl =
         StringUtils.removeEnd(provider.getHarvestingConfig().getSushiConfig().getServiceUrl(), "/");
@@ -45,7 +46,14 @@ public class CS50Impl implements ServiceEndpoint {
     String reqId = provider.getSushiCredentials().getRequestorId();
     Counter50Auth auth = new Counter50Auth(apiKey, reqId);
 
-    client = new ExtendedCounter50Client(WebClients.external(vertx), baseUrl, auth);
+    WebClientOptions webClientOptions = new WebClientOptions();
+    getProxyOptions(baseUrl).ifPresent(webClientOptions::setProxyOptions);
+
+    Context context = Vertx.currentContext();
+    vertx = context == null ? Vertx.vertx() : context.owner();
+
+    webClientOptions.setIdleTimeout(60);
+    client = new ExtendedCounter50Client(vertx, webClientOptions, baseUrl, auth);
   }
 
   private Future<List<CounterReport>> createCounterReportList(

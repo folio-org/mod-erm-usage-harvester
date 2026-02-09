@@ -13,7 +13,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.io.Resources;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -52,7 +51,6 @@ public class CS41ImplTest {
   @Rule public WireMockRule wireMockProxyRule = new WireMockRule(wireMockConfig().dynamicPort());
   @Rule public WireMockRule wireMockRedirectRule = new WireMockRule(wireMockConfig().dynamicPort());
 
-  private final Vertx vertx = Vertx.vertx();
   private final UsageDataProvider provider =
       new UsageDataProvider()
           .withId("67339c41-a3a7-4d19-83e2-c808ab99c8fe")
@@ -81,7 +79,7 @@ public class CS41ImplTest {
 
   @Test
   public void fetchReport(TestContext ctx) {
-    CS41Impl cs41 = new CS41Impl(provider, vertx);
+    CS41Impl cs41 = new CS41Impl(provider);
 
     wireMockRule.stubFor(
         post(urlPathEqualTo(SUSHI_SERVICE))
@@ -99,8 +97,7 @@ public class CS41ImplTest {
                         postRequestedFor(urlPathEqualTo(SUSHI_SERVICE))
                             .withRequestBody(
                                 matchingXPath(
-                                        "//ns:Requestor[ns:ID='reqId1' and ns:Name='' and"
-                                            + " ns:Email='']")
+                                        "//ns:Requestor[ns:ID='reqId1' and ns:Name='' and ns:Email='']")
                                     .withXPathNamespace(
                                         "ns", "http://www.niso.org/schemas/sushi")));
 
@@ -126,7 +123,7 @@ public class CS41ImplTest {
 
   @Test
   public void testFetchReportNoConnection(TestContext ctx) {
-    CS41Impl cs41 = new CS41Impl(provider, vertx);
+    CS41Impl cs41 = new CS41Impl(provider);
 
     wireMockRule.stubFor(
         post(urlPathEqualTo(SUSHI_SERVICE))
@@ -158,7 +155,7 @@ public class CS41ImplTest {
           public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {}
         });
 
-    final ServiceEndpoint sep = new CS41Impl(provider, vertx);
+    final ServiceEndpoint sep = new CS41Impl(provider);
 
     wireMockRule.stubFor(any(anyUrl()).willReturn(aResponse().withStatus(404)));
     wireMockProxyRule.stubFor(any(anyUrl()).willReturn(aResponse().withStatus(404)));
@@ -178,7 +175,7 @@ public class CS41ImplTest {
 
   @Test
   public void testHttpErrorMessage(TestContext context) {
-    CS41Impl cs41 = new CS41Impl(provider, vertx);
+    CS41Impl cs41 = new CS41Impl(provider);
 
     wireMockRule.stubFor(
         post(urlPathEqualTo(SUSHI_SERVICE))
@@ -205,7 +202,7 @@ public class CS41ImplTest {
 
   @Test
   public void testHttpRedirect(TestContext context) {
-    CS41Impl cs41 = new CS41Impl(provider, vertx);
+    CS41Impl cs41 = new CS41Impl(provider);
 
     System.out.println(wireMockRedirectRule.url(""));
 

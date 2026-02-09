@@ -15,7 +15,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
-import org.olf.erm.usage.harvester.endpoints.WebClients;
+import org.olf.erm.usage.harvester.WebClientProvider;
 
 @ExtendWith(VertxExtension.class)
 class InitImplIT {
@@ -34,7 +34,7 @@ class InitImplIT {
 
   @AfterEach
   void afterEach() {
-    WebClients.reset();
+    WebClientProvider.reset();
   }
 
   @Test

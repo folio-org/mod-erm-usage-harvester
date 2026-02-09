@@ -15,7 +15,6 @@ import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.io.Resources;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -54,7 +53,6 @@ public class NSSTest {
   @Rule public WireMockRule wireMockProxyRule = new WireMockRule(wireMockConfig().dynamicPort());
 
   private static final Logger LOG = LoggerFactory.getLogger(NSSTest.class);
-  private final Vertx vertx = Vertx.vertx();
   private UsageDataProvider provider;
   private AggregatorSetting aggregator;
 
@@ -64,7 +62,6 @@ public class NSSTest {
 
   @Before
   public void setup() throws IOException {
-    WebClients.reset();
     provider =
         new ObjectMapper()
             .readValue(
@@ -94,7 +91,7 @@ public class NSSTest {
 
   @Test
   public void fetchReportWithAggregatorValidReport(TestContext context) {
-    final NSS sep = new NSS(provider, aggregator, vertx);
+    final NSS sep = new NSS(provider, aggregator);
     final String url = sep.buildURL(reportType, beginDate, endDate);
 
     LOG.info("Creating stub for: " + url);
@@ -125,7 +122,7 @@ public class NSSTest {
 
   @Test
   public void fetchReportWithNullURL(TestContext context) {
-    final NSS sep = new NSS(provider, null, vertx);
+    final NSS sep = new NSS(provider, null);
 
     Async async = context.async();
     sep.fetchReport(reportType, beginDate, endDate)
@@ -139,7 +136,7 @@ public class NSSTest {
 
   @Test
   public void fetchMultipleReports(TestContext context) {
-    final NSS sep = new NSS(provider, aggregator, vertx);
+    final NSS sep = new NSS(provider, aggregator);
     final String url1 =
         sep.buildURL("JR1", "2018-01-01", "2018-31-01").replaceFirst(wireMockRule.url(""), "/");
     final String url2 =
@@ -165,7 +162,7 @@ public class NSSTest {
 
   @Test
   public void fetchReportWithAggregatorInvalidReport(TestContext context) {
-    final NSS sep = new NSS(provider, aggregator, vertx);
+    final NSS sep = new NSS(provider, aggregator);
     final String url = sep.buildURL(reportType, beginDate, endDate);
 
     LOG.info("Creating stub for: " + url);
@@ -187,7 +184,7 @@ public class NSSTest {
 
   @Test
   public void fetchReportWithAggregatorInvalidResponse(TestContext context) {
-    final NSS sep = new NSS(provider, aggregator, vertx);
+    final NSS sep = new NSS(provider, aggregator);
     final String url = sep.buildURL(reportType, beginDate, endDate);
 
     LOG.info("Creating stub for: " + url);
@@ -211,7 +208,7 @@ public class NSSTest {
 
   @Test
   public void fetchReportWithAggregatorNoService(TestContext context) {
-    final NSS sep = new NSS(provider, aggregator, vertx);
+    final NSS sep = new NSS(provider, aggregator);
     wireMockRule.stop();
 
     Async async = context.async();
@@ -237,7 +234,7 @@ public class NSSTest {
   public void testWhiteSpacesInQueryParameter(TestContext context) {
     Aggregator aggregator = provider.getHarvestingConfig().getAggregator();
     aggregator.setVendorCode("ACM Digital");
-    final NSS sep = new NSS(provider, this.aggregator, vertx);
+    final NSS sep = new NSS(provider, this.aggregator);
 
     wireMockRule.stubFor(any(anyUrl()).willReturn(aResponse().withStatus(404)));
     Async async = context.async();
@@ -255,21 +252,21 @@ public class NSSTest {
 
   @Test
   public void testBuildURL() {
-    NSS sep = new NSS(provider, this.aggregator, vertx);
+    NSS sep = new NSS(provider, this.aggregator);
     String url = sep.buildURL(reportType, beginDate, endDate);
     QueryStringDecoder decoder = new QueryStringDecoder(url);
     assertThat(decoder.parameters().get("APIKey").get(0)).isEqualTo("abc");
 
     aggregator.getAggregatorConfig().setAdditionalProperty("apiKey", null);
-    sep = new NSS(provider, this.aggregator, vertx);
+    sep = new NSS(provider, this.aggregator);
     url = sep.buildURL(reportType, beginDate, endDate);
     decoder = new QueryStringDecoder(url);
     assertThat(decoder.parameters().get("APIKey").get(0)).isEmpty();
 
-    sep = new NSS(null, this.aggregator, vertx);
+    sep = new NSS(null, this.aggregator);
     assertThat(sep.buildURL(reportType, beginDate, endDate)).isNull();
 
-    sep = new NSS(provider, null, vertx);
+    sep = new NSS(provider, null);
     assertThat(sep.buildURL(reportType, beginDate, endDate)).isNull();
   }
 
@@ -287,7 +284,7 @@ public class NSSTest {
           public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {}
         });
 
-    final NSS sep = new NSS(provider, aggregator, vertx);
+    final NSS sep = new NSS(provider, aggregator);
 
     wireMockRule.stubFor(any(anyUrl()).willReturn(aResponse().withStatus(404)));
     wireMockProxyRule.stubFor(any(anyUrl()).willReturn(aResponse().withStatus(404)));

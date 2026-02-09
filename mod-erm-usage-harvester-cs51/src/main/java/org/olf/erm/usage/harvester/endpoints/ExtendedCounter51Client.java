@@ -1,9 +1,10 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
-import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.WebClientOptions;
 import org.olf.erm.usage.counter51.client.Counter51Auth;
 import org.olf.erm.usage.counter51.client.Counter51Client;
 
@@ -19,8 +20,9 @@ import org.olf.erm.usage.counter51.client.Counter51Client;
  */
 public class ExtendedCounter51Client extends Counter51Client {
 
-  public ExtendedCounter51Client(WebClient client, String baseUrl, Counter51Auth auth) {
-    super(client, baseUrl, auth);
+  public ExtendedCounter51Client(
+      Vertx vertx, WebClientOptions options, String baseUrl, Counter51Auth auth) {
+    super(vertx, options, baseUrl, auth);
   }
 
   @Override

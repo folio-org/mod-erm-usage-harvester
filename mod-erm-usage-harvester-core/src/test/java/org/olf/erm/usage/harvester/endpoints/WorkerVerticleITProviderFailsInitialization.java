@@ -1,6 +1,5 @@
 package org.olf.erm.usage.harvester.endpoints;
 
-import io.vertx.core.Vertx;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 
@@ -22,8 +21,7 @@ public class WorkerVerticleITProviderFailsInitialization implements ServiceEndpo
   }
 
   @Override
-  public ServiceEndpoint create(
-      UsageDataProvider provider, AggregatorSetting aggregator, Vertx vertx) {
+  public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
     throw new RuntimeException("Initialization error");
   }
 }

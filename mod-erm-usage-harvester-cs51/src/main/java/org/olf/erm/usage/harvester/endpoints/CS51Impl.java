@@ -8,8 +8,10 @@ import static org.olf.erm.usage.counter51.JsonProperties.REPORT_HEADER;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.ext.web.client.WebClientOptions;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -43,9 +45,8 @@ public class CS51Impl implements ServiceEndpoint {
   private final ExtendedCounter51Client client;
   private final ObjectMapper objectMapper = Counter51Utils.getDefaultObjectMapper();
 
-  public CS51Impl(UsageDataProvider provider, Vertx vertx) {
+  public CS51Impl(UsageDataProvider provider) {
     requireNonNull(provider);
-    this.vertx = requireNonNull(vertx);
     SushiCredentials sushiCredentials = requireNonNull(provider.getSushiCredentials());
     HarvestingConfig harvestingConfig = requireNonNull(provider.getHarvestingConfig());
     SushiConfig sushiConfig = requireNonNull(provider.getHarvestingConfig().getSushiConfig());
@@ -64,8 +65,13 @@ public class CS51Impl implements ServiceEndpoint {
     this.reportRelease = requireNonNull(harvestingConfig.getReportRelease());
     this.providerId = requireNonNull(provider.getId());
 
+    Context context = Vertx.currentContext();
+    this.vertx = context == null ? Vertx.vertx() : context.owner();
+
     Counter51Auth auth = new Counter51Auth(apiKey, requestorId);
-    this.client = new ExtendedCounter51Client(WebClients.external(vertx), serviceUrlStr, auth);
+    WebClientOptions webClientOptions = new WebClientOptions().setIdleTimeout(60);
+    getProxyOptions(serviceUrlStr).ifPresent(webClientOptions::setProxyOptions);
+    this.client = new ExtendedCounter51Client(vertx, webClientOptions, serviceUrlStr, auth);
   }
 
   private Future<ObjectNode> callClientMethod(String reportName, String beginDate, String endDate) {

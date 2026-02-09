@@ -1,6 +1,5 @@
 package org.olf.erm.usage.harvester.endpoints;
 
-import io.vertx.core.Vertx;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 
@@ -27,8 +26,7 @@ public class CS41Provider implements ServiceEndpointProvider {
   }
 
   @Override
-  public ServiceEndpoint create(
-      UsageDataProvider provider, AggregatorSetting aggregator, Vertx vertx) {
-    return new CS41Impl(provider, vertx);
+  public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
+    return new CS41Impl(provider);
   }
 }

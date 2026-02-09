@@ -5,8 +5,10 @@ import static java.util.Objects.requireNonNull;
 
 import io.vertx.core.Context;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.ext.web.client.WebClient;
 import java.util.concurrent.CompletableFuture;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.olf.erm.usage.harvester.WebClientProvider;
 import org.olf.erm.usage.harvester.WorkerVerticle;
 import org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClient;
 import org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClientImpl;
@@ -18,7 +20,6 @@ import org.olf.erm.usage.harvester.client.ServiceEndpointFactory;
 import org.olf.erm.usage.harvester.client.SettingsClient;
 import org.olf.erm.usage.harvester.client.SettingsClientImpl;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
-import org.olf.erm.usage.harvester.endpoints.WebClients;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
@@ -43,7 +44,7 @@ public class HarvestProviderJob extends AbstractHarvestJob {
       throw new JobExecutionException(e);
     }
 
-    var webClient = WebClients.internal(vertxContext.owner());
+    WebClient webClient = WebClientProvider.get(vertxContext.owner());
     SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, token, webClient);
     ExtAggregatorSettingsClient aggregatorSettingsClient =
         new ExtAggregatorSettingsClientImpl(okapiUrl, tenantId, token, webClient);
@@ -62,7 +63,7 @@ public class HarvestProviderJob extends AbstractHarvestJob {
               .get();
 
       ServiceEndpoint serviceEndpoint =
-          new ServiceEndpointFactory(aggregatorSettingsClient, vertxContext.owner())
+          new ServiceEndpointFactory(aggregatorSettingsClient)
               .createServiceEndpoint(usageDataProvider)
               .toCompletionStage()
               .toCompletableFuture()

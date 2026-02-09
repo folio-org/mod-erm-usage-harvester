@@ -1,7 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
@@ -23,8 +22,7 @@ public class Test1Provider implements ServiceEndpointProvider {
   }
 
   @Override
-  public ServiceEndpoint create(
-      UsageDataProvider provider, AggregatorSetting aggregator, Vertx vertx) {
+  public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
     return (report, beginDate, endDate) -> {
       List<CounterReport> resultList =
           DateUtil.getYearMonths(beginDate, endDate).stream()

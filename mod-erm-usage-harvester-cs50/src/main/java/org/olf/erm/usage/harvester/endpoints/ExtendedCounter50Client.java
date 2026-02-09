@@ -4,9 +4,10 @@ import static io.vertx.core.Future.failedFuture;
 import static org.olf.erm.usage.harvester.endpoints.JsonUtil.isJsonArray;
 
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
-import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.WebClientOptions;
 import org.olf.erm.usage.counter50.client.Counter50Auth;
 import org.olf.erm.usage.counter50.client.Counter50Client;
 import org.openapitools.counter50.model.SUSHIErrorModel;
@@ -27,8 +28,9 @@ import org.openapitools.counter50.model.SUSHIErrorModel;
  */
 public class ExtendedCounter50Client extends Counter50Client {
 
-  public ExtendedCounter50Client(WebClient client, String baseUrl, Counter50Auth auth) {
-    super(client, baseUrl, auth);
+  public ExtendedCounter50Client(
+      Vertx vertx, WebClientOptions options, String baseUrl, Counter50Auth auth) {
+    super(vertx, options, baseUrl, auth);
   }
 
   @Override
@@ -60,6 +62,7 @@ public class ExtendedCounter50Client extends Counter50Client {
 
     String body = response.body() != null ? response.body().toString() : "";
     return failedFuture(
-        new ServiceEndpointException(response.statusCode(), response.statusMessage(), body));
+        new ServiceEndpointException(
+            response.statusCode(), response.statusMessage(), body));
   }
 }

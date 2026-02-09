@@ -9,11 +9,15 @@ import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.folio.rest.tools.utils.VertxUtils;
 import org.olf.erm.usage.harvester.DateUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class WorkerVerticleITProvider implements ServiceEndpointProvider {
+
+  Vertx vertx = VertxUtils.getVertxFromContextOrNew();
+  WebClient client = WebClient.create(vertx);
 
   @Override
   public String getServiceType() {
@@ -31,9 +35,7 @@ public class WorkerVerticleITProvider implements ServiceEndpointProvider {
   }
 
   @Override
-  public ServiceEndpoint create(
-      UsageDataProvider provider, AggregatorSetting aggregator, Vertx vertx) {
-    WebClient client = WebClients.external(vertx);
+  public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
 
     return new ServiceEndpoint() {
       private final Logger log = LoggerFactory.getLogger(WorkerVerticleITProvider.class);

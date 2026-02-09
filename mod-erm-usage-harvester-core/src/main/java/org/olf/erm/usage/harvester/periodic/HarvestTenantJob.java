@@ -7,8 +7,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
+import org.olf.erm.usage.harvester.WebClientProvider;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
-import org.olf.erm.usage.harvester.endpoints.WebClients;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
@@ -29,7 +29,7 @@ public class HarvestTenantJob extends AbstractHarvestJob {
                 vertxContext.config().getString("okapiUrl"),
                 getTenantId(),
                 getToken(),
-                WebClients.internal(vertxContext.owner()))
+                WebClientProvider.get(vertxContext.owner()))
             .getActiveProviders()
             .map(UsageDataProviders::getUsageDataProviders)
             .map(

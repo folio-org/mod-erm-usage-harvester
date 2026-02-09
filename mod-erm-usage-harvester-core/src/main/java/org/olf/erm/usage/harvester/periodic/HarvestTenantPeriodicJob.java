@@ -5,13 +5,14 @@ import static io.vertx.core.Future.succeededFuture;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
+import io.vertx.ext.web.client.WebClient;
 import java.util.Date;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.olf.erm.usage.harvester.SystemUser;
+import org.olf.erm.usage.harvester.WebClientProvider;
 import org.olf.erm.usage.harvester.client.OkapiClient;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
-import org.olf.erm.usage.harvester.endpoints.WebClients;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
@@ -47,7 +48,7 @@ public class HarvestTenantPeriodicJob extends AbstractHarvestJob {
           String.format("Tenant: %s, error getting vert.x context", getTenantId()));
     }
 
-    var webClient = WebClients.internal(vertxContext.owner());
+    WebClient webClient = WebClientProvider.get(vertxContext.owner());
     OkapiClient okapiClient = new OkapiClientImpl(webClient, vertxContext.config());
 
     CompletableFuture<Void> complete =

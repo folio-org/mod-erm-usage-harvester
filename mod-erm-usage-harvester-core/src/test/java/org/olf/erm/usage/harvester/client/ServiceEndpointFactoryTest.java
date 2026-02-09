@@ -4,7 +4,6 @@ import static io.vertx.core.Future.succeededFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.io.Resources;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -20,7 +19,6 @@ import org.junit.runner.RunWith;
 @RunWith(VertxUnitRunner.class)
 public class ServiceEndpointFactoryTest {
 
-  private final Vertx vertx = Vertx.vertx();
   private UsageDataProvider usageDataProvider;
 
   @Before
@@ -34,7 +32,7 @@ public class ServiceEndpointFactoryTest {
 
   @Test
   public void testCreateServiceEndpoint(TestContext context) {
-    new ServiceEndpointFactory(provider -> null, vertx)
+    new ServiceEndpointFactory(provider -> null)
         .createServiceEndpoint(usageDataProvider)
         .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
   }
@@ -42,7 +40,7 @@ public class ServiceEndpointFactoryTest {
   @Test
   public void testGetServiceEndpointNoImplementation(TestContext context) throws IOException {
     usageDataProvider.getHarvestingConfig().getSushiConfig().setServiceType("test3");
-    new ServiceEndpointFactory(provider -> null, vertx)
+    new ServiceEndpointFactory(provider -> null)
         .createServiceEndpoint(usageDataProvider)
         .onComplete(
             context.asyncAssertFailure(
@@ -57,7 +55,7 @@ public class ServiceEndpointFactoryTest {
             Resources.toString(
                 Resources.getResource("__files/aggregator-setting.json"), StandardCharsets.UTF_8),
             AggregatorSetting.class);
-    new ServiceEndpointFactory(provider -> succeededFuture(aggregatorSetting), vertx)
+    new ServiceEndpointFactory(provider -> succeededFuture(aggregatorSetting))
         .createServiceEndpoint(usageDataProvider)
         .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
   }
@@ -67,7 +65,7 @@ public class ServiceEndpointFactoryTest {
     usageDataProvider.getHarvestingConfig().setHarvestVia(HarvestVia.AGGREGATOR);
     usageDataProvider.getHarvestingConfig().setAggregator(null);
 
-    new ServiceEndpointFactory(provider -> null, vertx)
+    new ServiceEndpointFactory(provider -> null)
         .createServiceEndpoint(usageDataProvider)
         .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
   }
@@ -77,7 +75,7 @@ public class ServiceEndpointFactoryTest {
     usageDataProvider.getHarvestingConfig().setHarvestVia(HarvestVia.AGGREGATOR);
     usageDataProvider.getHarvestingConfig().getAggregator().setId(null);
 
-    new ServiceEndpointFactory(provider -> null, vertx)
+    new ServiceEndpointFactory(provider -> null)
         .createServiceEndpoint(usageDataProvider)
         .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
   }
