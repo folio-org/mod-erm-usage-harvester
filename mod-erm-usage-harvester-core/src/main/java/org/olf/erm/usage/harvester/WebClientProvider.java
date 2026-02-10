@@ -37,15 +37,4 @@ public final class WebClientProvider {
     Objects.requireNonNull(vertx, "vertx must not be null");
     return CLIENTS.computeIfAbsent(vertx, WebClient::create);
   }
-
-  /**
-   * Closes and clears all cached clients. For testing only.
-   *
-   * <p>This method should only be used in tests to reset state between test cases. In production,
-   * clients are automatically cleaned up when Vertx instances are garbage collected.
-   */
-  public static void reset() {
-    CLIENTS.values().forEach(WebClient::close);
-    CLIENTS.clear();
-  }
 }
