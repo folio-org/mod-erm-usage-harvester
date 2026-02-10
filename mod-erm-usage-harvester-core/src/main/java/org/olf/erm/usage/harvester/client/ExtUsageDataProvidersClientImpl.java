@@ -14,16 +14,11 @@ import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
 import org.folio.rest.jaxrs.model.UsageDataProvidersGetOrder;
-import org.folio.rest.tools.utils.VertxUtils;
 
 public class ExtUsageDataProvidersClientImpl extends UsageDataProvidersClient
     implements ExtUsageDataProvidersClient {
 
   public static final String PATH = "/usage-data-providers";
-
-  public ExtUsageDataProvidersClientImpl(String okapiUrl, String tenantId, String token) {
-    super(okapiUrl, tenantId, token, WebClient.create(VertxUtils.getVertxFromContextOrNew()));
-  }
 
   public ExtUsageDataProvidersClientImpl(
       String okapiUrl, String tenantId, String token, WebClient webClient) {

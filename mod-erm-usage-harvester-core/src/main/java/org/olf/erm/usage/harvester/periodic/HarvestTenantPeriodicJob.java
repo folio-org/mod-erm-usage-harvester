@@ -2,7 +2,6 @@ package org.olf.erm.usage.harvester.periodic;
 
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
-import static java.lang.Boolean.parseBoolean;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -11,6 +10,7 @@ import java.util.Date;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.olf.erm.usage.harvester.SystemUser;
+import org.olf.erm.usage.harvester.WebClientProvider;
 import org.olf.erm.usage.harvester.client.OkapiClient;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.quartz.JobExecutionContext;
@@ -48,7 +48,7 @@ public class HarvestTenantPeriodicJob extends AbstractHarvestJob {
           String.format("Tenant: %s, error getting vert.x context", getTenantId()));
     }
 
-    WebClient webClient = WebClient.create(vertxContext.owner());
+    WebClient webClient = WebClientProvider.get(vertxContext.owner());
     OkapiClient okapiClient = new OkapiClientImpl(webClient, vertxContext.config());
 
     CompletableFuture<Void> complete =
@@ -59,7 +59,8 @@ public class HarvestTenantPeriodicJob extends AbstractHarvestJob {
                   if (resp.statusCode() != 200) {
                     return failedFuture(
                         String.format(
-                            "Tenant: %s, error starting job, received %s %s from start interface: %s",
+                            "Tenant: %s, error starting job, received %s %s from start interface:"
+                                + " %s",
                             getTenantId(),
                             resp.statusCode(),
                             resp.statusMessage(),

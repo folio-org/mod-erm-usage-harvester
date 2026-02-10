@@ -43,6 +43,7 @@ import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.olf.erm.usage.harvester.ClockProvider;
 import org.olf.erm.usage.harvester.Messages;
+import org.olf.erm.usage.harvester.WebClientProvider;
 import org.olf.erm.usage.harvester.client.OkapiClient;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.olf.erm.usage.harvester.client.SettingsClient;
@@ -332,9 +333,9 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     String okapiUrl = vertxContext.config().getString("okapiUrl");
     String tenantId = okapiHeaders.get(TENANT);
     String token = okapiHeaders.get(TOKEN);
-    OkapiClient okapiClient = new OkapiClientImpl(okapiUrl);
-    SettingsClient settingsClient =
-        new SettingsClientImpl(okapiUrl, tenantId, token, WebClient.create(vertxContext.owner()));
+    WebClient webClient = WebClientProvider.get(vertxContext.owner());
+    OkapiClient okapiClient = new OkapiClientImpl(webClient, vertxContext.config());
+    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, token, webClient);
 
     callPurgeStaleJobs(okapiClient, okapiHeaders)
         .onFailure(t -> log.error("Error during cleanup: {}", t.toString()))

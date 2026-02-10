@@ -9,8 +9,6 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.tools.utils.NetworkUtils;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
@@ -18,20 +16,8 @@ import org.junitpioneer.jupiter.SetEnvironmentVariable;
 @ExtendWith(VertxExtension.class)
 class InitImplIT {
 
-  private static Vertx vertx;
-
-  @BeforeAll
-  static void beforeAll() {
-    vertx = Vertx.vertx();
-  }
-
-  @AfterAll
-  static void afterAll() {
-    vertx.close();
-  }
-
   @Test
-  void testDeploymentFailsWithoutOkapiUrl(VertxTestContext context) {
+  void testDeploymentFailsWithoutOkapiUrl(Vertx vertx, VertxTestContext context) {
     int port = NetworkUtils.nextFreePort();
     DeploymentOptions options =
         new DeploymentOptions()
@@ -51,7 +37,7 @@ class InitImplIT {
   }
 
   @Test
-  void testDeploymentSucceedsWithOkapiUrlInConfig(VertxTestContext context) {
+  void testDeploymentSucceedsWithOkapiUrlInConfig(Vertx vertx, VertxTestContext context) {
     int port = NetworkUtils.nextFreePort();
     DeploymentOptions options =
         new DeploymentOptions()
@@ -73,7 +59,7 @@ class InitImplIT {
 
   @Test
   @SetEnvironmentVariable(key = "OKAPI_URL", value = "http://localhost:9999")
-  void testDeploymentSucceedsWithOkapiUrlEnvVar(VertxTestContext context) {
+  void testDeploymentSucceedsWithOkapiUrlEnvVar(Vertx vertx, VertxTestContext context) {
     int port = NetworkUtils.nextFreePort();
     DeploymentOptions options =
         new DeploymentOptions()
@@ -90,7 +76,7 @@ class InitImplIT {
   }
 
   @Test
-  void testDeploymentSkipsValidationWithTestingFlag(VertxTestContext context) {
+  void testDeploymentSkipsValidationWithTestingFlag(Vertx vertx, VertxTestContext context) {
     int port = NetworkUtils.nextFreePort();
     DeploymentOptions options =
         new DeploymentOptions()

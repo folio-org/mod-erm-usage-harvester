@@ -16,8 +16,10 @@ import static org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import io.vertx.core.Vertx;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.ext.web.client.WebClient;
 import java.time.Instant;
 import java.util.Date;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -41,7 +43,8 @@ public class ExtUsageDataProvidersClientImplTest {
   @Before
   public void setUp() {
     udpClient =
-        new ExtUsageDataProvidersClientImpl(wireMockRule.baseUrl(), "someTenant", "someToken");
+        new ExtUsageDataProvidersClientImpl(
+            wireMockRule.baseUrl(), "someTenant", "someToken", WebClient.create(Vertx.vertx()));
   }
 
   @Test

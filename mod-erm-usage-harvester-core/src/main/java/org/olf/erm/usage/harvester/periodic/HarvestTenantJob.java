@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
+import org.olf.erm.usage.harvester.WebClientProvider;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -25,7 +26,10 @@ public class HarvestTenantJob extends AbstractHarvestJob {
 
     CompletableFuture<List<String>> complete =
         new ExtUsageDataProvidersClientImpl(
-                vertxContext.config().getString("okapiUrl"), getTenantId(), getToken())
+                vertxContext.config().getString("okapiUrl"),
+                getTenantId(),
+                getToken(),
+                WebClientProvider.get(vertxContext.owner()))
             .getActiveProviders()
             .map(UsageDataProviders::getUsageDataProviders)
             .map(
