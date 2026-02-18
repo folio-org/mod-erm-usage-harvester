@@ -62,9 +62,15 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
   public static final String TABLE_NAME_JOBS = "jobs";
   public static final String STALE_JOB_ERROR_MSG = "Stale job";
   public static final String MESSAGE_NO_TOKEN = "No token provided";
-  private static final String PATH_PURGE_STALE = "/erm-usage-harvester/jobs/purgestale"; // NOSONAR
+
+  @SuppressWarnings(
+      "java:S1075") // suppress "URIs should not be hardcoded" because this is an internal API path
+  private static final String PATH_PURGE_STALE = "/erm-usage-harvester/jobs/purgestale";
+
+  @SuppressWarnings(
+      "java:S1075") // suppress "URIs should not be hardcoded" because this is an internal API path
   private static final String PATH_PURGE_FINISHED_TEMPLATE =
-      "/erm-usage-harvester/jobs/purgefinished?timestamp=%d"; // NOSONAR
+      "/erm-usage-harvester/jobs/purgefinished?timestamp=%d";
 
   private static final Criteria finishedCriteria =
       new Criteria().addField("'finishedAt'").setJSONB(true).setOperation("IS NOT NULL");

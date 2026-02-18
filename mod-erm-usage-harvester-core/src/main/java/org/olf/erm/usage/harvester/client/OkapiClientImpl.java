@@ -24,10 +24,22 @@ import org.olf.erm.usage.harvester.SystemUser;
 
 public class OkapiClientImpl implements OkapiClient {
 
-  public static final String PATH_LOGIN = "/authn/login"; // NOSONAR
-  public static final String PATH_LOGIN_EXPIRY = "/authn/login-with-expiry"; // NOSONAR
-  public static final String PATH_HARVESTER_START = "/erm-usage-harvester/start"; // NOSONAR
-  public static final String PATH_TENANTS = "/_/proxy/tenants"; // NOSONAR
+  @SuppressWarnings(
+      "java:S1075") // suppress "URIs should not be hardcoded" because this is an internal API path
+  public static final String PATH_LOGIN = "/authn/login";
+
+  @SuppressWarnings(
+      "java:S1075") // suppress "URIs should not be hardcoded" because this is an internal API path
+  public static final String PATH_LOGIN_EXPIRY = "/authn/login-with-expiry";
+
+  @SuppressWarnings(
+      "java:S1075") // suppress "URIs should not be hardcoded" because this is an internal API path
+  public static final String PATH_HARVESTER_START = "/erm-usage-harvester/start";
+
+  @SuppressWarnings(
+      "java:S1075") // suppress "URIs should not be hardcoded" because this is an internal API path
+  public static final String PATH_TENANTS = "/_/proxy/tenants";
+
   public static final String MSG_SYSTEM_USER_LOGIN_DISABLED = "System User Login is Disabled";
 
   private static final String ENV_SYSTEM_USER_ENABLED = "SYSTEM_USER_ENABLED";
