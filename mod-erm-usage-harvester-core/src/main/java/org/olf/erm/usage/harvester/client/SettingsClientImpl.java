@@ -13,7 +13,7 @@ import org.folio.settings.Entry;
 
 public class SettingsClientImpl implements SettingsClient {
 
-  public static final String ENTRIES_PATH = "/settings/entries"; // NOSONAR
+  public static final String ENTRIES_PATH = "/settings/entries"; 
   public static final String QUERY_PARAM = "query";
   public static final String QUERY_TEMPLATE = "(scope==\"%s\" AND key==\"%s\")";
   private final String okapiUrl;
