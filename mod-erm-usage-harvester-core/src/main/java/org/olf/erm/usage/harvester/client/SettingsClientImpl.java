@@ -13,7 +13,10 @@ import org.folio.settings.Entry;
 
 public class SettingsClientImpl implements SettingsClient {
 
-  public static final String ENTRIES_PATH = "/settings/entries"; 
+  @SuppressWarnings(
+      "java:S1075") // suppress "URIs should not be hardcoded" because this is an internal API path
+  public static final String ENTRIES_PATH = "/settings/entries";
+
   public static final String QUERY_PARAM = "query";
   public static final String QUERY_TEMPLATE = "(scope==\"%s\" AND key==\"%s\")";
   private final String okapiUrl;
