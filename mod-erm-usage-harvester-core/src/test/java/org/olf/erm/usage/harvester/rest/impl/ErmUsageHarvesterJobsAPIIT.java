@@ -71,14 +71,12 @@ import org.olf.erm.usage.harvester.PostgresContainerRule;
 public class ErmUsageHarvesterJobsAPIIT {
 
   private static final String TENANT = "tenant1";
-  private static final String TOKEN = "some_token";
   private static final String PARAM_OFFSET = "offset";
   private static final String PARAM_LIMIT = "limit";
   private static final String PARAM_QUERY = "query";
   private static final String PARAM_PROVIDER_ID = "providerId";
   private static final String PARAM_TIMESTAMP = "timestamp";
-  private static final Map<String, String> OKAPI_HEADERS =
-      Map.of(XOkapiHeaders.TENANT, TENANT, XOkapiHeaders.TOKEN, TOKEN);
+  private static final Map<String, String> OKAPI_HEADERS = Map.of(XOkapiHeaders.TENANT, TENANT);
 
   private static final Vertx vertx = Vertx.vertx();
   private static final String BASE_PATH = "/erm-usage-harvester/jobs";
@@ -358,8 +356,7 @@ public class ErmUsageHarvesterJobsAPIIT {
         1,
         postRequestedFor(urlPathEqualTo(PURGE_PATH))
             .withQueryParam(PARAM_TIMESTAMP, equalTo(String.valueOf(expectedTimestamp)))
-            .withHeader(XOkapiHeaders.TENANT, equalTo(TENANT))
-            .withHeader(XOkapiHeaders.TOKEN, equalTo(TOKEN)));
+            .withHeader(XOkapiHeaders.TENANT, equalTo(TENANT)));
 
     // settings value is set to 10
     okapiMockRule.resetRequests();
@@ -374,8 +371,7 @@ public class ErmUsageHarvesterJobsAPIIT {
         1,
         postRequestedFor(urlPathEqualTo(PURGE_PATH))
             .withQueryParam(PARAM_TIMESTAMP, equalTo(String.valueOf(expectedTimestamp)))
-            .withHeader(XOkapiHeaders.TENANT, equalTo(TENANT))
-            .withHeader(XOkapiHeaders.TOKEN, equalTo(TOKEN)));
+            .withHeader(XOkapiHeaders.TENANT, equalTo(TENANT)));
 
     // purge endpoints return status code 500
     okapiMockRule.resetRequests();

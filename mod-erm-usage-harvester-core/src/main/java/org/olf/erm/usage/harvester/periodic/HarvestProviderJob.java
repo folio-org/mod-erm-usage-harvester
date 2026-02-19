@@ -36,7 +36,7 @@ public class HarvestProviderJob extends AbstractHarvestJob {
     try {
       providerId = requireNonNull(getProviderId());
       tenantId = requireNonNull(getTenantId());
-      token = requireNonNull(getToken());
+      token = getToken();
       vertxContext =
           requireNonNull((Context) context.getScheduler().getContext().get("vertxContext"));
       okapiUrl = requireNonNull(vertxContext.config().getString("okapiUrl"));

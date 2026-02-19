@@ -4,7 +4,6 @@ import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
 import static io.vertx.core.http.HttpMethod.POST;
 import static org.folio.okapi.common.XOkapiHeaders.TENANT;
-import static org.folio.okapi.common.XOkapiHeaders.TOKEN;
 import static org.olf.erm.usage.harvester.Constants.DEFAULT_DAYS_TO_KEEP_LOGS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_KEY_DAYS_TO_KEEP_LOGS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_SCOPE_HARVESTER;
@@ -32,7 +31,6 @@ import java.util.function.UnaryOperator;
 import javax.ws.rs.core.Response;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
-import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.JobInfo;
 import org.folio.rest.jaxrs.model.JobInfo.Result;
 import org.folio.rest.jaxrs.model.JobInfos;
@@ -104,17 +102,9 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
-    String token = okapiHeaders.get(XOkapiHeaders.TOKEN);
-    if (token == null) {
-      asyncResultHandler.handle(
-          succeededFuture(
-              GetErmUsageHarvesterStartByIdResponse.respond500WithTextPlain(MESSAGE_NO_TOKEN)));
-      return;
-    }
-
     try {
       Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-      SchedulingUtil.scheduleTenantJob(scheduler, okapiHeaders.get(TENANT), token);
+      SchedulingUtil.scheduleTenantJob(scheduler, okapiHeaders.get(TENANT), null);
       asyncResultHandler.handle(
           succeededFuture(
               GetErmUsageHarvesterStartByIdResponse.respond200WithApplicationJson(
@@ -132,16 +122,9 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
-    String token = okapiHeaders.get(XOkapiHeaders.TOKEN);
-    if (token == null) {
-      asyncResultHandler.handle(
-          succeededFuture(
-              GetErmUsageHarvesterStartByIdResponse.respond500WithTextPlain(MESSAGE_NO_TOKEN)));
-    }
-
     try {
       Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-      SchedulingUtil.scheduleProviderJob(scheduler, okapiHeaders.get(TENANT), token, id);
+      SchedulingUtil.scheduleProviderJob(scheduler, okapiHeaders.get(TENANT), null, id);
       asyncResultHandler.handle(
           succeededFuture(
               GetErmUsageHarvesterStartByIdResponse.respond200WithApplicationJson(
@@ -314,7 +297,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
   private Future<Void> callPurgeStaleJobs(
       OkapiClient okapiClient, Map<String, String> okapiHeaders) {
     return okapiClient
-        .sendRequest(POST, PATH_PURGE_STALE, okapiHeaders.get(TENANT), okapiHeaders.get(TOKEN))
+        .sendRequest(POST, PATH_PURGE_STALE, okapiHeaders.get(TENANT), null)
         .map(throwIfStatusCodeNot204)
         .mapEmpty();
   }
@@ -323,10 +306,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       OkapiClient okapiClient, Map<String, String> okapiHeaders, Long timestamp) {
     return okapiClient
         .sendRequest(
-            POST,
-            PATH_PURGE_FINISHED_TEMPLATE.formatted(timestamp),
-            okapiHeaders.get(TENANT),
-            okapiHeaders.get(TOKEN))
+            POST, PATH_PURGE_FINISHED_TEMPLATE.formatted(timestamp), okapiHeaders.get(TENANT), null)
         .map(throwIfStatusCodeNot204)
         .mapEmpty();
   }
@@ -338,10 +318,9 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Context vertxContext) {
     String okapiUrl = vertxContext.config().getString("okapiUrl");
     String tenantId = okapiHeaders.get(TENANT);
-    String token = okapiHeaders.get(TOKEN);
     WebClient webClient = WebClientProvider.get(vertxContext.owner());
     OkapiClient okapiClient = new OkapiClientImpl(webClient, vertxContext.config());
-    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, token, webClient);
+    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, null, webClient);
 
     callPurgeStaleJobs(okapiClient, okapiHeaders)
         .onFailure(t -> log.error("Error during cleanup: {}", t.toString()))

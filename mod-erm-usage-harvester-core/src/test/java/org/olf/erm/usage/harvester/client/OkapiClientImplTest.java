@@ -7,7 +7,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.client.OkapiClientImpl.MSG_SYSTEM_USER_LOGIN_DISABLED;
 import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_LOGIN;
 import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_LOGIN_EXPIRY;
 import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_TENANTS;
@@ -97,9 +96,7 @@ public class OkapiClientImplTest {
     okapiClient = new OkapiClientImpl(WebClient.create(vertx), okapiUrl, false);
     okapiClient
         .loginSystemUser(tenantId, SYSTEM_USER)
-        .onComplete(
-            context.asyncAssertFailure(
-                t -> assertThat(t).hasMessage(MSG_SYSTEM_USER_LOGIN_DISABLED)));
+        .onComplete(context.asyncAssertSuccess(token -> assertThat(token).isNull()));
   }
 
   @Test

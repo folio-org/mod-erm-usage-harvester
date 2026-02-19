@@ -40,8 +40,6 @@ public class OkapiClientImpl implements OkapiClient {
       "java:S1075") // suppress "URIs should not be hardcoded" because this is an internal API path
   public static final String PATH_TENANTS = "/_/proxy/tenants";
 
-  public static final String MSG_SYSTEM_USER_LOGIN_DISABLED = "System User Login is Disabled";
-
   private static final String ENV_SYSTEM_USER_ENABLED = "SYSTEM_USER_ENABLED";
 
   private final String okapiUrl;
@@ -93,7 +91,7 @@ public class OkapiClientImpl implements OkapiClient {
   @Override
   public Future<String> loginSystemUser(String tenantId, SystemUser systemUser) {
     if (!isSystemUserEnabled) {
-      return Future.failedFuture(MSG_SYSTEM_USER_LOGIN_DISABLED);
+      return Future.succeededFuture(null);
     }
 
     String loginUrl = okapiUrl + PATH_LOGIN;
