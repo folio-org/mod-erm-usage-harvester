@@ -16,7 +16,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.WebClient;
-import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -41,7 +40,7 @@ public class OkapiClientImplTest {
   public void setup() {
     vertx = Vertx.vertx();
     JsonObject cfg = new JsonObject();
-    String okapiUrl = StringUtils.removeEnd(wireMockRule.url(""), "/");
+    String okapiUrl = wireMockRule.baseUrl();
     cfg.put("okapiUrl", okapiUrl);
     okapiClient = new OkapiClientImpl(WebClient.create(vertx), cfg);
   }

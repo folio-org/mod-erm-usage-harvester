@@ -42,7 +42,7 @@ public class HarvestTenantPeriodicJob extends AbstractHarvestJob {
     }
 
     try {
-      SchedulingUtil.scheduleTenantJob(context.getScheduler(), getTenantId(), null);
+      SchedulingUtil.scheduleTenantJob(context.getScheduler(), getTenantId());
     } catch (SchedulerException e) {
       throw new JobExecutionException(
           String.format("Tenant: %s, error starting harvester: %s", getTenantId(), e.getMessage()));

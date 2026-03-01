@@ -36,7 +36,7 @@ public class ExtAggregatorSettingsClientImplTest {
   public void setUp() {
     aggregatorSettingsClient =
         new ExtAggregatorSettingsClientImpl(
-            wireMockRule.baseUrl(), "someTenant", "someToken", WebClient.create(Vertx.vertx()));
+            wireMockRule.baseUrl(), "someTenant", WebClient.create(Vertx.vertx()));
   }
 
   @Test

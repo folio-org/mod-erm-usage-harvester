@@ -20,9 +20,9 @@ public class ExtUsageDataProvidersClientImpl extends UsageDataProvidersClient
 
   public static final String PATH = "/usage-data-providers";
 
-  public ExtUsageDataProvidersClientImpl(
-      String okapiUrl, String tenantId, String token, WebClient webClient) {
-    super(okapiUrl, tenantId, token, webClient);
+  public ExtUsageDataProvidersClientImpl(String okapiUrl, String tenantId, WebClient webClient) {
+    // token is null: not required for module-to-module requests
+    super(okapiUrl, tenantId, null, webClient);
   }
 
   @Override

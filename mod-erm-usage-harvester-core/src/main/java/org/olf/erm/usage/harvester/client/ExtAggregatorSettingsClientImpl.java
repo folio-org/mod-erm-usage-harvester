@@ -17,9 +17,9 @@ public class ExtAggregatorSettingsClientImpl extends AggregatorSettingsClient
 
   public static final String PATH = "/aggregator-settings";
 
-  public ExtAggregatorSettingsClientImpl(
-      String okapiUrl, String tenantId, String token, WebClient webClient) {
-    super(okapiUrl, tenantId, token, webClient);
+  public ExtAggregatorSettingsClientImpl(String okapiUrl, String tenantId, WebClient webClient) {
+    // token is null: not required for module-to-module requests
+    super(okapiUrl, tenantId, null, webClient);
   }
 
   @Override

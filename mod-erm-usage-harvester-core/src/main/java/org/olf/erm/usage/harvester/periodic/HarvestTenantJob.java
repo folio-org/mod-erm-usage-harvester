@@ -28,7 +28,6 @@ public class HarvestTenantJob extends AbstractHarvestJob {
         new ExtUsageDataProvidersClientImpl(
                 vertxContext.config().getString("okapiUrl"),
                 getTenantId(),
-                getToken(),
                 WebClientProvider.get(vertxContext.owner()))
             .getActiveProviders()
             .map(UsageDataProviders::getUsageDataProviders)
@@ -39,7 +38,7 @@ public class HarvestTenantJob extends AbstractHarvestJob {
                             udp -> {
                               try {
                                 SchedulingUtil.scheduleProviderJob(
-                                    context.getScheduler(), getTenantId(), getToken(), udp.getId());
+                                    context.getScheduler(), getTenantId(), udp.getId());
                               } catch (SchedulerException e) {
                                 return udp.getId();
                               }

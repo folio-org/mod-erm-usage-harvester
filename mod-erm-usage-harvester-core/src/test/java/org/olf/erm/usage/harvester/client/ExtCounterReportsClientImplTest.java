@@ -65,7 +65,7 @@ public class ExtCounterReportsClientImplTest {
   public void setUp() {
     counterReportsClient =
         new ExtCounterReportsClientImpl(
-            wireMockRule.baseUrl(), "someTenant", "someToken", WebClient.create(Vertx.vertx()));
+            wireMockRule.baseUrl(), "someTenant", WebClient.create(Vertx.vertx()));
   }
 
   private CounterReports createCounterSampleReports() {

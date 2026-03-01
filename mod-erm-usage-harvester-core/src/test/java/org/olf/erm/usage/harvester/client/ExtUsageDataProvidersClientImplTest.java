@@ -44,7 +44,7 @@ public class ExtUsageDataProvidersClientImplTest {
   public void setUp() {
     udpClient =
         new ExtUsageDataProvidersClientImpl(
-            wireMockRule.baseUrl(), "someTenant", "someToken", WebClient.create(Vertx.vertx()));
+            wireMockRule.baseUrl(), "someTenant", WebClient.create(Vertx.vertx()));
   }
 
   @Test

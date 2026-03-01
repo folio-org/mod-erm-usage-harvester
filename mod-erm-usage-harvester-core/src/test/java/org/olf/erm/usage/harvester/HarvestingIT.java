@@ -84,8 +84,7 @@ public class HarvestingIT {
 
   private static final Vertx vertx = Vertx.vertx();
   private static final String TENANTA = "tenanta";
-  private static final Map<String, String> OKAPI_HEADERS =
-      Map.of(XOkapiHeaders.TENANT, TENANTA, XOkapiHeaders.TOKEN, "someToken");
+  private static final Map<String, String> OKAPI_HEADERS = Map.of(XOkapiHeaders.TENANT, TENANTA);
   private static final List<String> tenants = List.of(TENANTA, "tenantb");
   private static final String HARVESTER_PATH = "/erm-usage-harvester";
   private static final String HARVESTER_START_PATH = "/erm-usage-harvester/start";

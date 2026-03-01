@@ -79,7 +79,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Context vertxContext) {
     try {
       Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-      SchedulingUtil.scheduleTenantJob(scheduler, okapiHeaders.get(TENANT), null);
+      SchedulingUtil.scheduleTenantJob(scheduler, okapiHeaders.get(TENANT));
       asyncResultHandler.handle(
           succeededFuture(
               GetErmUsageHarvesterStartByIdResponse.respond200WithApplicationJson(
@@ -99,7 +99,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Context vertxContext) {
     try {
       Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-      SchedulingUtil.scheduleProviderJob(scheduler, okapiHeaders.get(TENANT), null, id);
+      SchedulingUtil.scheduleProviderJob(scheduler, okapiHeaders.get(TENANT), id);
       asyncResultHandler.handle(
           succeededFuture(
               GetErmUsageHarvesterStartByIdResponse.respond200WithApplicationJson(
@@ -287,7 +287,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
     String okapiUrl = vertxContext.config().getString("okapiUrl");
     String tenantId = okapiHeaders.get(TENANT);
     WebClient webClient = WebClientProvider.get(vertxContext.owner());
-    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, null, webClient);
+    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, webClient);
 
     purgeStaleJobs(vertxContext, okapiHeaders)
         .onFailure(t -> log.error("Error during cleanup: {}", t.toString()))

@@ -4,7 +4,6 @@ import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_JO
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_PROVIDER_ID;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
-import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TOKEN;
 import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
 
 import java.time.Instant;
@@ -35,31 +34,29 @@ public class SchedulingUtil {
   private static final Logger log = LoggerFactory.getLogger(SchedulingUtil.class);
 
   private static JobDetail createJobDetail(
-      Class<? extends Job> jobClass, JobKey jobKey, String token, String providerId) {
+      Class<? extends Job> jobClass, JobKey jobKey, String providerId) {
     return JobBuilder.newJob(jobClass)
         .withIdentity(jobKey)
         .usingJobData(DATAKEY_TENANT, jobKey.getGroup())
-        .usingJobData(DATAKEY_TOKEN, token)
         .usingJobData(DATAKEY_PROVIDER_ID, providerId)
         .usingJobData(DATAKEY_TIMESTAMP, Instant.now().toEpochMilli())
         .usingJobData(DATAKEY_JOB_ID, UUID.randomUUID().toString())
         .build();
   }
 
-  public static void scheduleProviderJob(
-      Scheduler scheduler, String tenantId, String token, String providerId)
+  public static void scheduleProviderJob(Scheduler scheduler, String tenantId, String providerId)
       throws SchedulerException {
     JobKey jobKey = new JobKey(providerId, tenantId);
     if (scheduler.checkExists(jobKey)) {
       throw new SchedulerException(
           "A job for provider with id '" + providerId + "' is already scheduled/running");
     } else {
-      JobDetail jobDetail = createJobDetail(HarvestProviderJob.class, jobKey, token, providerId);
+      JobDetail jobDetail = createJobDetail(HarvestProviderJob.class, jobKey, providerId);
       scheduler.scheduleJob(jobDetail, TriggerBuilder.newTrigger().startNow().build());
     }
   }
 
-  public static void scheduleTenantJob(Scheduler scheduler, String tenantId, String token)
+  public static void scheduleTenantJob(Scheduler scheduler, String tenantId)
       throws SchedulerException {
     boolean jobForTenantExists =
         scheduler.getJobKeys(jobGroupEquals(tenantId)).stream()
@@ -69,7 +66,7 @@ public class SchedulingUtil {
           "Harvesting for tenant '" + tenantId + "' is already in progress");
     } else {
       JobKey jobKey = new JobKey(TENANT_JOB_KEY, tenantId);
-      JobDetail jobDetail = createJobDetail(HarvestTenantJob.class, jobKey, token, null);
+      JobDetail jobDetail = createJobDetail(HarvestTenantJob.class, jobKey, null);
       scheduler.scheduleJob(jobDetail, TriggerBuilder.newTrigger().startNow().build());
     }
   }
@@ -89,7 +86,7 @@ public class SchedulingUtil {
       return;
     }
     JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, tenantId);
-    JobDetail jobDetail = createJobDetail(HarvestTenantPeriodicJob.class, jobKey, null, null);
+    JobDetail jobDetail = createJobDetail(HarvestTenantPeriodicJob.class, jobKey, null);
 
     Trigger trigger = createTrigger(tenantId, config);
     if (trigger != null) {

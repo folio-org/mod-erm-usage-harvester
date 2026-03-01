@@ -20,7 +20,6 @@ import org.quartz.impl.StdSchedulerFactory;
 public class SchedulerTest {
 
   private static final String TENANT = "testtenant";
-  private static final String TOKEN = "someToken";
   private static final String PROVIDER_ID = "1234";
 
   @Test
@@ -30,8 +29,8 @@ public class SchedulerTest {
         scheduler,
         new PeriodicConfig().withPeriodicInterval(WEEKLY).withStartAt(Date.from(Instant.now())),
         TENANT);
-    SchedulingUtil.scheduleTenantJob(scheduler, TENANT, TOKEN);
-    SchedulingUtil.scheduleProviderJob(scheduler, TENANT, TOKEN, PROVIDER_ID);
+    SchedulingUtil.scheduleTenantJob(scheduler, TENANT);
+    SchedulingUtil.scheduleProviderJob(scheduler, TENANT, PROVIDER_ID);
 
     assertThat(scheduler.getJobKeys(groupEquals(TENANT))).hasSize(3);
     assertThat(scheduler.getTriggerKeys(anyGroup())).hasSize(3);

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval.WEEKLY;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_PROVIDER_ID;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
-import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TOKEN;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.TENANT_JOB_KEY;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.createOrUpdateJob;
@@ -34,7 +33,6 @@ import org.quartz.impl.StdSchedulerFactory;
 public class SchedulingUtilTest {
 
   private static final String TENANT = "testtenant";
-  private static final String TOKEN = "someToken";
   private static final String PROVIDER_ID = "someid-123";
   private static final TriggerKey triggerKey = new TriggerKey(PERIODIC_JOB_KEY, TENANT);
   private static final JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, TENANT);
@@ -227,16 +225,15 @@ public class SchedulingUtilTest {
   public void testScheduleProviderJob() throws SchedulerException {
     assertThatCode(
             () -> {
-              scheduleProviderJob(defaultScheduler, TENANT, TOKEN, PROVIDER_ID);
+              scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID);
               JobDataMap jobDataMap =
                   defaultScheduler.getJobDetail(new JobKey(PROVIDER_ID, TENANT)).getJobDataMap();
               assertThat(jobDataMap.getString(DATAKEY_TENANT)).isEqualTo(TENANT);
-              assertThat(jobDataMap.getString(DATAKEY_TOKEN)).isEqualTo(TOKEN);
               assertThat(jobDataMap.getString(DATAKEY_PROVIDER_ID)).isEqualTo(PROVIDER_ID);
             })
         .doesNotThrowAnyException();
     assertThat(defaultScheduler.checkExists(new JobKey(PROVIDER_ID, TENANT))).isTrue();
-    assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, TOKEN, PROVIDER_ID))
+    assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID))
         .hasMessageContaining("already scheduled/running")
         .hasMessageContaining(PROVIDER_ID);
   }
@@ -245,16 +242,15 @@ public class SchedulingUtilTest {
   public void testScheduleTenantJob() throws SchedulerException {
     assertThatCode(
             () -> {
-              scheduleTenantJob(defaultScheduler, TENANT, TOKEN);
+              scheduleTenantJob(defaultScheduler, TENANT);
               JobDataMap jobDataMap =
                   defaultScheduler.getJobDetail(new JobKey(TENANT_JOB_KEY, TENANT)).getJobDataMap();
               assertThat(jobDataMap.getString(DATAKEY_TENANT)).isEqualTo(TENANT);
-              assertThat(jobDataMap.getString(DATAKEY_TOKEN)).isEqualTo(TOKEN);
               assertThat(jobDataMap.getString(DATAKEY_PROVIDER_ID)).isNull();
             })
         .doesNotThrowAnyException();
     assertThat(defaultScheduler.checkExists(new JobKey(TENANT_JOB_KEY, TENANT))).isTrue();
-    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT, TOKEN))
+    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT))
         .hasMessageContaining("already in progress")
         .hasMessageContaining(TENANT);
   }
@@ -271,17 +267,16 @@ public class SchedulingUtilTest {
             })
         .doesNotThrowAnyException();
     assertThat(defaultScheduler.checkExists(new JobKey(PERIODIC_JOB_KEY, TENANT))).isTrue();
-    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT, TOKEN))
-        .doesNotThrowAnyException();
+    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT)).doesNotThrowAnyException();
     assertThat(defaultScheduler.checkExists(new JobKey(TENANT_JOB_KEY, TENANT))).isTrue();
   }
 
   @Test
   public void testScheduleTenantJobFailsWithProviderJobPresent() throws SchedulerException {
-    assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, TOKEN, PROVIDER_ID))
+    assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID))
         .doesNotThrowAnyException();
     assertThat(defaultScheduler.checkExists(new JobKey(PROVIDER_ID, TENANT))).isTrue();
-    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT, TOKEN))
+    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT))
         .hasMessageContaining("already in progress")
         .hasMessageContaining(TENANT);
     assertThat(defaultScheduler.checkExists(new JobKey(TENANT_JOB_KEY, TENANT))).isFalse();
