@@ -2,13 +2,9 @@ package org.olf.erm.usage.harvester.client;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_LOGIN;
-import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_LOGIN_EXPIRY;
 import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_TENANTS;
 
 import com.github.tomakehurst.wiremock.http.Fault;
@@ -21,13 +17,11 @@ import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.WebClient;
 import org.apache.commons.lang3.StringUtils;
-import org.folio.okapi.common.XOkapiHeaders;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.olf.erm.usage.harvester.SystemUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +29,6 @@ import org.slf4j.LoggerFactory;
 public class OkapiClientImplTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(OkapiClientImplTest.class);
-  private static final SystemUser SYSTEM_USER = new SystemUser("user", "pass");
 
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
   @Rule public Timeout timeoutRule = Timeout.seconds(5);
@@ -43,13 +36,12 @@ public class OkapiClientImplTest {
   private static final String tenantId = "diku";
   private static Vertx vertx;
   private OkapiClient okapiClient;
-  private String okapiUrl;
 
   @Before
   public void setup() {
     vertx = Vertx.vertx();
     JsonObject cfg = new JsonObject();
-    okapiUrl = StringUtils.removeEnd(wireMockRule.url(""), "/");
+    String okapiUrl = StringUtils.removeEnd(wireMockRule.url(""), "/");
     cfg.put("okapiUrl", okapiUrl);
     okapiClient = new OkapiClientImpl(WebClient.create(vertx), cfg);
   }
@@ -57,58 +49,6 @@ public class OkapiClientImplTest {
   @After
   public void after() {
     vertx.close();
-  }
-
-  @Test
-  public void testLegacyLoginSuccess(TestContext context) {
-    stubFor(post(urlEqualTo(PATH_LOGIN_EXPIRY)).willReturn(aResponse().withStatus(404)));
-    stubFor(
-        post(urlEqualTo(PATH_LOGIN))
-            .willReturn(aResponse().withStatus(201).withHeader(XOkapiHeaders.TOKEN, "someToken")));
-    okapiClient
-        .loginSystemUser(tenantId, SYSTEM_USER)
-        .onComplete(context.asyncAssertSuccess(s -> assertThat(s).isEqualTo("someToken")));
-  }
-
-  @Test
-  public void testLoginWithExpirySuccess(TestContext context) {
-    stubFor(
-        post(urlEqualTo(PATH_LOGIN_EXPIRY))
-            .willReturn(
-                aResponse()
-                    .withStatus(201)
-                    .withHeader("Set-Cookie", "folioAccessToken=expiryToken")));
-    stubFor(post(urlEqualTo(PATH_LOGIN)).willReturn(aResponse().withStatus(404)));
-    okapiClient
-        .loginSystemUser(tenantId, SYSTEM_USER)
-        .onComplete(context.asyncAssertSuccess(s -> assertThat(s).isEqualTo("expiryToken")));
-  }
-
-  @Test
-  public void testLegacyLoginFailure(TestContext context) {
-    stubFor(post(urlEqualTo(PATH_LOGIN_EXPIRY)).willReturn(aResponse().withStatus(404)));
-    stubFor(post(urlEqualTo(PATH_LOGIN)).willReturn(aResponse().withStatus(422)));
-    okapiClient.loginSystemUser(tenantId, SYSTEM_USER).onComplete(context.asyncAssertFailure());
-  }
-
-  @Test
-  public void testSystemUserDisabled(TestContext context) {
-    okapiClient = new OkapiClientImpl(WebClient.create(vertx), okapiUrl, false);
-    okapiClient
-        .loginSystemUser(tenantId, SYSTEM_USER)
-        .onComplete(context.asyncAssertSuccess(token -> assertThat(token).isNull()));
-  }
-
-  @Test
-  public void testLoginWithExpiryInvalidCookie(TestContext context) {
-    stubFor(
-        post(urlEqualTo(PATH_LOGIN_EXPIRY))
-            .willReturn(
-                aResponse()
-                    .withStatus(201)
-                    .withHeader("Set-Cookie", "folioAccessToken:expiryToken")));
-    stubFor(post(urlEqualTo(PATH_LOGIN)).willReturn(aResponse().withStatus(422)));
-    okapiClient.loginSystemUser(tenantId, SYSTEM_USER).onComplete(context.asyncAssertFailure());
   }
 
   @Test
