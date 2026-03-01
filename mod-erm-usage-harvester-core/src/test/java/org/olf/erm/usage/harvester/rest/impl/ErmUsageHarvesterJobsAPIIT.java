@@ -1,22 +1,16 @@
 package org.olf.erm.usage.harvester.rest.impl;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
-import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static io.restassured.RestAssured.given;
 import static java.time.ZoneOffset.UTC;
-import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.folio.rest.impl.ErmUsageHarvesterAPI.STALE_JOB_ERROR_MSG;
 import static org.folio.rest.impl.ErmUsageHarvesterAPI.TABLE_NAME_JOBS;
 import static org.folio.rest.jaxrs.model.JobInfo.Result.FAILURE;
-import static org.olf.erm.usage.harvester.Constants.DEFAULT_DAYS_TO_KEEP_LOGS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_KEY_DAYS_TO_KEEP_LOGS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_SCOPE_HARVESTER;
 
@@ -42,7 +36,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -80,11 +73,10 @@ public class ErmUsageHarvesterJobsAPIIT {
 
   private static final Vertx vertx = Vertx.vertx();
   private static final String BASE_PATH = "/erm-usage-harvester/jobs";
-  private static final String PURGE_PATH_SEGMENT = "/purgefinished";
-  private static final String PURGE_PATH = BASE_PATH + PURGE_PATH_SEGMENT;
-  private static final String PURGE_STALE_PATH = BASE_PATH + "/purgestale";
-  private static final String SETTINGS_PATH = "/settings/entries";
+  private static final String PURGE_FINISHED_PATH_SEGMENT = "/purgefinished";
+  private static final String PURGE_STALE_PATH_SEGMENT = "/purgestale";
   private static final String CLEANUP_PATH_SEGMENT = "/cleanup";
+  private static final String SETTINGS_PATH = "/settings/entries";
 
   private static JobInfos expectedJobInfos;
   private static JobInfos expectedStaleJobInfos;
@@ -133,6 +125,15 @@ public class ErmUsageHarvesterJobsAPIIT {
   private static Future<RowSet<Row>> populateDb(JobInfos jobInfos) {
     return PostgresClient.getInstance(vertx, TENANT)
         .saveBatch(TABLE_NAME_JOBS, jobInfos.getJobInfos());
+  }
+
+  private static void resetCombinedJobData() throws ExecutionException, InterruptedException {
+    clearDb()
+        .compose(rs -> populateDb(expectedJobInfos))
+        .compose(rs -> populateDb(expectedStaleJobInfos))
+        .toCompletionStage()
+        .toCompletableFuture()
+        .get();
   }
 
   private static Future<RowSet<Row>> clearDb() {
@@ -215,7 +216,7 @@ public class ErmUsageHarvesterJobsAPIIT {
       // stale jobs are not older than 60 minutes
       ClockProvider.setClock(
           Clock.fixed(LocalDateTime.of(2023, 1, 2, 8, 30, 0).toInstant(UTC), UTC));
-      given().post("/purgestale").then().statusCode(204);
+      given().post(PURGE_STALE_PATH_SEGMENT).then().statusCode(204);
       assertThat(new GetJobsRequest().send())
           .usingRecursiveComparison()
           .isEqualTo(expectedStaleJobInfos);
@@ -223,7 +224,7 @@ public class ErmUsageHarvesterJobsAPIIT {
       // stale jobs are older than 60 minutes
       Instant testInstant = LocalDateTime.of(2023, 1, 2, 9, 5, 0).toInstant(UTC);
       ClockProvider.setClock(Clock.fixed(testInstant, UTC));
-      given().post("/purgestale").then().statusCode(204);
+      given().post(PURGE_STALE_PATH_SEGMENT).then().statusCode(204);
 
       List<String> idsExpectedToChange =
           List.of(
@@ -262,7 +263,7 @@ public class ErmUsageHarvesterJobsAPIIT {
       // purge timestamp
       given()
           .queryParam(PARAM_TIMESTAMP, 1663150479004L)
-          .post(PURGE_PATH_SEGMENT)
+          .post(PURGE_FINISHED_PATH_SEGMENT)
           .then()
           .statusCode(204);
       assertThat(new GetJobsRequest().send())
@@ -275,7 +276,7 @@ public class ErmUsageHarvesterJobsAPIIT {
                   "910c8c0e-e331-4800-935e-e13232e30190"));
 
       // purge all finished jobs
-      given().post(PURGE_PATH_SEGMENT).then().statusCode(204);
+      given().post(PURGE_FINISHED_PATH_SEGMENT).then().statusCode(204);
       assertThat(new GetJobsRequest().send())
           .satisfies(hasResultSizes(1, 1), containsIds("42ddd915-a046-4613-8272-e25b0edf36a1"));
     } finally {
@@ -299,88 +300,73 @@ public class ErmUsageHarvesterJobsAPIIT {
   }
 
   @Test
-  public void testCleanup() {
-    okapiMockRule.stubFor(post(urlPathEqualTo(PURGE_PATH)).willReturn(noContent()));
-    okapiMockRule.stubFor(post(urlPathEqualTo(PURGE_STALE_PATH)).willReturn(noContent()));
+  public void testCleanup() throws ExecutionException, InterruptedException {
+    // Use combined dataset: sample-jobs (18 jobs) + sample-jobs-stale (7 jobs) = 25 jobs.
+    // sample-jobs-stale includes 3 unfinished non-periodic jobs (stale candidates).
+    // Clock is set so stale jobs are older than 60 minutes and all timestamps fall within the
+    // purge window. Stale jobs started at 2023-01-02T08:00, finished jobs have timestamps up to
+    // 2023-01-02.
+    ClockProvider.setClock(Clock.fixed(LocalDateTime.of(2023, 6, 1, 0, 0).toInstant(UTC), UTC));
 
-    // failed to get settings value
-    okapiMockRule.stubFor(WireMock.get(urlPathEqualTo(SETTINGS_PATH)).willReturn(serverError()));
-    given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
-    verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
-    verify(0, postRequestedFor(urlPathEqualTo(PURGE_PATH)));
+    try {
+      resetCombinedJobData();
 
-    // settings value is set to null
-    okapiMockRule.resetRequests();
-    okapiMockRule.stubFor(
-        WireMock.get(urlPathEqualTo(SETTINGS_PATH))
-            .willReturn(okJson(Json.encode(createSettingsResponse(null)))));
-    given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
-    verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
-    verify(1, postRequestedFor(urlPathEqualTo(PURGE_PATH)));
+      // invalid settings value: purgeStale marks 3 stale jobs as failed,
+      // purgeFinished is skipped due to invalid value
+      okapiMockRule.stubFor(
+          WireMock.get(urlPathEqualTo(SETTINGS_PATH))
+              .willReturn(okJson(Json.encode(createSettingsResponse(-10)))));
+      given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
+      verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
+      assertThat(new GetJobsRequest().withParams(PARAM_LIMIT, 1000).send())
+          .satisfies(hasResultSizes(25, 25));
+      assertThat(
+              new GetJobsRequest()
+                  .withParams(PARAM_QUERY, "result==failure AND errorMessage==\"Stale job\"")
+                  .send()
+                  .getJobInfos())
+          .hasSize(3);
 
-    // settings value is set to invalid value
-    okapiMockRule.resetRequests();
-    okapiMockRule.stubFor(
-        WireMock.get(urlPathEqualTo(SETTINGS_PATH))
-            .willReturn(okJson(Json.encode(createSettingsResponse(-10)))));
-    given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
-    verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
-    verify(0, postRequestedFor(urlPathEqualTo(PURGE_PATH)));
+      resetCombinedJobData();
 
-    // set fixed clock
-    LocalDateTime testDateTime = LocalDateTime.of(2000, 1, 30, 8, 5, 3, 123);
-    ClockProvider.setClock(Clock.fixed(testDateTime.toInstant(UTC), UTC));
+      // failed to get settings value: purgeStale marks 3 stale jobs as failed,
+      // purgeFinished is skipped due to settings error
+      okapiMockRule.resetRequests();
+      okapiMockRule.stubFor(WireMock.get(urlPathEqualTo(SETTINGS_PATH)).willReturn(serverError()));
+      given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
+      verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
+      assertThat(new GetJobsRequest().withParams(PARAM_LIMIT, 1000).send())
+          .satisfies(hasResultSizes(25, 25));
+      assertThat(
+              new GetJobsRequest()
+                  .withParams(PARAM_QUERY, "result==failure AND errorMessage==\"Stale job\"")
+                  .send()
+                  .getJobInfos())
+          .hasSize(3);
 
-    // no settings entry is found
-    okapiMockRule.resetRequests();
-    okapiMockRule.stubFor(
-        WireMock.get(urlPathEqualTo(SETTINGS_PATH))
-            .willReturn(
-                okJson(
-                    Json.encode(
-                        new Entries()
-                            .withItems(emptyList())
-                            .withResultInfo(new ResultInfo().withTotalRecords(0))))));
-    given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
-    verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
-    long expectedTimestamp =
-        testDateTime
-            .minus(DEFAULT_DAYS_TO_KEEP_LOGS, ChronoUnit.DAYS)
-            .toInstant(UTC)
-            .toEpochMilli();
-    verify(
-        1,
-        postRequestedFor(urlPathEqualTo(PURGE_PATH))
-            .withQueryParam(PARAM_TIMESTAMP, equalTo(String.valueOf(expectedTimestamp)))
-            .withHeader(XOkapiHeaders.TENANT, equalTo(TENANT)));
+      resetCombinedJobData();
 
-    // settings value is set to 10
-    okapiMockRule.resetRequests();
-    okapiMockRule.stubFor(
-        WireMock.get(urlPathEqualTo(SETTINGS_PATH))
-            .willReturn(okJson(Json.encode(createSettingsResponse(10)))));
-    given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
-    verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
-    expectedTimestamp = testDateTime.minus(10, ChronoUnit.DAYS).toInstant(UTC).toEpochMilli();
-    verify(
-        1,
-        postRequestedFor(urlPathEqualTo(PURGE_PATH))
-            .withQueryParam(PARAM_TIMESTAMP, equalTo(String.valueOf(expectedTimestamp)))
-            .withHeader(XOkapiHeaders.TENANT, equalTo(TENANT)));
-
-    // purge endpoints return status code 500
-    okapiMockRule.resetRequests();
-    okapiMockRule.stubFor(post(urlPathEqualTo(PURGE_PATH)).willReturn(serverError()));
-    okapiMockRule.stubFor(post(urlPathEqualTo(PURGE_STALE_PATH)).willReturn(serverError()));
-    given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
-    verify(1, postRequestedFor(urlPathEqualTo(PURGE_STALE_PATH)));
-    verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
-    verify(1, postRequestedFor(urlPathEqualTo(PURGE_PATH)));
+      // valid settings value: purgeStale marks 3 stale jobs as failed,
+      // purgeFinished deletes all 23 finished jobs (20 originally finished + 3 newly marked),
+      // only the 2 periodic jobs remain
+      okapiMockRule.resetRequests();
+      okapiMockRule.stubFor(
+          WireMock.get(urlPathEqualTo(SETTINGS_PATH))
+              .willReturn(okJson(Json.encode(createSettingsResponse(10)))));
+      given().post(CLEANUP_PATH_SEGMENT).then().statusCode(204);
+      verify(1, getRequestedFor(urlPathEqualTo(SETTINGS_PATH)));
+      assertThat(new GetJobsRequest().withParams(PARAM_LIMIT, 1000).send())
+          .satisfies(
+              hasResultSizes(2, 2),
+              containsIds(
+                  "42ddd915-a046-4613-8272-e25b0edf36a1", "96d680a7-10f2-4df5-95c9-b87937cd13b6"));
+    } finally {
+      clearDb()
+          .compose(rs -> populateDb(expectedJobInfos))
+          .toCompletionStage()
+          .toCompletableFuture()
+          .get();
+    }
   }
 
   static class GetJobsRequest {
