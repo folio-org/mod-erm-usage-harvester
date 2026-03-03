@@ -151,9 +151,7 @@
           "delay": "30",
           "modulePermissions": [
             "mod-settings.entries.collection.get",
-            "mod-settings.global.read.mod-erm-usage-harvester.manage",
-            "ermusageharvester.jobs.purge-finished.post",
-            "ermusageharvester.jobs.purge-stale.post"
+            "mod-settings.global.read.mod-erm-usage-harvester.manage"
           ]
         }
       ]
