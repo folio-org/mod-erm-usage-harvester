@@ -30,13 +30,11 @@ public class HarvestProviderJob extends AbstractHarvestJob {
   public void execute(JobExecutionContext context) throws JobExecutionException {
     String providerId;
     String tenantId;
-    String token;
     Context vertxContext;
     String okapiUrl;
     try {
       providerId = requireNonNull(getProviderId());
       tenantId = requireNonNull(getTenantId());
-      token = requireNonNull(getToken());
       vertxContext =
           requireNonNull((Context) context.getScheduler().getContext().get("vertxContext"));
       okapiUrl = requireNonNull(vertxContext.config().getString("okapiUrl"));
@@ -45,13 +43,13 @@ public class HarvestProviderJob extends AbstractHarvestJob {
     }
 
     WebClient webClient = WebClientProvider.get(vertxContext.owner());
-    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, token, webClient);
+    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, webClient);
     ExtAggregatorSettingsClient aggregatorSettingsClient =
-        new ExtAggregatorSettingsClientImpl(okapiUrl, tenantId, token, webClient);
+        new ExtAggregatorSettingsClientImpl(okapiUrl, tenantId, webClient);
     ExtCounterReportsClient counterReportsClient =
-        new ExtCounterReportsClientImpl(okapiUrl, tenantId, token, webClient);
+        new ExtCounterReportsClientImpl(okapiUrl, tenantId, webClient);
     ExtUsageDataProvidersClient usageDataProvidersClient =
-        new ExtUsageDataProvidersClientImpl(okapiUrl, tenantId, token, webClient);
+        new ExtUsageDataProvidersClientImpl(okapiUrl, tenantId, webClient);
     int initialConcurrency = 4;
 
     try {

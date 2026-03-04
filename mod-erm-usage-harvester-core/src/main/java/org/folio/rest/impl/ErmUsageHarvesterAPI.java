@@ -2,9 +2,7 @@ package org.folio.rest.impl;
 
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
-import static io.vertx.core.http.HttpMethod.POST;
 import static org.folio.okapi.common.XOkapiHeaders.TENANT;
-import static org.folio.okapi.common.XOkapiHeaders.TOKEN;
 import static org.olf.erm.usage.harvester.Constants.DEFAULT_DAYS_TO_KEEP_LOGS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_KEY_DAYS_TO_KEEP_LOGS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_SCOPE_HARVESTER;
@@ -16,10 +14,8 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -28,11 +24,9 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.function.UnaryOperator;
 import javax.ws.rs.core.Response;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
-import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.JobInfo;
 import org.folio.rest.jaxrs.model.JobInfo.Result;
 import org.folio.rest.jaxrs.model.JobInfos;
@@ -42,10 +36,7 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.olf.erm.usage.harvester.ClockProvider;
-import org.olf.erm.usage.harvester.Messages;
 import org.olf.erm.usage.harvester.WebClientProvider;
-import org.olf.erm.usage.harvester.client.OkapiClient;
-import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.olf.erm.usage.harvester.client.SettingsClient;
 import org.olf.erm.usage.harvester.client.SettingsClientImpl;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
@@ -61,16 +52,6 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
   public static final String TABLE_NAME_JOBS = "jobs";
   public static final String STALE_JOB_ERROR_MSG = "Stale job";
-  public static final String MESSAGE_NO_TOKEN = "No token provided";
-
-  @SuppressWarnings(
-      "java:S1075") // suppress "URIs should not be hardcoded" because this is an internal API path
-  private static final String PATH_PURGE_STALE = "/erm-usage-harvester/jobs/purgestale";
-
-  @SuppressWarnings(
-      "java:S1075") // suppress "URIs should not be hardcoded" because this is an internal API path
-  private static final String PATH_PURGE_FINISHED_TEMPLATE =
-      "/erm-usage-harvester/jobs/purgefinished?timestamp=%d";
 
   private static final Criteria finishedCriteria =
       new Criteria().addField("'finishedAt'").setJSONB(true).setOperation("IS NOT NULL");
@@ -78,14 +59,6 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       new Criteria().addField("'finishedAt'").setJSONB(true).setOperation("IS NULL");
   private static final Criteria notPeriodicJobTypeCriteria =
       new Criteria().setJSONB(true).addField("'type'").setOperation("!=").setVal(PERIODIC_JOB_KEY);
-  private final UnaryOperator<HttpResponse<Buffer>> throwIfStatusCodeNot204 =
-      resp -> {
-        if (resp.statusCode() != 204) {
-          throw new UnexpectedStatusCodeException(
-              String.format(Messages.ERR_MSG_STATUS, resp.statusCode(), resp.statusMessage()));
-        }
-        return resp;
-      };
 
   private static final Logger log = LoggerFactory.getLogger(ErmUsageHarvesterAPI.class);
 
@@ -104,17 +77,9 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
-    String token = okapiHeaders.get(XOkapiHeaders.TOKEN);
-    if (token == null) {
-      asyncResultHandler.handle(
-          succeededFuture(
-              GetErmUsageHarvesterStartByIdResponse.respond500WithTextPlain(MESSAGE_NO_TOKEN)));
-      return;
-    }
-
     try {
       Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-      SchedulingUtil.scheduleTenantJob(scheduler, okapiHeaders.get(TENANT), token);
+      SchedulingUtil.scheduleTenantJob(scheduler, okapiHeaders.get(TENANT));
       asyncResultHandler.handle(
           succeededFuture(
               GetErmUsageHarvesterStartByIdResponse.respond200WithApplicationJson(
@@ -132,16 +97,9 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
-    String token = okapiHeaders.get(XOkapiHeaders.TOKEN);
-    if (token == null) {
-      asyncResultHandler.handle(
-          succeededFuture(
-              GetErmUsageHarvesterStartByIdResponse.respond500WithTextPlain(MESSAGE_NO_TOKEN)));
-    }
-
     try {
       Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-      SchedulingUtil.scheduleProviderJob(scheduler, okapiHeaders.get(TENANT), token, id);
+      SchedulingUtil.scheduleProviderJob(scheduler, okapiHeaders.get(TENANT), id);
       asyncResultHandler.handle(
           succeededFuture(
               GetErmUsageHarvesterStartByIdResponse.respond200WithApplicationJson(
@@ -243,24 +201,27 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
-    PgUtil.postgresClient(vertxContext, okapiHeaders)
-        .delete(
-            TABLE_NAME_JOBS,
-            new Criterion(createTimestampCriteria(timestamp)).addCriterion(finishedCriteria))
+    purgeFinishedJobs(vertxContext, okapiHeaders, timestamp)
         .<Response>map(PostErmUsageHarvesterJobsPurgefinishedResponse.respond204())
         .otherwise(PostErmUsageHarvesterJobsPurgefinishedResponse::respond500WithTextPlain)
         .onComplete(asyncResultHandler);
   }
 
   @Override
-  @SuppressWarnings("rawtypes")
   public void postErmUsageHarvesterJobsPurgestale(
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
+    purgeStaleJobs(vertxContext, okapiHeaders)
+        .<Response>map(PostErmUsageHarvesterJobsPurgestaleResponse.respond204())
+        .otherwise(PostErmUsageHarvesterJobsPurgestaleResponse::respond500WithTextPlain)
+        .onComplete(asyncResultHandler);
+  }
+
+  private Future<Void> purgeStaleJobs(Context vertxContext, Map<String, String> okapiHeaders) {
     String tenantId = okapiHeaders.get(TENANT);
     long minus60Minutes = getCurrentTimestampMinus(60, ChronoUnit.MINUTES);
-    PgUtil.postgresClient(vertxContext, okapiHeaders)
+    return PgUtil.postgresClient(vertxContext, okapiHeaders)
         .get(
             TABLE_NAME_JOBS,
             JobInfo.class,
@@ -283,9 +244,16 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
                       .toList();
               return Future.join(upserts);
             })
-        .<Response>map(cf -> PostErmUsageHarvesterJobsPurgestaleResponse.respond204())
-        .otherwise(PostErmUsageHarvesterJobsPurgestaleResponse::respond500WithTextPlain)
-        .onComplete(asyncResultHandler);
+        .mapEmpty();
+  }
+
+  private Future<Void> purgeFinishedJobs(
+      Context vertxContext, Map<String, String> okapiHeaders, Number timestamp) {
+    return PgUtil.postgresClient(vertxContext, okapiHeaders)
+        .delete(
+            TABLE_NAME_JOBS,
+            new Criterion(createTimestampCriteria(timestamp)).addCriterion(finishedCriteria))
+        .mapEmpty();
   }
 
   private long getCurrentTimestampMinus(long amountToSubstract, TemporalUnit unit) {
@@ -311,26 +279,6 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
         .map(i -> getCurrentTimestampMinus(i, ChronoUnit.DAYS));
   }
 
-  private Future<Void> callPurgeStaleJobs(
-      OkapiClient okapiClient, Map<String, String> okapiHeaders) {
-    return okapiClient
-        .sendRequest(POST, PATH_PURGE_STALE, okapiHeaders.get(TENANT), okapiHeaders.get(TOKEN))
-        .map(throwIfStatusCodeNot204)
-        .mapEmpty();
-  }
-
-  private Future<Void> callPurgeFinishedJobs(
-      OkapiClient okapiClient, Map<String, String> okapiHeaders, Long timestamp) {
-    return okapiClient
-        .sendRequest(
-            POST,
-            PATH_PURGE_FINISHED_TEMPLATE.formatted(timestamp),
-            okapiHeaders.get(TENANT),
-            okapiHeaders.get(TOKEN))
-        .map(throwIfStatusCodeNot204)
-        .mapEmpty();
-  }
-
   @Override
   public void postErmUsageHarvesterJobsCleanup(
       Map<String, String> okapiHeaders,
@@ -338,27 +286,18 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Context vertxContext) {
     String okapiUrl = vertxContext.config().getString("okapiUrl");
     String tenantId = okapiHeaders.get(TENANT);
-    String token = okapiHeaders.get(TOKEN);
     WebClient webClient = WebClientProvider.get(vertxContext.owner());
-    OkapiClient okapiClient = new OkapiClientImpl(webClient, vertxContext.config());
-    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, token, webClient);
+    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, webClient);
 
-    callPurgeStaleJobs(okapiClient, okapiHeaders)
+    purgeStaleJobs(vertxContext, okapiHeaders)
         .onFailure(t -> log.error("Error during cleanup: {}", t.toString()))
         .recover(t -> succeededFuture())
         .compose(v -> calculatePurgeTimestampFromSettings(settingsClient))
-        .compose(timestamp -> callPurgeFinishedJobs(okapiClient, okapiHeaders, timestamp))
+        .compose(timestamp -> purgeFinishedJobs(vertxContext, okapiHeaders, timestamp))
         .onFailure(t -> log.error("Error during cleanup: {}", t.toString()))
         .onComplete(
             v ->
                 asyncResultHandler.handle(
                     succeededFuture(PostErmUsageHarvesterJobsCleanupResponse.respond204())));
-  }
-
-  static class UnexpectedStatusCodeException extends RuntimeException {
-
-    public UnexpectedStatusCodeException(String message) {
-      super(message);
-    }
   }
 }

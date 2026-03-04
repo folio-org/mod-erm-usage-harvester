@@ -1,18 +1,11 @@
 package org.olf.erm.usage.harvester.periodic;
 
-import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.ext.web.client.WebClient;
 import java.util.Date;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import org.olf.erm.usage.harvester.SystemUser;
-import org.olf.erm.usage.harvester.WebClientProvider;
-import org.olf.erm.usage.harvester.client.OkapiClient;
-import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
@@ -36,7 +29,7 @@ public class HarvestTenantPeriodicJob extends AbstractHarvestJob {
     Context vertxContext;
     try {
       Object o = context.getScheduler().getContext().get("vertxContext");
-      vertxContext = o instanceof Context ? (Context) o : null;
+      vertxContext = o instanceof Context c ? c : null;
     } catch (SchedulerException e) {
       throw new JobExecutionException(
           String.format(
@@ -48,49 +41,32 @@ public class HarvestTenantPeriodicJob extends AbstractHarvestJob {
           String.format("Tenant: %s, error getting vert.x context", getTenantId()));
     }
 
-    WebClient webClient = WebClientProvider.get(vertxContext.owner());
-    OkapiClient okapiClient = new OkapiClientImpl(webClient, vertxContext.config());
-
-    CompletableFuture<Void> complete =
-        loginSystemUserIfEnabled(okapiClient, getTenantId())
-            .compose(token -> okapiClient.startHarvester(getTenantId(), token))
-            .<Void>compose(
-                resp -> {
-                  if (resp.statusCode() != 200) {
-                    return failedFuture(
-                        String.format(
-                            "Tenant: %s, error starting job, received %s %s from start interface:"
-                                + " %s",
-                            getTenantId(),
-                            resp.statusCode(),
-                            resp.statusMessage(),
-                            resp.bodyAsString()));
-                  } else {
-                    return updateLastTriggeredAt(vertxContext, context.getFireTime())
-                        .onFailure(
-                            t ->
-                                log.error(
-                                    String.format(
-                                        "Tenant: %s, failed updating lastTriggeredAt: %s",
-                                        getTenantId(), t.getMessage())))
-                        .transform(ar -> succeededFuture());
-                  }
-                })
-            .toCompletionStage()
-            .toCompletableFuture();
+    try {
+      SchedulingUtil.scheduleTenantJob(context.getScheduler(), getTenantId());
+    } catch (SchedulerException e) {
+      throw new JobExecutionException(
+          String.format("Tenant: %s, error starting harvester: %s", getTenantId(), e.getMessage()));
+    }
 
     try {
-      complete.get();
+      updateLastTriggeredAt(vertxContext, context.getFireTime())
+          .onFailure(
+              t ->
+                  log.error(
+                      "Tenant: {}, failed updating lastTriggeredAt: {}",
+                      getTenantId(),
+                      t.getMessage()))
+          .transform(ar -> succeededFuture())
+          .toCompletionStage()
+          .toCompletableFuture()
+          .get();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new JobExecutionException(e);
     } catch (ExecutionException e) {
       throw new JobExecutionException(
-          String.format("Tenant: %s, error starting harvester: %s", getTenantId(), e.getMessage()));
+          String.format(
+              "Tenant: %s, error updating lastTriggeredAt: %s", getTenantId(), e.getMessage()));
     }
-  }
-
-  private Future<String> loginSystemUserIfEnabled(OkapiClient okapiClient, String tenantId) {
-    return okapiClient.loginSystemUser(tenantId, new SystemUser(tenantId));
   }
 }

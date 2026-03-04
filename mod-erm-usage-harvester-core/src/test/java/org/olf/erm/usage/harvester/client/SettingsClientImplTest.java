@@ -47,7 +47,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 class SettingsClientImplTest {
 
   private static final String TENANT = "someTenant";
-  private static final String TOKEN = "someToken";
   private static final String SCOPE = "testscope";
   private static final String KEY = "testkey";
   private static final String QUERY = QUERY_TEMPLATE.formatted(SCOPE, KEY);
@@ -58,8 +57,7 @@ class SettingsClientImplTest {
 
   @BeforeAll
   static void beforeAll(WireMockRuntimeInfo wmRuntimeInfo) {
-    settingsClient =
-        new SettingsClientImpl(wmRuntimeInfo.getHttpBaseUrl(), TENANT, TOKEN, webClient);
+    settingsClient = new SettingsClientImpl(wmRuntimeInfo.getHttpBaseUrl(), TENANT, webClient);
   }
 
   private static Stream<Object> provideObjectValues() throws JsonProcessingException {
@@ -87,7 +85,6 @@ class SettingsClientImplTest {
     stubFor(
         get(urlPathEqualTo(ENTRIES_PATH))
             .withHeader(XOkapiHeaders.TENANT, equalTo(TENANT))
-            .withHeader(XOkapiHeaders.TOKEN, equalTo(TOKEN))
             .withQueryParam(QUERY_PARAM, equalTo(QUERY))
             .willReturn(response));
   }
@@ -140,8 +137,7 @@ class SettingsClientImplTest {
   void testGetValueWithUnavailableService(VertxTestContext context) {
     int nextFreePort = NetworkUtils.nextFreePort();
     SettingsClient unavailableClient =
-        new SettingsClientImpl(
-            LOCALHOST_URL_TEMPLATE.formatted(nextFreePort), TENANT, TOKEN, webClient);
+        new SettingsClientImpl(LOCALHOST_URL_TEMPLATE.formatted(nextFreePort), TENANT, webClient);
     unavailableClient.getValue(SCOPE, KEY).onComplete(context.failingThenComplete());
   }
 

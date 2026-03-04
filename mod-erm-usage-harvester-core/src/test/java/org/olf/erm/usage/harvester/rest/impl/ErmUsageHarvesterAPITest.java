@@ -2,10 +2,8 @@ package org.olf.erm.usage.harvester.rest.impl;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
-import static org.folio.rest.impl.ErmUsageHarvesterAPI.MESSAGE_NO_TOKEN;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
@@ -20,7 +18,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import java.util.Map;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
@@ -35,8 +32,7 @@ public class ErmUsageHarvesterAPITest {
 
   private static final String TENANT_ERR_MSG = "Tenant must be set";
   private static final String TENANT = "testtenant";
-  private static final Map<String, String> OKAPI_HEADERS =
-      Map.of(XOkapiHeaders.TENANT, TENANT, XOkapiHeaders.TOKEN, "someToken");
+  private static final Header TENANT_HEADER = new Header(XOkapiHeaders.TENANT, TENANT);
 
   private static Vertx vertx;
 
@@ -74,20 +70,9 @@ public class ErmUsageHarvesterAPITest {
   }
 
   @Test
-  public void startHarvesterNoToken() {
-    given()
-        .header(new Header(XOkapiHeaders.TENANT, TENANT))
-        .when()
-        .get("/start")
-        .then()
-        .statusCode(500)
-        .body(equalTo(MESSAGE_NO_TOKEN));
-  }
-
-  @Test
   public void startHarvester200() {
     given()
-        .headers(OKAPI_HEADERS)
+        .header(TENANT_HEADER)
         .when()
         .get("/start")
         .then()
@@ -107,20 +92,9 @@ public class ErmUsageHarvesterAPITest {
   }
 
   @Test
-  public void startProviderNoToken() {
-    given()
-        .header(new Header(XOkapiHeaders.TENANT, TENANT))
-        .when()
-        .get("/start")
-        .then()
-        .statusCode(500)
-        .body(equalTo(MESSAGE_NO_TOKEN));
-  }
-
-  @Test
   public void startProvider200() {
     given()
-        .headers(OKAPI_HEADERS)
+        .header(TENANT_HEADER)
         .when()
         .get("/start/5b8ab2bd-e470-409c-9a6c-845d979da05e")
         .then()
@@ -133,7 +107,7 @@ public class ErmUsageHarvesterAPITest {
   @Test
   public void getImplementations() {
     given()
-        .header(new Header(XOkapiHeaders.TENANT, TENANT))
+        .header(TENANT_HEADER)
         .when()
         .get("/impl")
         .then()
@@ -145,7 +119,7 @@ public class ErmUsageHarvesterAPITest {
   @Test
   public void getImplementationsAggregator() {
     given()
-        .header(new Header(XOkapiHeaders.TENANT, TENANT))
+        .header(TENANT_HEADER)
         .when()
         .get("/impl?aggregator=true")
         .then()
@@ -158,7 +132,7 @@ public class ErmUsageHarvesterAPITest {
   @Test
   public void getImplementationsNonAggregator() {
     given()
-        .header(new Header(XOkapiHeaders.TENANT, TENANT))
+        .header(TENANT_HEADER)
         .when()
         .get("/impl?aggregator=false")
         .then()

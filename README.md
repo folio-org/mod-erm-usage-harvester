@@ -14,7 +14,6 @@ Module for harvesting counter reports.
 ## Requirements
 
 * The module needs to know about the Okapi URL ([see here](#setting-the-okapi-url)).
-* For scheduled harvesting you need to provide user credentials ([see here](#periodic-harvesting)).
 * Environment variables for database connectivity need to be
   provided ([see here](https://github.com/folio-org/raml-module-builder#environment-variables)).
 
@@ -91,17 +90,9 @@ about Hazelcast discovery mechanisms [here](https://docs.hazelcast.com/hazelcast
 
 ## Periodic harvesting
 
-Periodic harvesting requires the module to log in using user credentials. These credentials are
-defined separately for each tenant via the environment variables `{TENANT}_USER_NAME` and
-`{TENANT}_USER_PASS`, where `{TENANT}` serves as a placeholder for the tenant ID and must be in
-uppercase. The user also needs the `ermusageharvester.start-all.get` permission.
-
-Example for tenant 'diku':
-
-```
-DIKU_USER_NAME=mod-erm-usage-harvester
-DIKU_USER_PASS=password123
-```
+Periodic harvesting uses a system user that is automatically created and managed by the platform on
+Eureka deployments. The system user is granted the `ermusageharvester.start-all.get` permission as
+defined in the module descriptor's `metadata.user` section.
 
 Periodic harvesting is set up through the `erm-usage-harvester/periodic` API. Configuration is done
 for each tenant separately by using the `X-Okapi-Tenant` header.

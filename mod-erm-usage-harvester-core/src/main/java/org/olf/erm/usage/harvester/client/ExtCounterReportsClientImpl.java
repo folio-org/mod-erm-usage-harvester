@@ -27,9 +27,9 @@ public class ExtCounterReportsClientImpl extends CounterReportsClient
   public static final String PATH = "/counter-reports";
   private final String okapiUrl;
 
-  public ExtCounterReportsClientImpl(
-      String okapiUrl, String tenantId, String token, WebClient webClient) {
-    super(okapiUrl, tenantId, token, webClient);
+  public ExtCounterReportsClientImpl(String okapiUrl, String tenantId, WebClient webClient) {
+    // token is null: not required for module-to-module requests
+    super(okapiUrl, tenantId, null, webClient);
     this.okapiUrl = okapiUrl;
   }
 
