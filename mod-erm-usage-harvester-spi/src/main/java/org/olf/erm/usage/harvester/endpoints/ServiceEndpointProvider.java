@@ -1,6 +1,5 @@
 package org.olf.erm.usage.harvester.endpoints;
 
-import io.vertx.core.json.JsonObject;
 import java.util.Collections;
 import java.util.List;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
@@ -28,7 +27,7 @@ public interface ServiceEndpointProvider {
   String getServiceName();
 
   default String getServiceDescription() {
-    return "";
+    return null;
   }
 
   default Boolean isAggregator() {
@@ -41,15 +40,15 @@ public interface ServiceEndpointProvider {
     return Collections.emptyList();
   }
 
-  default JsonObject toJson() {
-    JsonObject result =
-        new JsonObject()
-            .put("name", getServiceName())
-            .put("description", getServiceDescription())
-            .put("type", getServiceType())
-            .put("isAggregator", isAggregator());
-    if (!getConfigurationParameters().isEmpty())
-      result.put("configurationParameters", getConfigurationParameters());
-    return result;
+  default String getReportRelease() {
+    return null;
+  }
+
+  default List<String> getSupportedReports() {
+    return Collections.emptyList();
+  }
+
+  default boolean isDefault() {
+    return false;
   }
 }

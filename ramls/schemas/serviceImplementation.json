@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "javaType": "org.folio.rest.jaxrs.model.ServiceImplementation",
+  "title": "Service Implementation Schema",
+  "description": "A service endpoint implementation",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Human-readable display name",
+      "type": "string"
+    },
+    "description": {
+      "description": "Implementation description",
+      "type": "string"
+    },
+    "type": {
+      "description": "Service type identifier",
+      "type": "string"
+    },
+    "isAggregator": {
+      "description": "Whether this is an aggregator implementation",
+      "type": "boolean"
+    },
+    "isDefault": {
+      "description": "Whether this is the default implementation",
+      "type": "boolean"
+    },
+    "reportRelease": {
+      "description": "COUNTER report release version",
+      "type": "string"
+    },
+    "supportedReports": {
+      "description": "List of supported report types",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "configurationParameters": {
+      "description": "List of configuration parameter names",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "isAggregator"
+  ],
+  "additionalProperties": false
+}

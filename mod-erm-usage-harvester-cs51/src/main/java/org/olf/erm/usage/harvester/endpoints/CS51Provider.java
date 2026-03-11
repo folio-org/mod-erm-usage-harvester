@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import java.util.List;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 
@@ -18,6 +19,21 @@ public class CS51Provider implements ServiceEndpointProvider {
   @Override
   public String getServiceDescription() {
     return "Implementation for Counter/Sushi 5.1";
+  }
+
+  @Override
+  public String getReportRelease() {
+    return "5.1";
+  }
+
+  @Override
+  public List<String> getSupportedReports() {
+    return List.of("DR", "IR", "PR", "TR");
+  }
+
+  @Override
+  public boolean isDefault() {
+    return true;
   }
 
   @Override

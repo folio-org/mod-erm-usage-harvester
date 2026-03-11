@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "A collection of ServiceImplementation objects",
+  "type": "object",
+  "properties": {
+    "implementations": {
+      "description": "List of service implementations",
+      "type": "array",
+      "items": {
+        "$ref": "serviceImplementation.json"
+      }
+    }
+  },
+  "required": [
+    "implementations"
+  ],
+  "additionalProperties": false
+}

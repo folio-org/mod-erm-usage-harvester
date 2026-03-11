@@ -22,6 +22,31 @@ public class Test1Provider implements ServiceEndpointProvider {
   }
 
   @Override
+  public String getServiceDescription() {
+    return "Test1 description";
+  }
+
+  @Override
+  public String getReportRelease() {
+    return "5";
+  }
+
+  @Override
+  public List<String> getSupportedReports() {
+    return List.of("TR", "DR");
+  }
+
+  @Override
+  public boolean isDefault() {
+    return true;
+  }
+
+  @Override
+  public List<String> getConfigurationParameters() {
+    return List.of("param1", "param2");
+  }
+
+  @Override
   public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
     return (report, beginDate, endDate) -> {
       List<CounterReport> resultList =

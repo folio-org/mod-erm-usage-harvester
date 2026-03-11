@@ -14,7 +14,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
 import java.time.Instant;
@@ -30,6 +29,8 @@ import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.jaxrs.model.JobInfo;
 import org.folio.rest.jaxrs.model.JobInfo.Result;
 import org.folio.rest.jaxrs.model.JobInfos;
+import org.folio.rest.jaxrs.model.ServiceImplementation;
+import org.folio.rest.jaxrs.model.ServiceImplementations;
 import org.folio.rest.jaxrs.resource.ErmUsageHarvester;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -118,16 +119,17 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
     try {
-      List<JsonObject> collect =
+      List<ServiceImplementation> implementations =
           ServiceEndpoint.getAvailableProviders().stream()
               .filter(
                   provider ->
                       Strings.isNullOrEmpty(aggregator)
                           || provider.isAggregator().equals(Boolean.valueOf(aggregator)))
               .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))
-              .map(ServiceEndpointProvider::toJson)
+              .map(ErmUsageHarvesterAPI::toServiceImplementation)
               .toList();
-      String result = new JsonObject().put("implementations", new JsonArray(collect)).toString();
+      ServiceImplementations result =
+          new ServiceImplementations().withImplementations(implementations);
       asyncResultHandler.handle(
           succeededFuture(GetErmUsageHarvesterImplResponse.respond200WithApplicationJson(result)));
     } catch (Exception e) {
@@ -135,6 +137,28 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
           succeededFuture(
               GetErmUsageHarvesterImplResponse.respond500WithTextPlain(e.getMessage())));
     }
+  }
+
+  private static ServiceImplementation toServiceImplementation(ServiceEndpointProvider provider) {
+    ServiceImplementation impl =
+        new ServiceImplementation()
+            .withName(provider.getServiceName())
+            .withDescription(provider.getServiceDescription())
+            .withType(provider.getServiceType())
+            .withIsAggregator(provider.isAggregator());
+    if (!provider.getConfigurationParameters().isEmpty()) {
+      impl.setConfigurationParameters(provider.getConfigurationParameters());
+    }
+    if (provider.getReportRelease() != null) {
+      impl.setReportRelease(provider.getReportRelease());
+    }
+    if (!provider.getSupportedReports().isEmpty()) {
+      impl.setSupportedReports(provider.getSupportedReports().stream().sorted().toList());
+    }
+    if (provider.isDefault()) {
+      impl.setIsDefault(true);
+    }
+    return impl;
   }
 
   private Criteria createTimestampCriteria(Number timestamp) {
