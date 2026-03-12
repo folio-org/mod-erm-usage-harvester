@@ -9,6 +9,7 @@ documentation:
 
 types:
   jobInfos: !include schemas/jobInfos.json
+  serviceImplementations: !include schemas/serviceImplementations.json
   errors: !include raml-util/schemas/errors.schema
 
 traits:
@@ -69,6 +70,7 @@ resourceTypes:
           description: List of available service implementations
           body:
             application/json:
+              type: serviceImplementations
         400:
           description: Bad request
           body:
@@ -103,9 +105,9 @@ resourceTypes:
           body:
             text/plain:
         500:
-            description: Internal server error
-            body:
-              text/plain:
+          description: Internal server error
+          body:
+            text/plain:
     /purgefinished:
       post:
         description: Purge finished harvesting jobs

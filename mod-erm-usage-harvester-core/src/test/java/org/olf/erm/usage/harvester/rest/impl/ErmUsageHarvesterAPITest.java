@@ -2,12 +2,12 @@ package org.olf.erm.usage.harvester.rest.impl;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
 
 import io.restassured.RestAssured;
@@ -18,7 +18,10 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.List;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.jaxrs.model.ServiceImplementation;
+import org.folio.rest.jaxrs.model.ServiceImplementations;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -106,14 +109,34 @@ public class ErmUsageHarvesterAPITest {
 
   @Test
   public void getImplementations() {
-    given()
-        .header(TENANT_HEADER)
-        .when()
-        .get("/impl")
-        .then()
-        .statusCode(200)
-        .body("implementations.size()", greaterThanOrEqualTo(2))
-        .body("implementations.type", hasItems("test1", "test2"));
+    ServiceImplementations result =
+        given()
+            .header(TENANT_HEADER)
+            .when()
+            .get("/impl")
+            .then()
+            .statusCode(200)
+            .extract()
+            .as(ServiceImplementations.class);
+
+    assertThat(result.getImplementations())
+        .hasSizeGreaterThanOrEqualTo(2)
+        .usingRecursiveFieldByFieldElementComparator()
+        .containsOnlyOnceElementsOf(
+            List.of(
+                new ServiceImplementation()
+                    .withType("test1")
+                    .withName("test1")
+                    .withDescription("Test1 description")
+                    .withIsAggregator(false)
+                    .withReportRelease("5")
+                    .withSupportedReports(List.of("DR", "TR"))
+                    .withIsDefault(true)
+                    .withConfigurationParameters(List.of("param1", "param2")),
+                new ServiceImplementation()
+                    .withType("test2")
+                    .withName("test2")
+                    .withIsAggregator(true)));
   }
 
   @Test
