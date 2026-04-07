@@ -9,7 +9,7 @@ import java.util.List;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.resource.interfaces.PostDeployVerticle;
 import org.olf.erm.usage.harvester.WebClientProvider;
-import org.olf.erm.usage.harvester.client.OkapiClientImpl;
+import org.olf.erm.usage.harvester.client.MgrClientImpl;
 import org.olf.erm.usage.harvester.periodic.HarvestProviderJobListener;
 import org.olf.erm.usage.harvester.periodic.JobInfoJobListener;
 import org.olf.erm.usage.harvester.periodic.JobInfoSchedulerListener;
@@ -64,15 +64,16 @@ public class PostDeployImpl implements PostDeployVerticle {
       return;
     }
 
-    new OkapiClientImpl(WebClientProvider.get(vertx), context.config())
-        .getTenants()
+    new MgrClientImpl(WebClientProvider.get(vertx), context.config())
+        .getEntitledTenantNames()
         .onComplete(
             ar -> {
               if (ar.succeeded()) {
-                log.info("Found tenants: {}", ar.result());
+                log.info("Discovered entitled tenants: {}", ar.result());
                 processTenants(context, ar.result());
               } else {
-                log.error("failed getting tenants");
+                log.error(
+                    "Failed discovering entitled tenants: {}", ar.cause().getMessage(), ar.cause());
               }
             });
 

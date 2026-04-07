@@ -3,7 +3,7 @@ package org.olf.erm.usage.harvester.client;
 import io.vertx.core.Future;
 import java.util.List;
 
-public interface OkapiClient {
+public interface MgrClient {
 
-  Future<List<String>> getTenants();
+  Future<List<String>> getEntitledTenantNames();
 }

@@ -18,6 +18,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -75,7 +76,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
-import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.olf.erm.usage.harvester.client.SettingsClientImpl;
 import org.quartz.SchedulerException;
 
@@ -84,8 +84,13 @@ public class HarvestingIT {
 
   private static final Vertx vertx = Vertx.vertx();
   private static final String TENANTA = "tenanta";
+  private static final String TENANTB = "tenantb";
   private static final Map<String, String> OKAPI_HEADERS = Map.of(XOkapiHeaders.TENANT, TENANTA);
-  private static final List<String> tenants = List.of(TENANTA, "tenantb");
+  private static final String TENANTA_UUID = "a0000000-0000-0000-0000-000000000001";
+  private static final String TENANTB_UUID = "b0000000-0000-0000-0000-000000000002";
+  private static final List<String> tenants = List.of(TENANTA, TENANTB);
+  private static final Map<String, String> tenantUuids =
+      Map.of(TENANTA, TENANTA_UUID, TENANTB, TENANTB_UUID);
   private static final String HARVESTER_PATH = "/erm-usage-harvester";
   private static final String HARVESTER_START_PATH = "/erm-usage-harvester/start";
   private static final Map<String, List<UsageDataProvider>> tenantUDPMap = new HashMap<>();
@@ -108,6 +113,12 @@ public class HarvestingIT {
           wireMockConfig()
               .extensions(new UDPResponseTransformer(), new UploadResponseTransformer())
               .dynamicPort());
+
+  @ClassRule
+  public static WireMockRule teClientRule = new WireMockRule(wireMockConfig().dynamicPort());
+
+  @ClassRule
+  public static WireMockRule tmClientRule = new WireMockRule(wireMockConfig().dynamicPort());
 
   @ClassRule
   public static WireMockRule serviceProviderARule =
@@ -169,7 +180,12 @@ public class HarvestingIT {
     okapiUrl = baseRule.baseUrl();
     int httpPort = NetworkUtils.nextFreePort();
 
-    JsonObject cfg = new JsonObject().put("okapiUrl", okapiUrl).put("http.port", httpPort);
+    JsonObject cfg =
+        new JsonObject()
+            .put("okapiUrl", okapiUrl)
+            .put("teClientUrl", teClientRule.baseUrl())
+            .put("tmClientUrl", tmClientRule.baseUrl())
+            .put("http.port", httpPort);
 
     baseRule.stubFor(
         get(urlMatching(HARVESTER_PATH + "/.*"))
@@ -179,13 +195,30 @@ public class HarvestingIT {
         get(urlPathEqualTo(SettingsClientImpl.ENTRIES_PATH))
             .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
-    JsonArray tenantsJsonArray =
+    JsonArray entitlements =
         tenants.stream()
-            .map(s -> new JsonObject().put("id", s))
+            .map(
+                s ->
+                    new JsonObject()
+                        .put("applicationId", "app-1.0.0")
+                        .put("tenantId", tenantUuids.get(s)))
             .collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
-    baseRule.stubFor(
-        get(urlPathEqualTo(OkapiClientImpl.PATH_TENANTS))
-            .willReturn(aResponse().withStatus(200).withBody(tenantsJsonArray.encodePrettily())));
+    JsonObject entitlementsResponse =
+        new JsonObject().put("totalRecords", entitlements.size()).put("entitlements", entitlements);
+    teClientRule.stubFor(
+        get(urlPathMatching("/entitlements/modules/.*"))
+            .willReturn(
+                aResponse().withStatus(200).withBody(entitlementsResponse.encodePrettily())));
+
+    JsonArray tenantsArray =
+        tenants.stream()
+            .map(s -> new JsonObject().put("id", tenantUuids.get(s)).put("name", s))
+            .collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
+    JsonObject tenantsResponse =
+        new JsonObject().put("totalRecords", tenantsArray.size()).put("tenants", tenantsArray);
+    tmClientRule.stubFor(
+        get(urlPathEqualTo("/tenants"))
+            .willReturn(aResponse().withStatus(200).withBody(tenantsResponse.encodePrettily())));
 
     baseRule.stubFor(
         get(urlMatching(providerPath + "/.*"))
