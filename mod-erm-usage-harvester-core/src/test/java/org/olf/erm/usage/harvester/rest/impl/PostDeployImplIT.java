@@ -2,7 +2,6 @@ package org.olf.erm.usage.harvester.rest.impl;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,19 +41,11 @@ import org.quartz.listeners.SchedulerListenerSupport;
 public class PostDeployImplIT {
   private static final String TENANT = "testtenant";
   private static final String TENANT2 = "tenant2";
-  private static final String TENANT_UUID = "a0000000-0000-0000-0000-000000000001";
-  private static final String TENANT2_UUID = "b0000000-0000-0000-0000-000000000002";
   private static final Vertx vertx = Vertx.vertx();
   private static Scheduler scheduler;
 
   @ClassRule
   public static WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
-
-  @ClassRule
-  public static WireMockRule teClientRule = new WireMockRule(wireMockConfig().dynamicPort());
-
-  @ClassRule
-  public static WireMockRule tmClientRule = new WireMockRule(wireMockConfig().dynamicPort());
 
   @ClassRule
   public static PostgresContainerRule pgRule = new PostgresContainerRule(vertx, TENANT, TENANT2);
@@ -70,39 +61,12 @@ public class PostDeployImplIT {
         new JsonObject()
             .put("http.port", port)
             .put("okapiUrl", "http://localhost:" + wireMockRule.port())
-            .put("teClientUrl", teClientRule.baseUrl())
-            .put("tmClientUrl", tmClientRule.baseUrl())
             .put("testing", true));
 
-    JsonObject entitlementsResponse =
-        new JsonObject()
-            .put("totalRecords", 2)
-            .put(
-                "entitlements",
-                new JsonArray()
-                    .add(
-                        new JsonObject()
-                            .put("applicationId", "app-1.0.0")
-                            .put("tenantId", TENANT_UUID))
-                    .add(
-                        new JsonObject()
-                            .put("applicationId", "app-1.0.0")
-                            .put("tenantId", TENANT2_UUID)));
-    teClientRule.stubFor(
+    JsonArray entitlementsResponse = new JsonArray().add(TENANT).add(TENANT2);
+    wireMockRule.stubFor(
         get(urlPathMatching("/entitlements/modules/.*"))
             .willReturn(aResponse().withBody(entitlementsResponse.encodePrettily())));
-
-    JsonObject tenantsResponse =
-        new JsonObject()
-            .put("totalRecords", 2)
-            .put(
-                "tenants",
-                new JsonArray()
-                    .add(new JsonObject().put("id", TENANT_UUID).put("name", TENANT))
-                    .add(new JsonObject().put("id", TENANT2_UUID).put("name", TENANT2)));
-    tmClientRule.stubFor(
-        get(urlPathEqualTo("/tenants"))
-            .willReturn(aResponse().withBody(tenantsResponse.encodePrettily())));
 
     PeriodicConfig config =
         new PeriodicConfig()

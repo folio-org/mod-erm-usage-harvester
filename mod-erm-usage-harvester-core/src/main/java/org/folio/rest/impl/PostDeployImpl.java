@@ -9,7 +9,7 @@ import java.util.List;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.resource.interfaces.PostDeployVerticle;
 import org.olf.erm.usage.harvester.WebClientProvider;
-import org.olf.erm.usage.harvester.client.MgrClientImpl;
+import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.olf.erm.usage.harvester.periodic.HarvestProviderJobListener;
 import org.olf.erm.usage.harvester.periodic.JobInfoJobListener;
 import org.olf.erm.usage.harvester.periodic.JobInfoSchedulerListener;
@@ -64,8 +64,8 @@ public class PostDeployImpl implements PostDeployVerticle {
       return;
     }
 
-    new MgrClientImpl(WebClientProvider.get(vertx), context.config())
-        .getEntitledTenantNames()
+    new OkapiClientImpl(WebClientProvider.get(vertx), context.config())
+        .getTenants()
         .onComplete(
             ar -> {
               if (ar.succeeded()) {

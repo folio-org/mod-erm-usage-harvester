@@ -25,11 +25,7 @@ public class InitImpl implements InitAPI {
       return;
     }
 
-    configureEnvVar(context, "OKAPI_URL", "okapiUrl");
-    configureEnvVar(context, "TE_CLIENT_URL", "teClientUrl");
-    configureEnvVar(context, "TM_CLIENT_URL", "tmClientUrl");
-
-    if (Strings.isNullOrEmpty(context.config().getString("okapiUrl"))) {
+    if (!configureOkapiUrl(context)) {
       resultHandler.handle(Future.failedFuture("okapiUrl configuration is required"));
       return;
     }
@@ -39,12 +35,22 @@ public class InitImpl implements InitAPI {
     resultHandler.handle(Future.succeededFuture(true));
   }
 
-  private void configureEnvVar(Context context, String envName, String configKey) {
-    String value = System.getenv(envName);
-    if (!Strings.isNullOrEmpty(value)) {
-      LOG.info("Setting {} from environment variable {}: {}", configKey, envName, value);
-      context.config().put(configKey, value);
+  private boolean configureOkapiUrl(Context context) {
+    String okapiUrl = System.getenv("OKAPI_URL");
+    if (!Strings.isNullOrEmpty(okapiUrl)) {
+      LOG.info("Setting okapiUrl from environment variable OKAPI_URL: {}", okapiUrl);
+      context.config().put("okapiUrl", okapiUrl);
+    } else {
+      // OKAPI_URL not set, check if okapiUrl was configured via other means
+      // (e.g. -conf parameter, DeploymentOptions, or vertx-config module)
+      okapiUrl = context.config().getString("okapiUrl");
+      if (Strings.isNullOrEmpty(okapiUrl)) {
+        return false;
+      }
     }
+
+    LOG.info("Using okapiUrl: {}", okapiUrl);
+    return true;
   }
 
   private void logProxyConfiguration() {
