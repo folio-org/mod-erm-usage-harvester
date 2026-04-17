@@ -3,15 +3,14 @@ package org.olf.erm.usage.harvester.client;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_TENANTS;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -21,28 +20,21 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @RunWith(VertxUnitRunner.class)
 public class OkapiClientImplTest {
 
-  private static final Logger LOG = LoggerFactory.getLogger(OkapiClientImplTest.class);
-
   @Rule public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
   @Rule public Timeout timeoutRule = Timeout.seconds(5);
 
-  private static final String tenantId = "diku";
   private static Vertx vertx;
-  private OkapiClient okapiClient;
+  private OkapiClient client;
 
   @Before
   public void setup() {
     vertx = Vertx.vertx();
-    JsonObject cfg = new JsonObject();
-    String okapiUrl = wireMockRule.baseUrl();
-    cfg.put("okapiUrl", okapiUrl);
-    okapiClient = new OkapiClientImpl(WebClient.create(vertx), cfg);
+    JsonObject cfg = new JsonObject().put("okapiUrl", wireMockRule.baseUrl());
+    client = new OkapiClientImpl(WebClient.create(vertx), cfg);
   }
 
   @After
@@ -50,97 +42,90 @@ public class OkapiClientImplTest {
     vertx.close();
   }
 
-  @Test
-  public void getTenantsBodyValid(TestContext context) {
+  private void stubEntitlements(String body) {
     stubFor(
-        get(urlEqualTo(PATH_TENANTS))
-            .willReturn(aResponse().withBodyFile("TenantsResponse200.json")));
+        get(urlPathMatching("/entitlements/modules/.*"))
+            .willReturn(aResponse().withStatus(200).withBody(body)));
+  }
 
-    Async async = context.async();
-    okapiClient
+  @Test
+  public void getTenantsValid(TestContext context) {
+    stubEntitlements("[\"diku\",\"other\"]");
+
+    client
         .getTenants()
         .onComplete(
-            ar -> {
-              context.assertTrue(ar.succeeded());
-              context.assertEquals(2, ar.result().size());
-              context.assertEquals(tenantId, ar.result().get(0));
-              async.complete();
-            });
+            context.asyncAssertSuccess(
+                result ->
+                    assertThat(result).hasSize(2).containsExactlyInAnyOrder("diku", "other")));
+  }
+
+  @Test
+  public void getTenantsEmpty(TestContext context) {
+    stubEntitlements("[]");
+
+    client
+        .getTenants()
+        .onComplete(context.asyncAssertSuccess(result -> assertThat(result).isEmpty()));
   }
 
   @Test
   public void getTenantsBodyInvalid(TestContext context) {
-    stubFor(get(urlEqualTo(PATH_TENANTS)).willReturn(aResponse().withBody("{ }")));
+    stubEntitlements("not json");
 
-    Async async = context.async();
-    okapiClient
+    client
         .getTenants()
         .onComplete(
-            ar -> {
-              context.assertTrue(ar.failed());
-              context.assertTrue(ar.cause().getMessage().contains("Error decoding"));
-              async.complete();
-            });
+            context.asyncAssertFailure(
+                cause -> assertThat(cause.getMessage()).contains("Error decoding")));
   }
 
   @Test
-  public void getTenantsBodyEmpty(TestContext context) {
-    stubFor(get(urlEqualTo(PATH_TENANTS)).willReturn(aResponse().withBody("[ ]")));
+  public void getTenantsBodyNonStringElements(TestContext context) {
+    stubEntitlements("[{\"id\":\"diku\"}]");
 
-    Async async = context.async();
-    okapiClient
+    client
         .getTenants()
         .onComplete(
-            ar -> {
-              context.assertTrue(ar.succeeded());
-              context.assertTrue(ar.result().isEmpty());
-              async.complete();
-            });
+            context.asyncAssertFailure(
+                cause -> assertThat(cause.getMessage()).contains("Error decoding")));
   }
 
   @Test
-  public void getTenantsResponseInvalid(TestContext context) {
-    stubFor(get(urlEqualTo(PATH_TENANTS)).willReturn(aResponse().withStatus(404)));
+  public void getTenants404(TestContext context) {
+    stubFor(
+        get(urlPathMatching("/entitlements/modules/.*")).willReturn(aResponse().withStatus(404)));
 
-    Async async = context.async();
-    okapiClient
+    client
         .getTenants()
         .onComplete(
-            ar -> {
-              context.assertTrue(ar.failed());
-              context.assertTrue(ar.cause().getMessage().contains("404"));
-              async.complete();
-            });
+            context.asyncAssertFailure(cause -> assertThat(cause.getMessage()).contains("404")));
   }
 
   @Test
   public void getTenantsNoService(TestContext context) {
     wireMockRule.stop();
 
-    Async async = context.async();
-    okapiClient
-        .getTenants()
-        .onComplete(
-            ar -> {
-              context.assertTrue(ar.failed());
-              LOG.error(ar.cause().getMessage(), ar.cause());
-              async.complete();
-            });
+    client.getTenants().onComplete(context.asyncAssertFailure());
   }
 
   @Test
   public void getTenantsWithFault(TestContext context) {
     stubFor(
-        get(urlEqualTo(PATH_TENANTS))
+        get(urlPathMatching("/entitlements/modules/.*"))
             .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
-    Async async = context.async();
-    okapiClient
+    client.getTenants().onComplete(context.asyncAssertFailure());
+  }
+
+  @Test
+  public void getTenantsUrlNotConfigured(TestContext context) {
+    OkapiClient unconfiguredClient = new OkapiClientImpl(WebClient.create(vertx), new JsonObject());
+
+    unconfiguredClient
         .getTenants()
         .onComplete(
-            ar -> {
-              context.assertTrue(ar.failed());
-              async.complete();
-            });
+            context.asyncAssertFailure(
+                cause -> assertThat(cause.getMessage()).contains("okapiUrl")));
   }
 }

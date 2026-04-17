@@ -18,6 +18,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -75,7 +76,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
-import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.olf.erm.usage.harvester.client.SettingsClientImpl;
 import org.quartz.SchedulerException;
 
@@ -84,8 +84,9 @@ public class HarvestingIT {
 
   private static final Vertx vertx = Vertx.vertx();
   private static final String TENANTA = "tenanta";
+  private static final String TENANTB = "tenantb";
   private static final Map<String, String> OKAPI_HEADERS = Map.of(XOkapiHeaders.TENANT, TENANTA);
-  private static final List<String> tenants = List.of(TENANTA, "tenantb");
+  private static final List<String> tenants = List.of(TENANTA, TENANTB);
   private static final String HARVESTER_PATH = "/erm-usage-harvester";
   private static final String HARVESTER_START_PATH = "/erm-usage-harvester/start";
   private static final Map<String, List<UsageDataProvider>> tenantUDPMap = new HashMap<>();
@@ -179,13 +180,12 @@ public class HarvestingIT {
         get(urlPathEqualTo(SettingsClientImpl.ENTRIES_PATH))
             .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
-    JsonArray tenantsJsonArray =
-        tenants.stream()
-            .map(s -> new JsonObject().put("id", s))
-            .collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
+    JsonArray entitlementsResponse =
+        tenants.stream().collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
     baseRule.stubFor(
-        get(urlPathEqualTo(OkapiClientImpl.PATH_TENANTS))
-            .willReturn(aResponse().withStatus(200).withBody(tenantsJsonArray.encodePrettily())));
+        get(urlPathMatching("/entitlements/modules/.*"))
+            .willReturn(
+                aResponse().withStatus(200).withBody(entitlementsResponse.encodePrettily())));
 
     baseRule.stubFor(
         get(urlMatching(providerPath + "/.*"))
