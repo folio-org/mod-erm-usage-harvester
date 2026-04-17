@@ -1,3 +1,22 @@
+# 5.2.0
+* [MODEUSHARV-126](https://folio-org.atlassian.net/browse/MODEUSHARV-126) Migrate settings from `mod-configuration` to `mod-settings`
+* [MODEUSHARV-144](https://folio-org.atlassian.net/browse/MODEUSHARV-144) Fix migration to mod-settings
+* [MODEUSHARV-147](https://folio-org.atlassian.net/browse/MODEUSHARV-147) Support counter-reports interface version 5.0
+* [MODEUSHARV-145](https://folio-org.atlassian.net/browse/MODEUSHARV-145) Define permissions for mod-settings
+* [MODEUSHARV-148](https://folio-org.atlassian.net/browse/MODEUSHARV-148) Fix system user permission
+* [MODEUSHARV-149](https://folio-org.atlassian.net/browse/MODEUSHARV-149) Fix parsing of settings values
+* [MODEUSHARV-150](https://folio-org.atlassian.net/browse/MODEUSHARV-150) Rename service type for Counter 5.x
+* [MODEUSHARV-154](https://folio-org.atlassian.net/browse/MODEUSHARV-154) Upgrade mod-erm-usage-counter dependency to version 6.0.0
+* [MODEUSHARV-143](https://folio-org.atlassian.net/browse/MODEUSHARV-143) Upgrade module to Vert.x 5.0
+* [MODEUSHARV-156](https://folio-org.atlassian.net/browse/MODEUSHARV-156) CS51Impl missing HTTP proxy support
+* [MODEUSHARV-157](https://folio-org.atlassian.net/browse/MODEUSHARV-157) Remove unused rxjava2 dependency
+* [MODEUSHARV-137](https://folio-org.atlassian.net/browse/MODEUSHARV-137) Consolidate `WebClient.create()` calls into `WebClientProvider`
+* [MODEUSHARV-138](https://folio-org.atlassian.net/browse/MODEUSHARV-138) Specify sonar warning suppressions
+* [MODEUSHARV-160](https://folio-org.atlassian.net/browse/MODEUSHARV-160) Migrate from Jenkins to GitHub Workflows
+* [MODEUSHARV-161](https://folio-org.atlassian.net/browse/MODEUSHARV-161) Remove legacy system user login and token threading in favor of Eureka sidecar-managed authentication
+* [MODEUSHARV-162](https://folio-org.atlassian.net/browse/MODEUSHARV-162) Add JSON schemas, typed response, and new SPI methods for `/erm-usage-harvester/impl` endpoint
+* [MODEUSHARV-141](https://folio-org.atlassian.net/browse/MODEUSHARV-141) Use sidecar entitlement endpoint for tenant discovery
+
 # 5.1.0
 * [MODEUSHARV-133](https://folio-org.atlassian.net/browse/MODEUSHARV-133) Update `maven-surefire-plugin` and `maven-failsafe-plugin`
 * [MODEUSHARV-132](https://folio-org.atlassian.net/browse/MODEUSHARV-132) Upgrade to Java 21
