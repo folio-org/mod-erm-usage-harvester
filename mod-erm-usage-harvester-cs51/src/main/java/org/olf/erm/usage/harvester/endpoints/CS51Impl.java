@@ -13,6 +13,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.http.HttpClient;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.util.Date;
@@ -69,6 +70,11 @@ public class CS51Impl implements ServiceEndpoint {
     this.providerId = requireNonNull(provider.getId());
 
     this.apiClient = new ApiClient();
+    // Follow HTTP redirects (e.g. JSTOR responds with 301 from /reports/tr to /reports/tr/).
+    // The generated ApiClient builds a JDK HttpClient that defaults to Redirect.NEVER, so without
+    // this the redirect is not followed and the request fails with an ApiException.
+    apiClient.setHttpClientBuilder(
+        HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL));
     apiClient.setObjectMapper(objectMapper);
     apiClient.setHost(serviceUrl.getHost());
     apiClient.setPort(serviceUrl.getPort());

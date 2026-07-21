@@ -1,3 +1,6 @@
+# 5.1.3
+* [MODEUSHARV-166](https://folio-org.atlassian.net/browse/MODEUSHARV-166) Follow HTTP redirects in COUNTER 5.1 harvesting (e.g. JSTOR 301 to trailing-slash report path)
+
 # 5.1.2
 * [MODEUSHARV-160](https://folio-org.atlassian.net/browse/MODEUSHARV-160) Migrate from Jenkins to GitHub Workflows
 * [MODEUSHARV-168](https://folio-org.atlassian.net/browse/MODEUSHARV-168) Allow both registry domains for `Registry_Record` in COUNTER 5.1 reports

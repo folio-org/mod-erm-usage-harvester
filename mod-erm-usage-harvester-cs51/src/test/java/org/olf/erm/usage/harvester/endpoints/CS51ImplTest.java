@@ -202,6 +202,49 @@ class CS51ImplTest {
   }
 
   @Test
+  void testFollowsRedirect(VertxTestContext testContext) {
+    // Some providers (e.g. JSTOR) respond to /reports/tr with a 301 redirect to /reports/tr/,
+    // preserving the query string. The client must follow the redirect and return the report.
+    String redirectTarget = PATH_TR + "/";
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR))
+            .willReturn(
+                aResponse()
+                    .withStatus(301)
+                    .withHeader(
+                        "Location",
+                        redirectTarget
+                            + "?customer_id="
+                            + CUSTOMER_ID
+                            + "&requestor_id="
+                            + REQUESTOR_ID
+                            + "&begin_date="
+                            + BEGIN_DATE
+                            + "&end_date="
+                            + END_DATE)));
+    serviceMock.stubFor(
+        get(urlPathEqualTo(redirectTarget))
+            .willReturn(aResponse().withStatus(200).withBodyFile("TR.json")));
+
+    new CS51Impl(provider)
+        .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+        .onComplete(
+            ar ->
+                testContext
+                    .verify(
+                        () -> {
+                          assertThat(ar.succeeded()).isTrue();
+                          serviceMock.verify(1, getRequestedFor(urlPathEqualTo(PATH_TR)));
+                          serviceMock.verify(1, getRequestedFor(urlPathEqualTo(redirectTarget)));
+                          assertThat(ar.result())
+                              .extracting("yearMonth")
+                              .containsExactly("2022-01", "2022-02", "2022-03");
+                          assertThat(ar.result()).extracting("reportName").containsOnly("TR");
+                        })
+                    .completeNow());
+  }
+
+  @Test
   void testReceiveValidReportWithException(VertxTestContext testContext) {
     serviceMock.stubFor(
         get(urlPathEqualTo(PATH_TR))
