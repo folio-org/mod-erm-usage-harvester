@@ -62,7 +62,6 @@ public class ExtendedCounter50Client extends Counter50Client {
 
     String body = response.body() != null ? response.body().toString() : "";
     return failedFuture(
-        new ServiceEndpointException(
-            response.statusCode(), response.statusMessage(), body));
+        new ServiceEndpointException(response.statusCode(), response.statusMessage(), body));
   }
 }
