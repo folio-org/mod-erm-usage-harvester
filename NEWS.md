@@ -1,5 +1,6 @@
 # 5.1.2
 * [MODEUSHARV-160](https://folio-org.atlassian.net/browse/MODEUSHARV-160) Migrate from Jenkins to GitHub Workflows
+* [MODEUSHARV-168](https://folio-org.atlassian.net/browse/MODEUSHARV-168) Allow both registry domains for `Registry_Record` in COUNTER 5.1 reports
 
 # 5.1.1
 * [MODEUSHARV-153](https://folio-org.atlassian.net/browse/MODEUSHARV-153) RMB Logging release - RMB 35.4.1, Vert.x 4.5.22

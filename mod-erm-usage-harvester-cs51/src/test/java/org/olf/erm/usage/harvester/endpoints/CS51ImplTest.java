@@ -19,6 +19,9 @@ import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Stream;
@@ -32,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openapitools.counter51client.ApiException;
 
 @ExtendWith(VertxExtension.class)
@@ -54,6 +58,8 @@ class CS51ImplTest {
   private static final String REPORT_TR = "TR";
   private static final String MSG_USAGE_NOT_READY = "Usage Not Ready for Requested Dates";
   private static final String MSG_UNRECOGNIZED_FIELD = "Unrecognized field \"Database\"";
+  private static final String NEW_REGISTRY_DOMAIN = "registry.countermetrics.org";
+  private static final String OLD_REGISTRY_DOMAIN = "registry.projectcounter.org";
   private static UsageDataProvider provider;
 
   @BeforeAll
@@ -147,11 +153,23 @@ class CS51ImplTest {
         .hasMessage(String.format(MSG_INVALID_SERVICE_URL, serviceUrlStr));
   }
 
-  @Test
-  void testReceiveValidReport(VertxTestContext testContext) {
+  private static String readBodyFile(String name) throws IOException {
+    try (InputStream is = CS51ImplTest.class.getResourceAsStream("/__files/" + name)) {
+      return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+    }
+  }
+
+  @ParameterizedTest(name = "useOldRegistryDomain={0}")
+  @ValueSource(booleans = {false, true})
+  void testReceiveValidReport(boolean useOldRegistryDomain, VertxTestContext testContext)
+      throws IOException {
+    String body = readBodyFile("TR.json");
+    if (useOldRegistryDomain) {
+      assertThat(body).contains(NEW_REGISTRY_DOMAIN);
+      body = body.replace(NEW_REGISTRY_DOMAIN, OLD_REGISTRY_DOMAIN);
+    }
     serviceMock.stubFor(
-        get(urlPathEqualTo(PATH_TR))
-            .willReturn(aResponse().withStatus(200).withBodyFile("TR.json")));
+        get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(200).withBody(body)));
 
     new CS51Impl(provider)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
