@@ -204,7 +204,8 @@ class CS51ImplTest {
                                     assertThat(r)
                                         .extracting("downloadTime")
                                         .doesNotContainNull()
-                                        .allMatch(time -> time.equals(r.get(0).getDownloadTime()));
+                                        .allMatch(
+                                            time -> time.equals(r.getFirst().getDownloadTime()));
                                     assertThat(r).extracting("report").doesNotContainNull();
                                     assertThat(r).extracting("failedAttempts").containsOnlyNulls();
                                   });
@@ -458,5 +459,34 @@ class CS51ImplTest {
     } finally {
       ProxySelector.setDefault(defaultProxySelector);
     }
+  }
+
+  @Test
+  void testTrailingSlashRedirect(final VertxTestContext testContext) {
+    // The redirect path
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR))
+            .willReturn(aResponse().withStatus(301).withHeader("Location", PATH_TR + "/")));
+
+    // The happy path
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR + "/"))
+            .willReturn(aResponse().withStatus(200).withBodyFile("TR.json")));
+
+    new CS51Impl(provider)
+        .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+        .onComplete(
+            ar -> {
+              testContext
+                  .verify(
+                      () -> {
+                        assertThat(ar.succeeded()).isTrue();
+                        // The URL we actually called
+                        serviceMock.verify(1, getRequestedFor(urlPathEqualTo(PATH_TR)));
+                        // The URL we got redirected to
+                        serviceMock.verify(1, getRequestedFor(urlPathEqualTo(PATH_TR + "/")));
+                      })
+                  .completeNow();
+            });
   }
 }
