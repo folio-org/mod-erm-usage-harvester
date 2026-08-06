@@ -97,7 +97,8 @@ public class CS41ImplTest {
                         postRequestedFor(urlPathEqualTo(SUSHI_SERVICE))
                             .withRequestBody(
                                 matchingXPath(
-                                        "//ns:Requestor[ns:ID='reqId1' and ns:Name='' and ns:Email='']")
+                                        "//ns:Requestor[ns:ID='reqId1' and ns:Name='' and"
+                                            + " ns:Email='']")
                                     .withXPathNamespace(
                                         "ns", "http://www.niso.org/schemas/sushi")));
 
