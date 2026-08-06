@@ -41,6 +41,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(VertxExtension.class)
 class CS51ImplTest {
@@ -159,11 +160,12 @@ class CS51ImplTest {
         .hasMessage(String.format(MSG_INVALID_SERVICE_URL, serviceUrlStr));
   }
 
-  @Test
-  void testReceiveValidReport(VertxTestContext testContext) {
+  @ParameterizedTest
+  @ValueSource(strings = {"TR.json", "TR_with_old_registry_domain.json"})
+  void testReceiveValidReport(String bodyFile, VertxTestContext testContext) {
     serviceMock.stubFor(
         get(urlPathEqualTo(PATH_TR))
-            .willReturn(aResponse().withStatus(200).withBodyFile("TR.json")));
+            .willReturn(aResponse().withStatus(200).withBodyFile(bodyFile)));
 
     new CS51Impl(provider)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
