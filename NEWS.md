@@ -1,3 +1,6 @@
+# 5.2.1
+* [MODEUSHARV-169](https://folio-org.atlassian.net/browse/MODEUSHARV-169) Allow both registry domains for `Registry_Record` in COUNTER 5.1 reports
+
 # 5.2.0
 * [MODEUSHARV-126](https://folio-org.atlassian.net/browse/MODEUSHARV-126) Migrate settings from `mod-configuration` to `mod-settings`
 * [MODEUSHARV-144](https://folio-org.atlassian.net/browse/MODEUSHARV-144) Fix migration to mod-settings
