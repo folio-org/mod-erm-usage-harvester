@@ -2,6 +2,7 @@
 * [MODEUSHARV-167](https://folio-org.atlassian.net/browse/MODEUSHARV-167) Add regression tests asserting CS50/CS51 follow HTTP 3xx redirects
 * Run Spotless on all files and bind `check` goal to `verify` phase
 * [MODEUSHARV-170](https://folio-org.atlassian.net/browse/MODEUSHARV-170) Allow both registry domains for `Registry_Record` in COUNTER 5.1 reports
+* [MODEUSHARV-171](https://folio-org.atlassian.net/browse/MODEUSHARV-171) Remove optional `version` property from RAML files
 
 # 5.2.0
 * [MODEUSHARV-126](https://folio-org.atlassian.net/browse/MODEUSHARV-126) Migrate settings from `mod-configuration` to `mod-settings`
