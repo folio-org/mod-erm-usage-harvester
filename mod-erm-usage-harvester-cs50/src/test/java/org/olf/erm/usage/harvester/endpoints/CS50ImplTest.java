@@ -125,8 +125,8 @@ public class CS50ImplTest {
     return createStubWithBody(reportName, code, body);
   }
 
-  private String createStubWithBody(int code, String body) {
-    return createStubWithBody(REPORT, code, body);
+  private void createStubWithBody(int code, String body) {
+    createStubWithBody(REPORT, code, body);
   }
 
   private String createStubWithBody(String reportName, int code, String body) {
@@ -247,7 +247,8 @@ public class CS50ImplTest {
             context.asyncAssertSuccess(
                 list -> {
                   assertThat(list).hasSize(1);
-                  assertThat(list.get(0).getReport().getAdditionalProperties().get("Report_Items"))
+                  assertThat(
+                          list.getFirst().getReport().getAdditionalProperties().get("Report_Items"))
                       .isNotNull();
                   verifyApiCall();
                 }));
@@ -262,7 +263,8 @@ public class CS50ImplTest {
             context.asyncAssertSuccess(
                 list -> {
                   assertThat(list).hasSize(1);
-                  assertThat(list.get(0).getReport().getAdditionalProperties().get("Report_Items"))
+                  assertThat(
+                          list.getFirst().getReport().getAdditionalProperties().get("Report_Items"))
                       .isNotNull();
                   verifyApiCall();
                 }));
@@ -293,7 +295,7 @@ public class CS50ImplTest {
             context.asyncAssertSuccess(
                 list -> {
                   assertThat(list).hasSize(1);
-                  Report receivedReport = list.get(0).getReport();
+                  Report receivedReport = list.getFirst().getReport();
                   Report expectedReport = decodeReport(expectedReportStr, COUNTERTitleReport.class);
                   assertThat(receivedReport)
                       .usingRecursiveComparison()
@@ -312,7 +314,7 @@ public class CS50ImplTest {
             context.asyncAssertSuccess(
                 list -> {
                   assertThat(list).hasSize(1);
-                  Report receivedReport = list.get(0).getReport();
+                  Report receivedReport = list.getFirst().getReport();
                   Report expectedReport = decodeReport(expectedReportStr, COUNTERTitleReport.class);
                   assertThat(receivedReport)
                       .usingRecursiveComparison()
@@ -590,6 +592,34 @@ public class CS50ImplTest {
                       .hasMessageStartingWith(
                           "com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException");
                   verifyApiCall();
+                }));
+  }
+
+  @Test
+  public void testTrailingSlashRedirect(TestContext context) throws IOException {
+    var expectedBody =
+        Resources.toString(Resources.getResource("SampleReport.json"), StandardCharsets.UTF_8);
+
+    // The redirect path
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH))
+            .willReturn(aResponse().withStatus(301).withHeader("Location", REPORT_PATH + "/")));
+
+    // The happy path
+    wmRule.stubFor(
+        get(urlPathEqualTo(REPORT_PATH + "/"))
+            .willReturn(aResponse().withStatus(200).withBody(expectedBody)));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertSuccess(
+                list -> {
+                  assertThat(list).hasSize(1);
+                  // The URL we actually called
+                  wmRule.verify(1, getRequestedFor(urlPathEqualTo(REPORT_PATH)));
+                  // The URL we got redirected to
+                  wmRule.verify(1, getRequestedFor(urlPathEqualTo(REPORT_PATH + "/")));
                 }));
   }
 }

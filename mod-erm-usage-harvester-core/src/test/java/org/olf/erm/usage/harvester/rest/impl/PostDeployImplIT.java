@@ -2,12 +2,10 @@ package org.olf.erm.usage.harvester.rest.impl;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.olf.erm.usage.harvester.TestUtil.shutdownSchedulers;
-import static org.olf.erm.usage.harvester.client.OkapiClientImpl.PATH_TENANTS;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
@@ -65,13 +63,10 @@ public class PostDeployImplIT {
             .put("okapiUrl", "http://localhost:" + wireMockRule.port())
             .put("testing", true));
 
-    JsonArray tenantsResponseBody =
-        new JsonArray()
-            .add(new JsonObject().put("id", TENANT))
-            .add(new JsonObject().put("id", TENANT2));
-    stubFor(
-        get(urlEqualTo(PATH_TENANTS))
-            .willReturn(aResponse().withBody(tenantsResponseBody.encodePrettily())));
+    JsonArray entitlementsResponse = new JsonArray().add(TENANT).add(TENANT2);
+    wireMockRule.stubFor(
+        get(urlPathMatching("/entitlements/modules/.*"))
+            .willReturn(aResponse().withBody(entitlementsResponse.encodePrettily())));
 
     PeriodicConfig config =
         new PeriodicConfig()

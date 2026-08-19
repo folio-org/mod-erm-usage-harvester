@@ -175,10 +175,6 @@
     {
       "id": "settings",
       "version": "1.2"
-    },
-    {
-      "id": "okapi",
-      "version": "1.9"
     }
   ],
   "permissionSets": [
