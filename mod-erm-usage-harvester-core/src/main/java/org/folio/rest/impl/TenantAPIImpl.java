@@ -24,11 +24,18 @@ public class TenantAPIImpl extends TenantAPI {
       Handler<AsyncResult<Response>> handler,
       Context context) {
     String tenantId = TenantTool.tenantId(headers);
+    Handler<AsyncResult<Response>> wrappedHandler = handler;
     if (isDisable(tenantAttributes)) {
-      log.info("Tenant: {}, removing scheduled job on disable", tenantId);
-      SchedulingUtil.deleteJob(tenantId);
+      wrappedHandler =
+          ar -> {
+            if (ar.succeeded() && ar.result().getStatus() / 100 == 2) {
+              log.info("Tenant: {}, removing scheduled job on disable", tenantId);
+              SchedulingUtil.deleteJob(tenantId);
+            }
+            handler.handle(ar);
+          };
     }
-    super.postTenant(tenantAttributes, headers, handler, context);
+    super.postTenant(tenantAttributes, headers, wrappedHandler, context);
   }
 
   @Override
