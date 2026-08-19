@@ -5,6 +5,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.TestUtil.ENTITLEMENTS_URL_PATTERN;
 import static org.olf.erm.usage.harvester.TestUtil.shutdownSchedulers;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 
@@ -65,7 +66,7 @@ public class PostDeployImplIT {
 
     JsonArray entitlementsResponse = new JsonArray().add(TENANT).add(TENANT2);
     wireMockRule.stubFor(
-        get(urlPathMatching("/entitlements/modules/.*"))
+        get(urlPathMatching(ENTITLEMENTS_URL_PATTERN))
             .willReturn(aResponse().withBody(entitlementsResponse.encodePrettily())));
 
     PeriodicConfig config =

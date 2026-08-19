@@ -22,6 +22,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.TestUtil.ENTITLEMENTS_URL_PATTERN;
 import static org.olf.erm.usage.harvester.TestUtil.shutdownSchedulers;
 
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
@@ -183,7 +184,7 @@ public class HarvestingIT {
     JsonArray entitlementsResponse =
         tenants.stream().collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
     baseRule.stubFor(
-        get(urlPathMatching("/entitlements/modules/.*"))
+        get(urlPathMatching(ENTITLEMENTS_URL_PATTERN))
             .willReturn(
                 aResponse().withStatus(200).withBody(entitlementsResponse.encodePrettily())));
 
