@@ -29,7 +29,6 @@ public class PostgresContainerRule implements TestRule {
 
   public PostgresContainerRule(Vertx vertx) {
     this.vertx = vertx;
-    PostgresClient.setPostgresTester(new PostgresTesterContainer());
   }
 
   private Future<List<String>> createSchema(String tenant) {
@@ -67,31 +66,24 @@ public class PostgresContainerRule implements TestRule {
 
   @Override
   public Statement apply(Statement base, Description description) {
-    try {
-      CompletableFuture<List<String>> future = new CompletableFuture<>();
-      createSchemas(Future.succeededFuture(), new ArrayList<>(tenants))
-          .onComplete(
-              ar -> {
-                if (ar.succeeded()) {
-                  future.complete(ar.result());
-                } else {
-                  future.completeExceptionally(ar.cause());
-                }
-              });
-      future.get();
-    } catch (Exception e) {
-      return new Statement() {
-        @Override
-        public void evaluate() throws Throwable {
-          throw e;
-        }
-      };
-    }
-
     return new Statement() {
       @Override
       public void evaluate() throws Throwable {
+        // set tester here instead of the constructor so it cannot be cleared by other test
+        // classes' stopPostgresTester() when this class gets initialized early
+        PostgresClient.setPostgresTester(new PostgresTesterContainer());
         try {
+          CompletableFuture<List<String>> future = new CompletableFuture<>();
+          createSchemas(Future.succeededFuture(), new ArrayList<>(tenants))
+              .onComplete(
+                  ar -> {
+                    if (ar.succeeded()) {
+                      future.complete(ar.result());
+                    } else {
+                      future.completeExceptionally(ar.cause());
+                    }
+                  });
+          future.get();
           base.evaluate();
         } finally {
           PostgresClient.stopPostgresTester();
