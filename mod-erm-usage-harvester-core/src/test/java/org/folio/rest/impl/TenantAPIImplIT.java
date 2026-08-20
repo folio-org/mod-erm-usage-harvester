@@ -15,6 +15,7 @@ import io.vertx.ext.web.client.WebClient;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import org.folio.okapi.common.XOkapiHeaders;
@@ -198,23 +199,19 @@ public class TenantAPIImplIT {
   }
 
   @Test
-  public void testPurgeWithoutModuleFromRemovesScheduledJob(TestContext context)
-      throws SchedulerException {
+  public void testPurgeWithoutModuleFromRemovesScheduledJob(TestContext context) throws Exception {
     String tenant = "tenantpurgetest";
     TenantClient purgeTenantClient =
         new TenantClient("http://localhost:" + port, tenant, null, webClient);
 
     TenantInit.exec(purgeTenantClient, ENABLE_ATTRS, TENANT_INIT_TIMEOUT)
-        .compose(
-            v -> {
-              postPeriodicConfig(tenant);
-              try {
-                assertJobExists(tenant, true);
-              } catch (SchedulerException e) {
-                context.fail(e);
-              }
-              return TenantInit.exec(purgeTenantClient, PURGE_ATTRS, TENANT_INIT_TIMEOUT);
-            })
+        .toCompletionStage()
+        .toCompletableFuture()
+        .get(2L * TENANT_INIT_TIMEOUT, TimeUnit.MILLISECONDS);
+    postPeriodicConfig(tenant);
+    assertJobExists(tenant, true);
+
+    TenantInit.exec(purgeTenantClient, PURGE_ATTRS, TENANT_INIT_TIMEOUT)
         .onComplete(
             context.asyncAssertSuccess(
                 v -> {
