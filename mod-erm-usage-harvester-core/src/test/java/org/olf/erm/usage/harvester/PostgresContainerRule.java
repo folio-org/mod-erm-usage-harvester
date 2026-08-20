@@ -6,7 +6,6 @@ import io.vertx.core.Vertx;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.impl.TenantAPI;
 import org.folio.rest.persist.PostgresClient;
@@ -73,17 +72,10 @@ public class PostgresContainerRule implements TestRule {
         // classes' stopPostgresTester() when this class gets initialized early
         PostgresClient.setPostgresTester(new PostgresTesterContainer());
         try {
-          CompletableFuture<List<String>> future = new CompletableFuture<>();
           createSchemas(Future.succeededFuture(), new ArrayList<>(tenants))
-              .onComplete(
-                  ar -> {
-                    if (ar.succeeded()) {
-                      future.complete(ar.result());
-                    } else {
-                      future.completeExceptionally(ar.cause());
-                    }
-                  });
-          future.get();
+              .toCompletionStage()
+              .toCompletableFuture()
+              .get();
           base.evaluate();
         } finally {
           PostgresClient.stopPostgresTester();
