@@ -55,6 +55,7 @@ public class TenantAPIImplIT {
       new TenantAttributes()
           .withModuleFrom("mod-erm-usage-harvester-1.0.0")
           .withModuleTo("mod-erm-usage-harvester-2.0.0");
+  private static final TenantAttributes PURGE_ATTRS = new TenantAttributes().withPurge(true);
   private static final int TENANT_INIT_TIMEOUT = 10000;
 
   private static final Vertx vertx = Vertx.vertx();
@@ -190,6 +191,35 @@ public class TenantAPIImplIT {
                 v -> {
                   try {
                     assertJobExists(TENANT, true);
+                  } catch (SchedulerException e) {
+                    context.fail(e);
+                  }
+                }));
+  }
+
+  @Test
+  public void testPurgeWithoutModuleFromRemovesScheduledJob(TestContext context)
+      throws SchedulerException {
+    String tenant = "tenantpurgetest";
+    TenantClient purgeTenantClient =
+        new TenantClient("http://localhost:" + port, tenant, null, webClient);
+
+    TenantInit.exec(purgeTenantClient, ENABLE_ATTRS, TENANT_INIT_TIMEOUT)
+        .compose(
+            v -> {
+              postPeriodicConfig(tenant);
+              try {
+                assertJobExists(tenant, true);
+              } catch (SchedulerException e) {
+                context.fail(e);
+              }
+              return TenantInit.exec(purgeTenantClient, PURGE_ATTRS, TENANT_INIT_TIMEOUT);
+            })
+        .onComplete(
+            context.asyncAssertSuccess(
+                v -> {
+                  try {
+                    assertJobExists(tenant, false);
                   } catch (SchedulerException e) {
                     context.fail(e);
                   }
