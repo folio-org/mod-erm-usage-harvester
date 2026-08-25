@@ -1,9 +1,16 @@
 package org.olf.erm.usage.harvester.periodic;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
+import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -47,7 +54,7 @@ public class HarvestTenantPeriodicJobIT {
           .withStartAt(Date.from(Instant.now()))
           .withPeriodicInterval(PeriodicInterval.DAILY);
 
-  private static final JobKey jobKey = new JobKey(TENANT);
+  private static final JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, TENANT);
   private static final JobDetail job =
       JobBuilder.newJob()
           .ofType(HarvestTenantPeriodicJob.class)
@@ -59,12 +66,15 @@ public class HarvestTenantPeriodicJobIT {
 
   @ClassRule public static PostgresContainerRule pgRule = new PostgresContainerRule(vertx, TENANT);
 
+  @ClassRule
+  public static WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
+
   @Rule public Timeout timeout = Timeout.seconds(5);
 
   @BeforeClass
   public static void beforeClass(TestContext context) {
     vertxContext = vertx.getOrCreateContext();
-    vertxContext.config().put("okapiUrl", "http://localhost:9999");
+    vertxContext.config().put("okapiUrl", wireMockRule.baseUrl());
 
     PeriodicConfigPgUtil.upsert(vertxContext, TENANT, config)
         .onComplete(context.asyncAssertSuccess());
@@ -77,6 +87,13 @@ public class HarvestTenantPeriodicJobIT {
 
   @Before
   public void before() throws SchedulerException {
+    stubFor(
+        get(urlPathMatching("/usage-data-providers.*"))
+            .willReturn(
+                aResponse()
+                    .withStatus(200)
+                    .withHeader("Content-Type", "application/json")
+                    .withBody("{\"usageDataProviders\":[],\"totalRecords\":0}")));
     scheduler = StdSchedulerFactory.getDefaultScheduler();
     scheduler.clear();
     scheduler.getContext().put("vertxContext", vertxContext);

@@ -46,8 +46,11 @@ public class ErmUsageHarvesterPeriodicAPI implements ErmUsageHarvesterPeriodic {
         .onComplete(
             ar -> {
               if (ar.succeeded()) {
-                asyncResultHandler.handle(Future.succeededFuture(Response.status(201).build()));
-                SchedulingUtil.createOrUpdateJob(entity, okapiHeaders.get(XOkapiHeaders.TENANT));
+                try {
+                  SchedulingUtil.createOrUpdateJob(entity, okapiHeaders.get(XOkapiHeaders.TENANT));
+                } finally {
+                  asyncResultHandler.handle(Future.succeededFuture(Response.status(201).build()));
+                }
               } else {
                 asyncResultHandler.handle(Future.succeededFuture(Response.serverError().build()));
               }
@@ -65,8 +68,11 @@ public class ErmUsageHarvesterPeriodicAPI implements ErmUsageHarvesterPeriodic {
             ar -> {
               if (ar.succeeded()) {
                 if (ar.result().rowCount() == 1) {
-                  asyncResultHandler.handle(Future.succeededFuture(Response.noContent().build()));
-                  SchedulingUtil.deleteJob(okapiHeaders.get(XOkapiHeaders.TENANT));
+                  try {
+                    SchedulingUtil.deleteJob(okapiHeaders.get(XOkapiHeaders.TENANT));
+                  } finally {
+                    asyncResultHandler.handle(Future.succeededFuture(Response.noContent().build()));
+                  }
                 } else {
                   asyncResultHandler.handle(Future.succeededFuture(Response.status(404).build()));
                 }

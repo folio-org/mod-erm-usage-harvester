@@ -6,6 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.TestUtil.ENTITLEMENTS_URL_PATTERN;
 
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
@@ -44,7 +45,7 @@ public class OkapiClientImplTest {
 
   private void stubEntitlements(String body) {
     stubFor(
-        get(urlPathMatching("/entitlements/modules/.*"))
+        get(urlPathMatching(ENTITLEMENTS_URL_PATTERN))
             .willReturn(aResponse().withStatus(200).withBody(body)));
   }
 
@@ -93,8 +94,7 @@ public class OkapiClientImplTest {
 
   @Test
   public void getTenants404(TestContext context) {
-    stubFor(
-        get(urlPathMatching("/entitlements/modules/.*")).willReturn(aResponse().withStatus(404)));
+    stubFor(get(urlPathMatching(ENTITLEMENTS_URL_PATTERN)).willReturn(aResponse().withStatus(404)));
 
     client
         .getTenants()
@@ -112,7 +112,7 @@ public class OkapiClientImplTest {
   @Test
   public void getTenantsWithFault(TestContext context) {
     stubFor(
-        get(urlPathMatching("/entitlements/modules/.*"))
+        get(urlPathMatching(ENTITLEMENTS_URL_PATTERN))
             .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
     client.getTenants().onComplete(context.asyncAssertFailure());

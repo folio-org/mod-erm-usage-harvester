@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester;
 
 import io.vertx.core.Vertx;
 import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.WebClientOptions;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -21,6 +22,10 @@ import java.util.WeakHashMap;
  */
 public final class WebClientProvider {
 
+  // bounds connections without traffic so that callers blocking on a response cannot
+  // stall indefinitely on an unresponsive service
+  static final int IDLE_TIMEOUT_SECONDS = 60;
+
   private static final Map<Vertx, WebClient> CLIENTS =
       Collections.synchronizedMap(new WeakHashMap<>());
 
@@ -35,6 +40,8 @@ public final class WebClientProvider {
    */
   public static WebClient get(Vertx vertx) {
     Objects.requireNonNull(vertx, "vertx must not be null");
-    return CLIENTS.computeIfAbsent(vertx, WebClient::create);
+    return CLIENTS.computeIfAbsent(
+        vertx,
+        v -> WebClient.create(v, new WebClientOptions().setIdleTimeout(IDLE_TIMEOUT_SECONDS)));
   }
 }
