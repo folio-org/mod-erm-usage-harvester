@@ -6,6 +6,8 @@ import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TE
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
 import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
 
+import io.vertx.core.Context;
+import io.vertx.core.Future;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -69,6 +71,21 @@ public class SchedulingUtil {
       JobDetail jobDetail = createJobDetail(HarvestTenantJob.class, jobKey, null);
       scheduler.scheduleJob(jobDetail, TriggerBuilder.newTrigger().startNow().build());
     }
+  }
+
+  public static Future<Void> createOrUpdateJobFromDbConfig(Context vertxContext, String tenantId) {
+    return PeriodicConfigPgUtil.get(vertxContext, tenantId)
+        .<Void>map(
+            config -> {
+              createOrUpdateJob(config, tenantId);
+              return null;
+            })
+        .onFailure(
+            cause ->
+                log.error(
+                    "Tenant: {}, failed scheduling job from PeriodicConfig: {}",
+                    tenantId,
+                    cause.getMessage()));
   }
 
   public static void createOrUpdateJob(PeriodicConfig config, String tenantId) {

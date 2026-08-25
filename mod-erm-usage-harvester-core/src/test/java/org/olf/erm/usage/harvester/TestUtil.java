@@ -14,6 +14,8 @@ import org.quartz.impl.StdSchedulerFactory;
 
 public class TestUtil {
 
+  public static final String ENTITLEMENTS_URL_PATTERN = "/entitlements/modules/.*";
+
   public static void shutdownSchedulers() throws SchedulerException {
     Collection<Scheduler> allSchedulers = new StdSchedulerFactory().getAllSchedulers();
     for (Scheduler scheduler : allSchedulers) {

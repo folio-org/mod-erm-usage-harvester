@@ -6,14 +6,12 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import java.util.List;
-import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.resource.interfaces.PostDeployVerticle;
 import org.olf.erm.usage.harvester.WebClientProvider;
 import org.olf.erm.usage.harvester.client.OkapiClientImpl;
 import org.olf.erm.usage.harvester.periodic.HarvestProviderJobListener;
 import org.olf.erm.usage.harvester.periodic.JobInfoJobListener;
 import org.olf.erm.usage.harvester.periodic.JobInfoSchedulerListener;
-import org.olf.erm.usage.harvester.periodic.PeriodicConfigPgUtil;
 import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -27,20 +25,7 @@ public class PostDeployImpl implements PostDeployVerticle {
 
   private void processTenants(Context vertxContext, List<String> tenantList) {
     tenantList.forEach(
-        tenant ->
-            PeriodicConfigPgUtil.get(vertxContext, tenant)
-                .onComplete(
-                    ar -> {
-                      if (ar.succeeded()) {
-                        PeriodicConfig periodicConfig = ar.result();
-                        SchedulingUtil.createOrUpdateJob(periodicConfig, tenant);
-                      } else {
-                        log.error(
-                            "Tenant: {}, failed getting PeriodicConfig: {}",
-                            tenant,
-                            ar.cause().getMessage());
-                      }
-                    }));
+        tenant -> SchedulingUtil.createOrUpdateJobFromDbConfig(vertxContext, tenant));
   }
 
   @Override
