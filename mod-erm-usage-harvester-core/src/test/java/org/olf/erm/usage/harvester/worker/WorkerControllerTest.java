@@ -7,21 +7,22 @@ import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.olf.erm.usage.harvester.FetchItem;
 
 /** Tests for {@link WorkerController}. */
-@RunWith(VertxUnitRunner.class)
-public class WorkerControllerTest {
+@ExtendWith(VertxExtension.class)
+class WorkerControllerTest {
 
   private static final Vertx VERTX = Vertx.vertx();
 
@@ -39,13 +40,13 @@ public class WorkerControllerTest {
 
   private DefaultWorkerController controller;
 
-  @Before
-  public void beforeTest() {
+  @BeforeEach
+  void beforeTest() {
     controller = new DefaultWorkerController(VERTX, CONTEXT, 2, LOG_CTX);
   }
 
   @Test
-  public void testEnqueue(TestContext context) {
+  void testEnqueue() {
     controller.enqueue(QUEUE_ITEMS);
     assertThat(controller.getQueue()).as("Check queue size").hasSameSizeAs(QUEUE_ITEMS);
     assertThat(controller.getQueue())
@@ -54,15 +55,14 @@ public class WorkerControllerTest {
   }
 
   @Test
-  public void testDisableConcurrency(TestContext context) {
+  void testDisableConcurrency() {
     assertThat(controller.getMaxConcurrency()).as("Check maximum concurrency").isEqualTo(2);
     controller.disableConcurrency();
     assertThat(controller.getMaxConcurrency()).as("Check maximum concurrency").isEqualTo(1);
   }
 
   @Test
-  public void testStartQueueWith(TestContext context) {
-    final var async = context.async();
+  void testStartQueueWith(VertxTestContext context) throws InterruptedException {
     final List<QueueItem> processed = Collections.synchronizedList(new ArrayList<>());
 
     controller.enqueue(QUEUE_ITEMS);
@@ -70,17 +70,19 @@ public class WorkerControllerTest {
         qi -> {
           processed.add(qi);
           if (processed.size() == QUEUE_ITEMS.size()) {
-            async.complete();
+            context.completeNow();
           }
           return Future.succeededFuture();
         });
 
-    async.awaitSuccess(2000);
+    assertThat(context.awaitCompletion(2, TimeUnit.SECONDS))
+        .as("... all queue items were processed before the timeout")
+        .isTrue();
     assertThat(processed).containsExactlyInAnyOrderElementsOf(QUEUE_ITEMS);
   }
 
   @Test
-  public void testAbortWithThrowable(TestContext context) {
+  void testAbortWithThrowable() {
     final var success = new AtomicBoolean(true);
     final var throwable = new AtomicReference<Throwable>(null);
 
@@ -101,7 +103,7 @@ public class WorkerControllerTest {
   }
 
   @Test
-  public void testAbortWithMessage(TestContext context) {
+  void testAbortWithMessage() {
     final var success = new AtomicBoolean(true);
     final var message = new AtomicReference<String>("");
 
@@ -123,7 +125,7 @@ public class WorkerControllerTest {
   }
 
   @Test
-  public void testUndeploy(TestContext context) {
+  void testUndeploy() {
     controller.enqueue(QUEUE_ITEMS);
     assertThat(controller.getQueue()).as("Check queue size").hasSameSizeAs(QUEUE_ITEMS);
 

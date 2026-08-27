@@ -1,8 +1,5 @@
 package org.olf.erm.usage.harvester.worker;
 
-import static org.olf.erm.usage.harvester.worker.FetcherErrorHandler.DefaultFetcherErrorHandler;
-import static org.olf.erm.usage.harvester.worker.FetcherErrorHandler.InvalidReportHandler;
-import static org.olf.erm.usage.harvester.worker.FetcherErrorHandler.TooManyRequestsHandler;
 import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 
 import io.vertx.core.Future;
@@ -14,9 +11,7 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.FetchListUtil;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
-import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
-import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,31 +38,25 @@ final class Fetcher {
    * @param counterReportsClient the counter reports client to get the fetch list from
    * @param usageDataProvider the usage data provider to fetch reports for
    * @param serviceEndpoint the service endpoint to use for fetching reports
-   * @param controller the worker controller
    * @param logCtx the logger context
+   * @param defaultFetcherErrorHandler the default {@link FetcherErrorHandler}
+   * @param fetcherErrorHandlers an array of {@link ExceptionToHandlerPair}s containing all {@link
+   *     FetcherErrorHandler}s we know of.
    */
   Fetcher(
       final ExtCounterReportsClient counterReportsClient,
       final UsageDataProvider usageDataProvider,
       final ServiceEndpoint serviceEndpoint,
-      final WorkerController controller,
-      final LoggerContext logCtx) {
+      final LoggerContext logCtx,
+      final FetcherErrorHandler defaultFetcherErrorHandler,
+      final ExceptionToHandlerPair... fetcherErrorHandlers) {
     this.logCtx = logCtx;
     this.counterReportsClient = counterReportsClient;
     this.usageDataProvider = usageDataProvider;
     this.serviceEndpoint = serviceEndpoint;
 
-    // TODO: Make the handlers an external dependency, will be done with
-    // https://folio-org.atlassian.net/browse/UIEUS-459
-    exceptionToHandlerMap =
-        new ExceptionToHandlerMap(
-            new DefaultFetcherErrorHandler(logCtx, usageDataProvider),
-            ExceptionToHandlerPair.of(
-                TooManyRequestsException.class,
-                new TooManyRequestsHandler(logCtx, usageDataProvider, controller)),
-            ExceptionToHandlerPair.of(
-                InvalidReportException.class,
-                new InvalidReportHandler(logCtx, usageDataProvider, controller)));
+    this.exceptionToHandlerMap =
+        new ExceptionToHandlerMap(defaultFetcherErrorHandler, fetcherErrorHandlers);
   }
 
   /**

@@ -1,7 +1,7 @@
 package org.olf.erm.usage.harvester.worker;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.worker.FetcherTest.TestWorkerController;
+import static org.olf.erm.usage.harvester.worker.Fetcher.ExceptionToHandlerPair;
 
 import com.google.common.io.Resources;
 import io.vertx.core.Future;
@@ -11,19 +11,23 @@ import io.vertx.ext.web.client.HttpResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.FetchListUtil;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
+import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
+import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
 
 /** Test class for {@link Orchestrator} */
-public class OrchestratorTest {
+class OrchestratorTest {
 
   /**
    * We only use one month time spans here, to avoid {@link FetchListUtil#collapse(List)} being
@@ -42,8 +46,8 @@ public class OrchestratorTest {
 
   private TestWorkerController controller;
 
-  @BeforeClass
-  public static void setup() throws IOException {
+  @BeforeAll
+  static void setup() throws IOException {
     usageDataProvider =
         Json.decodeValue(
             Resources.toString(
@@ -53,16 +57,28 @@ public class OrchestratorTest {
     logCtx = new LoggerContext("Tenant ID", usageDataProvider.getLabel());
   }
 
-  @Before
-  public void beforeTest() {
+  @BeforeEach
+  void beforeTest() {
     controller = new TestWorkerController();
   }
 
+  private Fetcher configureFetcher(final ExtCounterReportsClient counterReportsClient) {
+    return new Fetcher(
+        counterReportsClient,
+        usageDataProvider,
+        null,
+        logCtx,
+        (t, qi) -> Collections.emptyList(),
+        ExceptionToHandlerPair.of(
+            TooManyRequestsException.class, (t, qi) -> Collections.emptyList()),
+        ExceptionToHandlerPair.of(
+            InvalidReportException.class, (t, qi) -> Collections.emptyList()));
+  }
+
   @Test
-  public void testStartWithSuccessAndNonEmptyFetchList() {
+  void testStartWithSuccessAndNonEmptyFetchList() {
     final var counterReportsClient = new TestCounterReportsClient(FETCH_LIST);
-    final var fetcher =
-        new Fetcher(counterReportsClient, usageDataProvider, null, controller, logCtx);
+    final var fetcher = configureFetcher(counterReportsClient);
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
@@ -77,10 +93,9 @@ public class OrchestratorTest {
   }
 
   @Test
-  public void testStartWithSuccessAndEmptyFetchList() {
+  void testStartWithSuccessAndEmptyFetchList() {
     final var counterReportsClient = new TestCounterReportsClient(Collections.emptyList());
-    final var fetcher =
-        new Fetcher(counterReportsClient, usageDataProvider, null, controller, logCtx);
+    final var fetcher = configureFetcher(counterReportsClient);
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
@@ -95,10 +110,9 @@ public class OrchestratorTest {
   }
 
   @Test
-  public void testStartWithFailure() {
+  void testStartWithFailure() {
     final var counterReportsClient = new TestCounterReportsClient(null);
-    final var fetcher =
-        new Fetcher(counterReportsClient, usageDataProvider, null, controller, logCtx);
+    final var fetcher = configureFetcher(counterReportsClient);
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
@@ -144,6 +158,51 @@ public class OrchestratorTest {
         int maxFailedAttempts) {
       // No-op, since we don't need it
       return null;
+    }
+  }
+
+  static class TestWorkerController implements WorkerController {
+
+    final List<QueueItem> queueItems = new ArrayList<>();
+
+    boolean concurrencyWasDisabled = false;
+
+    boolean startQueueWithWasCalled = false;
+
+    boolean undeployWasCalled = false;
+
+    String abortMessage = "";
+
+    Throwable abortThrowable;
+
+    @Override
+    public void enqueue(List<QueueItem> items) {
+      queueItems.addAll(items);
+    }
+
+    @Override
+    public void disableConcurrency() {
+      concurrencyWasDisabled = true;
+    }
+
+    @Override
+    public void startQueueWith(Function<QueueItem, Future<Void>> callback) {
+      this.startQueueWithWasCalled = true;
+    }
+
+    @Override
+    public void abort(Throwable cause) {
+      this.abortThrowable = cause;
+    }
+
+    @Override
+    public void abort(String message) {
+      this.abortMessage = message;
+    }
+
+    @Override
+    public void undeploy() {
+      this.undeployWasCalled = true;
     }
   }
 }

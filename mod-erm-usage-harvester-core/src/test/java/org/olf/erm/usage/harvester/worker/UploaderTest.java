@@ -1,82 +1,61 @@
 package org.olf.erm.usage.harvester.worker;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.worker.FetcherTest.TestWorkerController;
+import static org.olf.erm.usage.harvester.worker.OrchestratorTest.TestWorkerController;
 
-import com.google.common.io.Resources;
 import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpVersion;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.web.client.HttpResponse;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.YearMonth;
 import java.util.List;
 import org.folio.rest.jaxrs.model.*;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
 
 /** Test class for {@link Uploader}. */
-public class UploaderTest {
+class UploaderTest {
 
-  private static LoggerContext logCtx;
+  private static final LoggerContext LOG_CTX = new LoggerContext("Tenant ID", "UDP Label");
 
-  private static List<CounterReport> counterReports;
+  private static final List<CounterReport> COUNTER_REPORTS =
+      List.of(new CounterReport().withReportName("TR").withYearMonth("2025-01"));
 
   private TestWorkerController controller;
 
-  @BeforeClass
-  public static void setup() throws IOException {
-    final var counterReport =
-        Json.decodeValue(
-            Resources.toString(
-                Resources.getResource("__files/counter-report-tr.json"), StandardCharsets.UTF_8),
-            CounterReport.class);
-    counterReports = List.of(counterReport);
-
-    final var usageDataProvider =
-        Json.decodeValue(
-            Resources.toString(
-                Resources.getResource("__files/usage-data-provider.json"), StandardCharsets.UTF_8),
-            UsageDataProvider.class);
-    logCtx = new LoggerContext("Tenant ID", usageDataProvider.getLabel());
-  }
-
-  @Before
-  public void beforeTest() {
+  @BeforeEach
+  void beforeTest() {
     controller = new TestWorkerController();
   }
 
   @Test
-  public void testUploadReportsWithSuccess() {
+  void testUploadReportsWithSuccess() {
     final var counterReportsClient = new TestCounterReportsClient(null);
-    final var uploader = new Uploader(counterReportsClient, controller, logCtx);
+    final var uploader = new Uploader(counterReportsClient, controller, LOG_CTX);
 
-    final var receivedFuture = uploader.uploadReports(counterReports);
+    final var receivedFuture = uploader.uploadReports(COUNTER_REPORTS);
     assertThat(receivedFuture.succeeded()).as("... the future succeeded").isTrue();
   }
 
   @Test
-  public void testUploadReportsWithFailure() {
+  void testUploadReportsWithFailure() {
     final var counterReportsClient =
         new TestCounterReportsClient(new RuntimeException("Something went wrong"));
-    final var uploader = new Uploader(counterReportsClient, controller, logCtx);
+    final var uploader = new Uploader(counterReportsClient, controller, LOG_CTX);
 
-    final var receivedFuture = uploader.uploadReports(counterReports);
+    final var receivedFuture = uploader.uploadReports(COUNTER_REPORTS);
     assertThat(receivedFuture.succeeded()).as("... the future succeeded").isTrue();
     assertThat(controller.abortMessage).isEmpty();
 
     // To max out the number of failed uploads
-    uploader.uploadReports(counterReports);
-    uploader.uploadReports(counterReports);
-    uploader.uploadReports(counterReports);
-    uploader.uploadReports(counterReports);
+    uploader.uploadReports(COUNTER_REPORTS);
+    uploader.uploadReports(COUNTER_REPORTS);
+    uploader.uploadReports(COUNTER_REPORTS);
+    uploader.uploadReports(COUNTER_REPORTS);
 
     assertThat(controller.abortMessage).isEqualTo("Stopping after 5 failed uploads in a row");
   }

@@ -4,6 +4,7 @@ import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
 import static org.olf.erm.usage.harvester.FetchListUtil.expand;
 import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createCounterReport;
+import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 
 import java.util.Collections;
 import java.util.List;
@@ -30,7 +31,7 @@ interface FetcherErrorHandler {
    * @param queueItem the queue item the exception was thrown for
    * @return a list of counter reports containing some information about the exception we received
    */
-  List<CounterReport> handleException(Throwable t, WorkerController.QueueItem queueItem);
+  List<CounterReport> handleException(Throwable t, QueueItem queueItem);
 
   abstract class AbstractFetcherErrorHandler implements FetcherErrorHandler {
 
@@ -69,10 +70,7 @@ interface FetcherErrorHandler {
     }
   }
 
-  /**
-   * Handles {@link TooManyRequestsException}. TODO: Add test unit test once we handle more
-   * exceptions. Will be done with https://folio-org.atlassian.net/browse/UIEUS-459
-   */
+  /** Handles {@link TooManyRequestsException}. */
   class TooManyRequestsHandler extends AbstractFetcherErrorHandler {
 
     private static final int RETRY_COUNT_TOO_MANY_REQUESTS = 2;
@@ -88,15 +86,14 @@ interface FetcherErrorHandler {
 
     /** {@inheritDoc} */
     @Override
-    public List<CounterReport> handleException(
-        final Throwable t, final WorkerController.QueueItem queueItem) {
+    public List<CounterReport> handleException(final Throwable t, final QueueItem queueItem) {
       LOGGER.info(logCtx.createMsg("{} Received {}", queueItem.item(), getMessageOrToString(t)));
       final var item = queueItem.item();
       controller.disableConcurrency();
 
       if (queueItem.retryCount() < RETRY_COUNT_TOO_MANY_REQUESTS) {
         LOGGER.info(logCtx.createMsg("Too many requests.. adding {} back to queue", item));
-        final var newQueueItem = WorkerController.QueueItem.of(item, queueItem.retryCount() + 1);
+        final var newQueueItem = QueueItem.of(item, queueItem.retryCount() + 1);
         controller.enqueue(List.of(newQueueItem));
         return Collections.emptyList();
       } else {
@@ -110,10 +107,7 @@ interface FetcherErrorHandler {
     }
   }
 
-  /**
-   * Handles {@link InvalidReportException}. TODO: Add test unit test once we handle more
-   * exceptions. Will be done with https://folio-org.atlassian.net/browse/UIEUS-459
-   */
+  /** Handles {@link InvalidReportException}. */
   class InvalidReportHandler extends AbstractFetcherErrorHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InvalidReportHandler.class);
@@ -127,7 +121,7 @@ interface FetcherErrorHandler {
 
     /** {@inheritDoc} */
     @Override
-    public List<CounterReport> handleException(Throwable t, WorkerController.QueueItem queueItem) {
+    public List<CounterReport> handleException(Throwable t, QueueItem queueItem) {
       LOGGER.info(logCtx.createMsg("{} Received {}", queueItem.item(), getMessageOrToString(t)));
       final var item = queueItem.item();
       final var expanded = expand(item);
@@ -138,7 +132,7 @@ interface FetcherErrorHandler {
         return createFailedReports(expanded, t, usageDataProvider);
       } else {
         LOGGER.info(logCtx.createMsg("Expanded {} into {} FetchItems", item, expanded.size()));
-        final var newQueueItems = WorkerController.QueueItem.createQueueItemList(expanded, 0);
+        final var newQueueItems = QueueItem.createQueueItemList(expanded, 0);
         controller.enqueue(newQueueItems);
         // reports for each of them.
         return Collections.emptyList();
@@ -146,10 +140,7 @@ interface FetcherErrorHandler {
     }
   }
 
-  /**
-   * Default handler if all the other handlers don't apply. TODO: Add test unit test once we handle
-   * more exceptions. Will be done with https://folio-org.atlassian.net/browse/UIEUS-459
-   */
+  /** Default handler if all the other handlers don't apply. */
   class DefaultFetcherErrorHandler extends AbstractFetcherErrorHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultFetcherErrorHandler.class);
@@ -160,7 +151,7 @@ interface FetcherErrorHandler {
     }
 
     @Override
-    public List<CounterReport> handleException(Throwable t, WorkerController.QueueItem queueItem) {
+    public List<CounterReport> handleException(Throwable t, QueueItem queueItem) {
       LOGGER.info(logCtx.createMsg("{} Received {}", queueItem.item(), getMessageOrToString(t)));
       return createFailedReports(queueItem.item(), t, usageDataProvider);
     }
