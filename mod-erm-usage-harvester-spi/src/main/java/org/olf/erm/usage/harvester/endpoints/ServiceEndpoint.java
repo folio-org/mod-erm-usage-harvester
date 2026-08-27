@@ -1,5 +1,9 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
+import static org.olf.erm.usage.harvester.DateUtil.getYearMonths;
+import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
+
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import io.vertx.core.Future;
@@ -13,12 +17,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Instant;
 import java.time.YearMonth;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.ServiceLoader;
-import java.util.UUID;
+import java.util.*;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.Report;
@@ -142,4 +141,127 @@ public interface ServiceEndpoint {
       return Optional.empty();
     }
   }
+
+  /**
+   * @return An error handling strategy
+   */
+  default ErrorHandlingStrategy getErrorHandlingStrategy(UsageDataProvider provider) {
+    return new ErrorHandlingStrategy.DefaultErrorHandlingStrategy(provider);
+  }
+
+  /** An error handling strategy {@link ServiceEndpoint} consumers can use to handle exceptions. */
+  @FunctionalInterface
+  interface ErrorHandlingStrategy {
+
+    /**
+     * Handles the error on report fetching.
+     *
+     * @param fetchItem the fetch item to handle the error for
+     * @param retryCount the number of retries already performed
+     * @param t the {@link Throwable} to take care of
+     * @return the error handling result
+     */
+    ErrorHandlingResult handleFetchError(FetchItem fetchItem, int retryCount, Throwable t);
+
+    static ErrorHandlingStrategy create(UsageDataProvider provider) {
+      return new DefaultErrorHandlingStrategy(provider);
+    }
+
+    private static List<CounterReport> createFailedReports(
+        final FetchItem item, final Throwable t, final UsageDataProvider usageDataProvider) {
+      return createFailedReports(expand(item), t, usageDataProvider);
+    }
+
+    private static List<CounterReport> createFailedReports(
+        final List<FetchItem> items, final Throwable t, final UsageDataProvider usageDataProvider) {
+      return items.stream()
+          .map(
+              i ->
+                  createCounterReport(
+                          null,
+                          i.getReportType(),
+                          usageDataProvider,
+                          getYearMonthFromString(i.getBegin()))
+                      .withFailedReason(getMessageOrToString(t)))
+          .toList();
+    }
+
+    private static List<FetchItem> expand(FetchItem fetchItem) {
+      final var months = getYearMonths(fetchItem.getBegin(), fetchItem.getEnd());
+
+      return months.stream()
+          .map(
+              ym ->
+                  new FetchItem(
+                      fetchItem.getReportType(),
+                      ym.atDay(1).toString(),
+                      ym.atEndOfMonth().toString()))
+          .toList();
+    }
+
+    /** The default error handling strategy mirroring the current behavior. */
+    class DefaultErrorHandlingStrategy implements ErrorHandlingStrategy {
+
+      private static final Logger LOGGER =
+          LoggerFactory.getLogger(DefaultErrorHandlingStrategy.class);
+
+      private static final int RETRY_COUNT_TOO_MANY_REQUESTS = 2;
+
+      private final UsageDataProvider usageDataProvider;
+
+      private DefaultErrorHandlingStrategy(UsageDataProvider usageDataProvider) {
+        this.usageDataProvider = usageDataProvider;
+      }
+
+      @Override
+      public ErrorHandlingResult handleFetchError(
+          final FetchItem fetchItem, final int retryCount, final Throwable t) {
+        return switch (t) {
+          case TooManyRequestsException e -> handleTooManyRequests(fetchItem, retryCount, e);
+          case InvalidReportException e -> handleInvalidReport(fetchItem, retryCount, e);
+          default -> handleUnknownError(fetchItem, retryCount, t);
+        };
+      }
+
+      private ErrorHandlingResult handleTooManyRequests(
+          final FetchItem fetchItem, final int retryCount, final TooManyRequestsException e) {
+        if (retryCount < RETRY_COUNT_TOO_MANY_REQUESTS) {
+          return new ErrorHandlingResult(
+              Collections.emptyList(), List.of(fetchItem), retryCount + 1, true);
+        }
+        final var reports = createFailedReports(fetchItem, e, usageDataProvider);
+        return new ErrorHandlingResult(reports, Collections.emptyList(), 0, true);
+      }
+
+      private ErrorHandlingResult handleInvalidReport(
+          final FetchItem fetchItem, final int retryCount, final InvalidReportException e) {
+        final var expanded = expand(fetchItem);
+        if (expanded.size() <= 1) {
+          final var reports = createFailedReports(expanded, e, usageDataProvider);
+          return new ErrorHandlingResult(reports, Collections.emptyList(), 0, false);
+        }
+        return new ErrorHandlingResult(Collections.emptyList(), expanded, 0, false);
+      }
+
+      private ErrorHandlingResult handleUnknownError(
+          final FetchItem fetchItem, final int retryCount, final Throwable t) {
+        final var reports = createFailedReports(fetchItem, t, usageDataProvider);
+        return new ErrorHandlingResult(reports, Collections.emptyList(), 0, false);
+      }
+    }
+  }
+
+  /**
+   * An error handling result, indicating how the consumer should behave
+   *
+   * @param reportsToUpload the reports to upload
+   * @param itemsToRetry the fetch items to retry fetching
+   * @param retryCount the number of retries for to re-queued items
+   * @param disableConcurrency whether to disable the concurrency or not
+   */
+  record ErrorHandlingResult(
+      List<CounterReport> reportsToUpload,
+      List<FetchItem> itemsToRetry,
+      int retryCount,
+      boolean disableConcurrency) {}
 }
