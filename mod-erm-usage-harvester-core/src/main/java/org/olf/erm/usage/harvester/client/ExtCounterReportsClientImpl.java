@@ -19,7 +19,7 @@ import org.folio.rest.jaxrs.model.CounterReports;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.DateUtil;
-import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.endpoints.FetchItem;
 
 public class ExtCounterReportsClientImpl extends CounterReportsClient
     implements ExtCounterReportsClient {
