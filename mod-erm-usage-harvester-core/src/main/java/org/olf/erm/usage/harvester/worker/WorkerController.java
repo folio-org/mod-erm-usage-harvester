@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.endpoints.FetchItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

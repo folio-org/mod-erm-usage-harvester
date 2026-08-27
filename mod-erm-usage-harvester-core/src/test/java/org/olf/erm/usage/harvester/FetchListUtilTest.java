@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.Test;
+import org.olf.erm.usage.harvester.endpoints.FetchItem;
 
 public class FetchListUtilTest {
 

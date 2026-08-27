@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.endpoints.FetchItem;
 
 /** Tests for {@link WorkerController}. */
 @ExtendWith(VertxExtension.class)

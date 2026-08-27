@@ -4,7 +4,7 @@ import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 
 import io.vertx.core.Future;
 import java.util.List;
-import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.endpoints.FetchItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -6,10 +6,6 @@ import static org.olf.erm.usage.harvester.Constants.DEFAULT_MAX_FAILED_ATTEMPTS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_KEY_MAX_FAILED_ATTEMPTS;
 import static org.olf.erm.usage.harvester.Constants.SETTINGS_SCOPE_HARVESTER;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
-import static org.olf.erm.usage.harvester.worker.Fetcher.ExceptionToHandlerPair;
-import static org.olf.erm.usage.harvester.worker.FetcherErrorHandler.DefaultFetcherErrorHandler;
-import static org.olf.erm.usage.harvester.worker.FetcherErrorHandler.InvalidReportHandler;
-import static org.olf.erm.usage.harvester.worker.FetcherErrorHandler.TooManyRequestsHandler;
 import static org.olf.erm.usage.harvester.worker.WorkerController.DefaultWorkerController;
 
 import io.vertx.core.AbstractVerticle;
@@ -21,9 +17,7 @@ import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
 import org.olf.erm.usage.harvester.client.SettingsClient;
 import org.olf.erm.usage.harvester.client.SettingsClientImpl;
-import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
-import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,24 +93,10 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   private Fetcher configureFetcher(final WorkerController controller) {
-    final var defaultHandler = new DefaultFetcherErrorHandler(logCtx, usageDataProvider);
-    final var invalidReportHandler =
-        ExceptionToHandlerPair.of(
-            InvalidReportException.class,
-            new InvalidReportHandler(logCtx, usageDataProvider, controller));
-    final var tooManyRequestsHandler =
-        ExceptionToHandlerPair.of(
-            TooManyRequestsException.class,
-            new TooManyRequestsHandler(logCtx, usageDataProvider, controller));
-
+    final var strategy = serviceEndpoint.getErrorHandlingStrategy(usageDataProvider);
+    final var errorHandler = FetcherErrorHandler.create(logCtx, controller, strategy);
     return new Fetcher(
-        counterReportsClient,
-        usageDataProvider,
-        serviceEndpoint,
-        logCtx,
-        defaultHandler,
-        invalidReportHandler,
-        tooManyRequestsHandler);
+        counterReportsClient, usageDataProvider, serviceEndpoint, logCtx, errorHandler);
   }
 
   /**
