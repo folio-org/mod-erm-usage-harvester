@@ -7,7 +7,7 @@ import java.time.YearMonth;
 import java.util.List;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.endpoints.FetchItem;
 
 public interface ExtCounterReportsClient {
 

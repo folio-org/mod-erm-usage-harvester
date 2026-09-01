@@ -14,8 +14,8 @@ import java.util.List;
 import org.folio.rest.jaxrs.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
+import org.olf.erm.usage.harvester.endpoints.FetchItem;
 
 /** Test class for {@link Uploader}. */
 class UploaderTest {

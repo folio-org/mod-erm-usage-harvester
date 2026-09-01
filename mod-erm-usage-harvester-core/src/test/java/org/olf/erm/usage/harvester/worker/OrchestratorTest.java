@@ -1,7 +1,6 @@
 package org.olf.erm.usage.harvester.worker;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.worker.Fetcher.ExceptionToHandlerPair;
 
 import com.google.common.io.Resources;
 import io.vertx.core.Future;
@@ -20,11 +19,9 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.FetchListUtil;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
-import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
-import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
+import org.olf.erm.usage.harvester.endpoints.FetchItem;
 
 /** Test class for {@link Orchestrator} */
 class OrchestratorTest {
@@ -64,15 +61,7 @@ class OrchestratorTest {
 
   private Fetcher configureFetcher(final ExtCounterReportsClient counterReportsClient) {
     return new Fetcher(
-        counterReportsClient,
-        usageDataProvider,
-        null,
-        logCtx,
-        (t, qi) -> Collections.emptyList(),
-        ExceptionToHandlerPair.of(
-            TooManyRequestsException.class, (t, qi) -> Collections.emptyList()),
-        ExceptionToHandlerPair.of(
-            InvalidReportException.class, (t, qi) -> Collections.emptyList()));
+        counterReportsClient, usageDataProvider, null, logCtx, (t, qi) -> Collections.emptyList());
   }
 
   @Test

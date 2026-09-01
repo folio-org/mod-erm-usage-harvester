@@ -3,14 +3,12 @@ package org.olf.erm.usage.harvester.worker;
 import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 
 import io.vertx.core.Future;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.FetchListUtil;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
+import org.olf.erm.usage.harvester.endpoints.FetchItem;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,31 +30,26 @@ final class Fetcher {
 
   private final ServiceEndpoint serviceEndpoint;
 
-  private final ExceptionToHandlerMap exceptionToHandlerMap;
+  private final FetcherErrorHandler errorHandler;
 
   /**
    * @param counterReportsClient the counter reports client to get the fetch list from
    * @param usageDataProvider the usage data provider to fetch reports for
    * @param serviceEndpoint the service endpoint to use for fetching reports
    * @param logCtx the logger context
-   * @param defaultFetcherErrorHandler the default {@link FetcherErrorHandler}
-   * @param fetcherErrorHandlers an array of {@link ExceptionToHandlerPair}s containing all {@link
-   *     FetcherErrorHandler}s we know of.
+   * @param errorHandler the fetcher error handler taking care of error handling
    */
   Fetcher(
       final ExtCounterReportsClient counterReportsClient,
       final UsageDataProvider usageDataProvider,
       final ServiceEndpoint serviceEndpoint,
       final LoggerContext logCtx,
-      final FetcherErrorHandler defaultFetcherErrorHandler,
-      final ExceptionToHandlerPair... fetcherErrorHandlers) {
+      final FetcherErrorHandler errorHandler) {
     this.logCtx = logCtx;
     this.counterReportsClient = counterReportsClient;
     this.usageDataProvider = usageDataProvider;
     this.serviceEndpoint = serviceEndpoint;
-
-    this.exceptionToHandlerMap =
-        new ExceptionToHandlerMap(defaultFetcherErrorHandler, fetcherErrorHandlers);
+    this.errorHandler = errorHandler;
   }
 
   /**
@@ -91,46 +84,6 @@ final class Fetcher {
     LOGGER.info(logCtx.createMsg("processing {}", item));
     return serviceEndpoint
         .fetchReport(item.getReportType(), item.getBegin(), item.getEnd())
-        .otherwise(t -> exceptionToHandlerMap.handlerFor(t).handleException(t, queueItem));
-  }
-
-  /**
-   * Maps an exception to a dedicated exception handler
-   *
-   * @param exception the exception to be handled
-   * @param handler the handler for the exception
-   */
-  record ExceptionToHandlerPair(Class<? extends Throwable> exception, FetcherErrorHandler handler) {
-
-    static ExceptionToHandlerPair of(
-        Class<? extends Throwable> exception, FetcherErrorHandler handler) {
-      return new ExceptionToHandlerPair(exception, handler);
-    }
-  }
-
-  private static class ExceptionToHandlerMap {
-
-    private final FetcherErrorHandler defaultHandler;
-
-    private final Map<Class<? extends Throwable>, FetcherErrorHandler> map;
-
-    ExceptionToHandlerMap(
-        final FetcherErrorHandler defaultHandler, final ExceptionToHandlerPair... handlerPairs) {
-      this.defaultHandler = defaultHandler;
-      map = new HashMap<>();
-      for (final var handlerPair : handlerPairs) {
-        map.put(handlerPair.exception, handlerPair.handler);
-      }
-    }
-
-    FetcherErrorHandler handlerFor(final Throwable t) {
-      for (Class<?> c = t.getClass(); c != null; c = c.getSuperclass()) {
-        final var handler = map.get(c);
-        if (handler != null) {
-          return handler;
-        }
-      }
-      return defaultHandler;
-    }
+        .otherwise(t -> errorHandler.handleException(t, queueItem));
   }
 }
