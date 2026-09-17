@@ -23,6 +23,10 @@ import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidReportException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidServiceURLException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.TooManyRequestsException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.UnsupportedReportTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

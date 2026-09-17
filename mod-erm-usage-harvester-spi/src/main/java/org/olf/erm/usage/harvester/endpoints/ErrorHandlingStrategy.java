@@ -13,6 +13,9 @@ import org.folio.rest.jaxrs.model.ApiException;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.endpoints.exceptions.ApiExceptionProvider;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidReportException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.TooManyRequestsException;
 
 /** An error handling strategy {@link ServiceEndpoint} consumers can use to handle exceptions. */
 @FunctionalInterface
@@ -109,20 +112,20 @@ public interface ErrorHandlingStrategy {
                           usageDataProvider,
                           getYearMonthFromString(i.begin()))
                       .withFailedReason(getMessageOrToString(t))
-                      .withApiException(getApiExceptionFrom(t)))
+                      .withApiException(toApiException(t)))
           .toList();
     }
 
     /**
-     * Note: This will be extended once we differentiate more exceptions
+     * For this to work, all internally created exceptions must implement {@link
+     * ApiExceptionProvider}.
      */
-    private static ApiException getApiExceptionFrom(final Throwable t) {
-      final var code =
-          t instanceof TooManyRequestsException
-              ? TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE
-              : DEFAULT_ERROR_CODE;
-      final var message = t.getMessage();
-      return new ApiException().withCode(code).withMessage(message);
+    private static ApiException toApiException(final Throwable t) {
+      if (t instanceof ApiExceptionProvider provider) {
+        return provider.toApiException();
+      }
+
+      return new ApiException().withCode(DEFAULT_ERROR_CODE).withMessage(t.getMessage());
     }
   }
 }

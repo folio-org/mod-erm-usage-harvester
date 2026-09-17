@@ -7,6 +7,9 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClientOptions;
 import org.olf.erm.usage.counter51.client.Counter51Auth;
 import org.olf.erm.usage.counter51.client.Counter51Client;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidReportException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.ServiceEndpointException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.TooManyRequestsException;
 
 /**
  * Extended Counter 5.1 client with custom error handling.
@@ -25,18 +28,14 @@ public class ExtendedCounter51Client extends Counter51Client {
     super(vertx, options, baseUrl, auth);
   }
 
-  /**
-   * Note: When we want to handle more exceptions, we need to define and throw them here
-   */
+  /** Note: When we want to handle more exceptions, we need to define and throw them here */
   @Override
   protected <T> Future<T> handleParseError(
       Buffer buffer, int statusCode, Class<T> responseType, Exception parseException) {
     return Future.failedFuture(new InvalidReportException(parseException));
   }
 
-  /**
-   * Note: When we want to handle more exceptions, we need to define and throw them here
-   */
+  /** Note: When we want to handle more exceptions, we need to define and throw them here */
   @Override
   protected <T> Future<T> handleErrorResponse(HttpResponse<Buffer> response) {
     if (response.statusCode() == 429) {

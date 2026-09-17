@@ -2,8 +2,8 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import static io.vertx.core.Future.failedFuture;
 import static java.util.Objects.requireNonNull;
-import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
-import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
+import static org.olf.erm.usage.harvester.endpoints.exceptions.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
+import static org.olf.erm.usage.harvester.endpoints.exceptions.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -18,6 +18,9 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter50.Counter5Utils;
 import org.olf.erm.usage.counter50.Counter5Utils.Counter5UtilsException;
 import org.olf.erm.usage.counter50.client.Counter50Auth;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidReportException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.TooManyRequestsException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.UnsupportedReportTypeException;
 import org.openapitools.counter50.model.COUNTERDatabaseReport;
 import org.openapitools.counter50.model.COUNTERItemReport;
 import org.openapitools.counter50.model.COUNTERPlatformReport;

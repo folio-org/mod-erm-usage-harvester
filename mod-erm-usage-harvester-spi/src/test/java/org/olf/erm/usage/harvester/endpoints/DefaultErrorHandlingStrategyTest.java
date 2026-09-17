@@ -11,6 +11,8 @@ import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.Test;
 import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidReportException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.TooManyRequestsException;
 
 /** Tests {@link DefaultErrorHandlingStrategy}. */
 class DefaultErrorHandlingStrategyTest {

@@ -42,6 +42,7 @@ import org.junit.runner.RunWith;
 import org.niso.schemas.counter.Report;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
 import org.olf.erm.usage.counter41.Counter4Utils;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidReportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

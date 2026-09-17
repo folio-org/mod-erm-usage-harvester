@@ -1,7 +1,9 @@
-package org.olf.erm.usage.harvester.endpoints;
+package org.olf.erm.usage.harvester.endpoints.exceptions;
 
 import static org.apache.commons.lang3.StringUtils.abbreviate;
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_ERROR_BODY_LENGTH;
+
+import org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants;
 
 /**
  * Exception for errors from ServiceEndpoint implementations. Stores HTTP status codes and response

@@ -12,8 +12,8 @@ import static org.olf.erm.usage.harvester.endpoints.CS51Impl.ATTRIBUTES_TO_SHOW_
 import static org.olf.erm.usage.harvester.endpoints.CS51Impl.ATTRIBUTES_TO_SHOW_IR;
 import static org.olf.erm.usage.harvester.endpoints.CS51Impl.ATTRIBUTES_TO_SHOW_PR;
 import static org.olf.erm.usage.harvester.endpoints.CS51Impl.ATTRIBUTES_TO_SHOW_TR;
-import static org.olf.erm.usage.harvester.endpoints.InvalidServiceURLException.MSG_INVALID_SERVICE_URL;
-import static org.olf.erm.usage.harvester.endpoints.UnsupportedReportTypeException.MSG_UNSUPPORTED_REPORT_TYPE;
+import static org.olf.erm.usage.harvester.endpoints.exceptions.InvalidServiceURLException.MSG_INVALID_SERVICE_URL;
+import static org.olf.erm.usage.harvester.endpoints.exceptions.UnsupportedReportTypeException.MSG_UNSUPPORTED_REPORT_TYPE;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
@@ -44,6 +44,11 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidReportException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidServiceURLException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.ServiceEndpointException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.TooManyRequestsException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.UnsupportedReportTypeException;
 
 @ExtendWith(VertxExtension.class)
 class CS51ImplTest {

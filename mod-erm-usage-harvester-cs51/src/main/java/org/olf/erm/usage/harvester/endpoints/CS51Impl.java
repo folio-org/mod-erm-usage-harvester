@@ -28,6 +28,9 @@ import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter51.Counter51Utils;
 import org.olf.erm.usage.counter51.client.Counter51Auth;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidReportException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidServiceURLException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.UnsupportedReportTypeException;
 
 public class CS51Impl implements ServiceEndpoint {
 

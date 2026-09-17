@@ -29,9 +29,9 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
-import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
-import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidReportException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.TooManyRequestsException;
 
 /** Test class for {@link Fetcher}. */
 class FetcherTest {

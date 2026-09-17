@@ -24,6 +24,7 @@ import org.niso.schemas.sushi.Exception;
 import org.niso.schemas.sushi.counter.CounterReportResponse;
 import org.olf.erm.usage.counter41.Counter4Utils;
 import org.olf.erm.usage.counter41.Counter4Utils.ReportSplitException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidReportException;
 
 public class NSS implements ServiceEndpoint {
 

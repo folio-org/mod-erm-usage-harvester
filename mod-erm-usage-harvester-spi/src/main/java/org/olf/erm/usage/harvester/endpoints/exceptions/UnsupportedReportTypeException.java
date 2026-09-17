@@ -1,4 +1,6 @@
-package org.olf.erm.usage.harvester.endpoints;
+package org.olf.erm.usage.harvester.endpoints.exceptions;
+
+import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 
 /**
  * Exception thrown if that the specific implementation of {@link ServiceEndpoint} does not support

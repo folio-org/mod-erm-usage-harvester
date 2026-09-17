@@ -5,6 +5,7 @@ import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_E
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Test;
+import org.olf.erm.usage.harvester.endpoints.exceptions.ServiceEndpointException;
 
 class ServiceEndpointExceptionTest {
 

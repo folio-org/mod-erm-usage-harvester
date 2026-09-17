@@ -10,6 +10,9 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClientOptions;
 import org.olf.erm.usage.counter50.client.Counter50Auth;
 import org.olf.erm.usage.counter50.client.Counter50Client;
+import org.olf.erm.usage.harvester.endpoints.exceptions.InvalidReportException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.ServiceEndpointException;
+import org.olf.erm.usage.harvester.endpoints.exceptions.TooManyRequestsException;
 import org.openapitools.counter50.model.SUSHIErrorModel;
 
 /**
@@ -33,9 +36,7 @@ public class ExtendedCounter50Client extends Counter50Client {
     super(vertx, options, baseUrl, auth);
   }
 
-  /**
-   * Note: When we want to handle more exceptions, we need to define and throw them here
-   */
+  /** Note: When we want to handle more exceptions, we need to define and throw them here */
   @Override
   protected <T> Future<T> handleParseError(
       Buffer buffer, int statusCode, Class<T> responseType, Exception parseException) {
@@ -57,9 +58,7 @@ public class ExtendedCounter50Client extends Counter50Client {
     return super.handleParseError(buffer, statusCode, responseType, parseException);
   }
 
-  /**
-   * Note: When we want to handle more exceptions, we need to define and throw them here
-   */
+  /** Note: When we want to handle more exceptions, we need to define and throw them here */
   @Override
   protected <T> Future<T> handleErrorResponse(HttpResponse<Buffer> response) {
     if (response.statusCode() == 429) {

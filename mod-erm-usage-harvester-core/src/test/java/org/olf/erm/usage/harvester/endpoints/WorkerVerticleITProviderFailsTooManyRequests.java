@@ -6,6 +6,7 @@ import io.vertx.ext.web.client.WebClient;
 import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.olf.erm.usage.harvester.endpoints.exceptions.TooManyRequestsException;
 
 public class WorkerVerticleITProviderFailsTooManyRequests implements ServiceEndpointProvider {
 
