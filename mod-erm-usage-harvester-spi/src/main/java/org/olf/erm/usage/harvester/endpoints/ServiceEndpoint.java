@@ -147,6 +147,7 @@ public interface ServiceEndpoint {
    * @return An error handling strategy.
    */
   default ErrorHandlingStrategy getErrorHandlingStrategy(UsageDataProvider provider) {
+    // Only default handling
     return ErrorHandlingStrategy.create(provider);
   }
 }

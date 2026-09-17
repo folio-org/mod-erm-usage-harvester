@@ -9,6 +9,7 @@ import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.Throttle
 import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createCounterReport;
 
 import java.util.List;
+import org.folio.rest.jaxrs.model.ApiException;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.FetchItem;
@@ -27,6 +28,13 @@ public interface ErrorHandlingStrategy {
    */
   ErrorHandlingResult handleFetchError(FetchItem fetchItem, int retryCount, Throwable t);
 
+  // apply configurations
+  // 1000, 1020, 1011, 1010 specific
+
+  // configuration:
+  // * (<provider id 1>, <error code>) -> do something
+  // * (<provider id 2>, <error code>) -> do something
+
   /**
    * @return The current default error handling strategy. This will be removed as soon as {@link
    *     ServiceEndpoint} implementation specific error handling strategies are in place.
@@ -40,6 +48,8 @@ public interface ErrorHandlingStrategy {
    * doesn't ship with its own {@link ErrorHandlingStrategy}.
    */
   class DefaultErrorHandlingStrategy implements ErrorHandlingStrategy {
+
+    private static final int DEFAULT_ERROR_CODE = 1;
 
     private static final int RETRY_COUNT_TOO_MANY_REQUESTS = 2;
 
@@ -98,8 +108,21 @@ public interface ErrorHandlingStrategy {
                           i.reportType(),
                           usageDataProvider,
                           getYearMonthFromString(i.begin()))
-                      .withFailedReason(getMessageOrToString(t)))
+                      .withFailedReason(getMessageOrToString(t))
+                      .withApiException(getApiExceptionFrom(t)))
           .toList();
+    }
+
+    /**
+     * Note: This will be extended once we differentiate more exceptions
+     */
+    private static ApiException getApiExceptionFrom(final Throwable t) {
+      final var code =
+          t instanceof TooManyRequestsException
+              ? TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE
+              : DEFAULT_ERROR_CODE;
+      final var message = t.getMessage();
+      return new ApiException().withCode(code).withMessage(message);
     }
   }
 }

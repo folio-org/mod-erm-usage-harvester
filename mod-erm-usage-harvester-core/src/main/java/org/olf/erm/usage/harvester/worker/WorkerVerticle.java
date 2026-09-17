@@ -93,7 +93,21 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   private Fetcher configureFetcher(final WorkerController controller) {
+    // use default strategy
     final var strategy = serviceEndpoint.getErrorHandlingStrategy(usageDataProvider);
+
+    // read settings, apply to strategy
+    // perhaps settings are per provider.
+
+    // implementation per counter client provides it
+    // depending on "provider id" the settings can be different
+
+    // Instead:
+    // * Read error handling settings from setting client
+    // * Configure error handling strategy with settings
+    // * pass error handling strategy
+    // * how can we apply settings to the strategy and pass them?
+
     final var errorHandler = FetcherErrorHandler.create(logCtx, controller, strategy);
     return new Fetcher(
         counterReportsClient, usageDataProvider, serviceEndpoint, logCtx, errorHandler);

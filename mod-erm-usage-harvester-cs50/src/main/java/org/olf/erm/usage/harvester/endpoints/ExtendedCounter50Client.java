@@ -33,6 +33,9 @@ public class ExtendedCounter50Client extends Counter50Client {
     super(vertx, options, baseUrl, auth);
   }
 
+  /**
+   * Note: When we want to handle more exceptions, we need to define and throw them here
+   */
   @Override
   protected <T> Future<T> handleParseError(
       Buffer buffer, int statusCode, Class<T> responseType, Exception parseException) {
@@ -54,6 +57,9 @@ public class ExtendedCounter50Client extends Counter50Client {
     return super.handleParseError(buffer, statusCode, responseType, parseException);
   }
 
+  /**
+   * Note: When we want to handle more exceptions, we need to define and throw them here
+   */
   @Override
   protected <T> Future<T> handleErrorResponse(HttpResponse<Buffer> response) {
     if (response.statusCode() == 429) {
