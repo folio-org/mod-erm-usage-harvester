@@ -1,7 +1,7 @@
 package org.olf.erm.usage.harvester.worker;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.worker.Fetcher.ExceptionToHandlerPair;
+import static org.olf.erm.usage.harvester.worker.Fetcher.collapse;
 import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 
 import com.google.common.io.Resources;
@@ -13,17 +13,21 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.CounterReport;
+import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.olf.erm.usage.harvester.FetchItem;
-import org.olf.erm.usage.harvester.FetchListUtil;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
@@ -32,10 +36,6 @@ import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
 /** Test class for {@link Fetcher}. */
 class FetcherTest {
 
-  /**
-   * We only use one month time spans here, to avoid {@link FetchListUtil#collapse(List)} being
-   * called.
-   */
   private static final List<FetchItem> FETCH_LIST =
       List.of(
           new FetchItem("PR", "2026-02-01", "2026-02-28"),
@@ -43,11 +43,7 @@ class FetcherTest {
           new FetchItem("TR", "2025-01-01", "2025-01-31"),
           new FetchItem("IR", "2024-04-01", "2024-04-30"));
 
-  private static final List<Throwable> DEFAULT_HANDLER_CALLS = new ArrayList<>();
-
-  private static final List<Throwable> TOO_MANY_REQUESTS_CALLS = new ArrayList<>();
-
-  private static final List<Throwable> INVALID_REPORT_CALLS = new ArrayList<>();
+  private static final List<Throwable> HANDLER_CALLS = new ArrayList<>();
 
   private static final CounterReport COUNTER_REPORT =
       new CounterReport().withReportName("TR").withYearMonth("2025-01");
@@ -72,9 +68,7 @@ class FetcherTest {
 
   @BeforeEach
   void beforeTest() {
-    DEFAULT_HANDLER_CALLS.clear();
-    TOO_MANY_REQUESTS_CALLS.clear();
-    INVALID_REPORT_CALLS.clear();
+    HANDLER_CALLS.clear();
   }
 
   private static Fetcher configureFetcher(
@@ -85,21 +79,9 @@ class FetcherTest {
         serviceEndpoint,
         LOG_CTX,
         (t, qi) -> {
-          DEFAULT_HANDLER_CALLS.add(t);
+          HANDLER_CALLS.add(t);
           return Collections.emptyList();
-        },
-        ExceptionToHandlerPair.of(
-            TooManyRequestsException.class,
-            (t, qi) -> {
-              TOO_MANY_REQUESTS_CALLS.add(t);
-              return Collections.emptyList();
-            }),
-        ExceptionToHandlerPair.of(
-            InvalidReportException.class,
-            (t, qi) -> {
-              INVALID_REPORT_CALLS.add(t);
-              return Collections.emptyList();
-            }));
+        });
   }
 
   @Test
@@ -137,15 +119,14 @@ class FetcherTest {
 
   @ParameterizedTest
   @MethodSource("getTestFetchReportWithHandledErrorParameters")
-  void testFetchReportWithHandledError(
-      final RuntimeException ex, final List<Throwable> expectedHandlerCalls) {
+  void testFetchReportWithHandledError(final RuntimeException ex) {
     final var serviceEndpoint = new TestServiceEndpoint(null, ex);
     final var fetcher = configureFetcher(null, serviceEndpoint);
 
     final var receivedFuture = fetcher.fetchReport(QueueItem.of(FETCH_LIST.getFirst(), 1));
 
     assertThat(receivedFuture.succeeded()).as("... the future succeeded").isTrue();
-    assertThat(expectedHandlerCalls)
+    assertThat(HANDLER_CALLS)
         .as("... the correct error handler was called exactly once with the thrown exception")
         .singleElement()
         .isSameAs(ex);
@@ -153,9 +134,87 @@ class FetcherTest {
 
   private static Stream<Arguments> getTestFetchReportWithHandledErrorParameters() {
     return Stream.of(
-        Arguments.of(new TooManyRequestsException("Don't be too greedy"), TOO_MANY_REQUESTS_CALLS),
-        Arguments.of(new InvalidReportException("Please be precise"), INVALID_REPORT_CALLS),
-        Arguments.of(new RuntimeException("Something went wrong"), DEFAULT_HANDLER_CALLS));
+        Arguments.of(new TooManyRequestsException("Don't be too greedy")),
+        Arguments.of(new InvalidReportException("Please be precise")),
+        Arguments.of(new RuntimeException("Something went wrong")));
+  }
+
+  @Test
+  void testCollapseJR1() {
+    final String reportType = "JR1";
+    List<FetchItem> fetchItemList =
+        List.of(
+            FetchItem.of(reportType, YearMonth.of(2019, 12)),
+            FetchItem.of(reportType, YearMonth.of(2020, 1)),
+            FetchItem.of(reportType, YearMonth.of(2020, 2)));
+    List<FetchItem> result = collapse(fetchItemList);
+
+    assertThat(fetchItemList).hasSize(3);
+    assertThat(result)
+        .hasSize(1)
+        .containsExactly(FetchItem.of(reportType, YearMonth.of(2019, 12), YearMonth.of(2020, 2)));
+  }
+
+  @Test
+  void testCollapseTR() {
+    final String reportType = "TR";
+    List<FetchItem> fetchItemList =
+        List.of(
+            FetchItem.of(reportType, YearMonth.of(2019, 12)),
+            FetchItem.of(reportType, YearMonth.of(2020, 1)),
+            FetchItem.of(reportType, YearMonth.of(2020, 2)));
+    List<FetchItem> result = collapse(fetchItemList);
+
+    assertThat(fetchItemList).hasSize(3);
+    assertThat(result).hasSize(3).containsExactlyElementsOf(fetchItemList);
+  }
+
+  @Test
+  void testCollapseMultipleReportTypes() {
+    List<FetchItem> collapsed = collapse(createSampleFetchList());
+    assertThat(collapsed)
+        .containsExactlyInAnyOrder(
+            FetchItem.of("JR1", YearMonth.of(2018, 1), YearMonth.of(2018, 12)),
+            FetchItem.of("JR1", YearMonth.of(2019, 1), YearMonth.of(2019, 12)),
+            FetchItem.of("JR1", YearMonth.of(2020, 1), YearMonth.of(2020, 12)),
+            FetchItem.of("JR1", YearMonth.of(2021, 1), YearMonth.of(2021, 4)),
+            FetchItem.of("JR1", YearMonth.of(2022, 1), YearMonth.of(2022, 2)),
+            FetchItem.of("PR1", YearMonth.of(2018, 7), YearMonth.of(2019, 6)),
+            FetchItem.of("PR1", YearMonth.of(2019, 7), YearMonth.of(2019, 8)),
+            FetchItem.of("TR", YearMonth.of(2022, 1)),
+            FetchItem.of("TR", YearMonth.of(2022, 2)));
+  }
+
+  private static List<FetchItem> createSampleFetchList() {
+    List<YearMonth> months1 =
+        IntStream.range(0, 40).boxed().map(YearMonth.of(2018, 1)::plusMonths).toList();
+    List<YearMonth> months2 = Arrays.asList(YearMonth.of(2022, 1), YearMonth.of(2022, 2));
+    List<YearMonth> months3 =
+        IntStream.range(0, 14).boxed().map(YearMonth.of(2018, 7)::plusMonths).toList();
+
+    List<FetchItem> jr1 =
+        Stream.concat(months1.stream(), months2.stream())
+            .map(ym -> FetchItem.of("JR1", ym))
+            .toList();
+
+    List<FetchItem> pr1 = months3.stream().map(ym -> FetchItem.of("PR1", ym)).toList();
+
+    List<FetchItem> tr = months2.stream().map(ym -> FetchItem.of("TR", ym)).toList();
+
+    List<FetchItem> duplicates =
+        List.of(
+            FetchItem.of("JR1", YearMonth.of(2018, 1)), FetchItem.of("PR1", YearMonth.of(2018, 7)));
+
+    return Stream.of(jr1, pr1, tr, duplicates).flatMap(Collection::stream).toList();
+  }
+
+  @Test
+  void testCollapseAndExpandMultipleReportTypes() {
+    List<FetchItem> distinctFetchList = createSampleFetchList().stream().distinct().toList();
+    List<FetchItem> collapsed = collapse(distinctFetchList);
+    List<FetchItem> expanded =
+        collapsed.stream().flatMap(fi -> fi.expand().stream()).collect(Collectors.toList());
+    assertThat(distinctFetchList).containsExactlyInAnyOrderElementsOf(expanded);
   }
 
   private record TestCounterReportsClient(List<FetchItem> fetchItems)

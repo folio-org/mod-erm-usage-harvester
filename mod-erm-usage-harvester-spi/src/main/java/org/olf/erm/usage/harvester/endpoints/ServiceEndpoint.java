@@ -142,4 +142,11 @@ public interface ServiceEndpoint {
       return Optional.empty();
     }
   }
+
+  /**
+   * @return An error handling strategy.
+   */
+  default ErrorHandlingStrategy getErrorHandlingStrategy(UsageDataProvider provider) {
+    return ErrorHandlingStrategy.create(provider);
+  }
 }
