@@ -1,9 +1,6 @@
 package org.olf.erm.usage.harvester.worker;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.worker.FetcherErrorHandler.DefaultFetcherErrorHandler;
-import static org.olf.erm.usage.harvester.worker.FetcherErrorHandler.InvalidReportHandler;
-import static org.olf.erm.usage.harvester.worker.FetcherErrorHandler.TooManyRequestsHandler;
 import static org.olf.erm.usage.harvester.worker.OrchestratorTest.TestWorkerController;
 import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 
@@ -15,10 +12,16 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.endpoints.ErrorHandlingStrategy;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
+import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
 
-/** Tests for the {@link FetcherErrorHandler} implementations. */
+/**
+ * Tests for the {@link FetcherErrorHandler} implementation. This currently only tests the {@link
+ * FetcherErrorHandler.DefaultErrorHandler} and will be replaced as soon as {@link ServiceEndpoint}
+ * implementation specific error handling is in place.
+ */
 class FetcherErrorHandlerTest {
 
   private static final UsageDataProvider USAGE_DATA_PROVIDER;
@@ -43,17 +46,21 @@ class FetcherErrorHandlerTest {
 
   private static final FetchItem FETCH_ITEM_DR = new FetchItem("DR", "2025-01-01", "2025-03-31");
 
+  private static final ErrorHandlingStrategy STRATEGY =
+      ErrorHandlingStrategy.create(USAGE_DATA_PROVIDER);
+
   private TestWorkerController controller;
+
+  private FetcherErrorHandler handler;
 
   @BeforeEach
   void beforeTest() {
     controller = new TestWorkerController();
+    handler = FetcherErrorHandler.create(LOG_CTX, controller, STRATEGY);
   }
 
   @Test
   void testTooManyRequestsHandlerReEnqueuesWhileRetriesRemain() {
-    final var handler = new TooManyRequestsHandler(LOG_CTX, USAGE_DATA_PROVIDER, controller);
-
     final var result =
         handler.handleException(
             new TooManyRequestsException("Slow down"), QueueItem.of(FETCH_ITEM_TR, 0));
@@ -67,8 +74,6 @@ class FetcherErrorHandlerTest {
 
   @Test
   void testTooManyRequestsHandlerReturnsFailedReportsWhenRetriesExhausted() {
-    final var handler = new TooManyRequestsHandler(LOG_CTX, USAGE_DATA_PROVIDER, controller);
-
     final var result =
         handler.handleException(
             new TooManyRequestsException("Slow down"), QueueItem.of(FETCH_ITEM_TR, 2));
@@ -88,8 +93,6 @@ class FetcherErrorHandlerTest {
 
   @Test
   void testInvalidReportHandlerReturnsFailedReportForSingleMonth() {
-    final var handler = new InvalidReportHandler(LOG_CTX, USAGE_DATA_PROVIDER, controller);
-
     final var result =
         handler.handleException(
             new InvalidReportException("Invalid report"), QueueItem.of(FETCH_ITEM_TR, 0));
@@ -108,8 +111,6 @@ class FetcherErrorHandlerTest {
 
   @Test
   void testInvalidReportHandlerExpandsAndReEnqueuesMultiMonthItem() {
-    final var handler = new InvalidReportHandler(LOG_CTX, USAGE_DATA_PROVIDER, controller);
-
     final var result =
         handler.handleException(
             new InvalidReportException("Invalid report"), QueueItem.of(FETCH_ITEM_DR, 0));
@@ -125,8 +126,6 @@ class FetcherErrorHandlerTest {
 
   @Test
   void testDefaultFetcherErrorHandlerReturnsFailedReportPerMonth() {
-    final var handler = new DefaultFetcherErrorHandler(LOG_CTX, USAGE_DATA_PROVIDER);
-
     final var result =
         handler.handleException(
             new RuntimeException("Something went wrong"), QueueItem.of(FETCH_ITEM_DR, 0));
