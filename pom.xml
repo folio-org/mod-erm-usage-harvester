@@ -38,7 +38,7 @@
     <erm.usage.version>5.1.0</erm.usage.version>
     <erm.usage.counter.version>6.1.0-SNAPSHOT</erm.usage.counter.version>
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
-    <spotless.version>2.44.3</spotless.version>
+    <spotless.version>3.10.2</spotless.version>
     <google-java-format.version>1.25.2</google-java-format.version>
 
     <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
@@ -228,8 +228,16 @@
               <reflowLongStrings>true</reflowLongStrings>
               <formatJavadoc>true</formatJavadoc>
             </googleJavaFormat>
+            <forbidWildcardImports />
           </java>
         </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>com.google.googlejavaformat</groupId>
+            <artifactId>google-java-format</artifactId>
+            <version>${google-java-format.version}</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <goals>
