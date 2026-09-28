@@ -15,11 +15,6 @@
     </dependency>
     <dependency>
       <groupId>org.olf</groupId>
-      <artifactId>mod-erm-usage-harvester-nss</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.olf</groupId>
       <artifactId>mod-erm-usage-harvester-cs41</artifactId>
       <version>${project.parent.version}</version>
     </dependency>

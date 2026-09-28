@@ -119,15 +119,15 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
     try {
+      // No implementation is an aggregator. Remove the parameter with erm-usage-harvester 3.0
+      // (MODEUSHARV-186).
       List<ServiceImplementation> implementations =
-          ServiceEndpoint.getAvailableProviders().stream()
-              .filter(
-                  provider ->
-                      Strings.isNullOrEmpty(aggregator)
-                          || provider.isAggregator().equals(Boolean.valueOf(aggregator)))
-              .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))
-              .map(ErmUsageHarvesterAPI::toServiceImplementation)
-              .toList();
+          Boolean.parseBoolean(aggregator)
+              ? List.of()
+              : ServiceEndpoint.getAvailableProviders().stream()
+                  .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))
+                  .map(ErmUsageHarvesterAPI::toServiceImplementation)
+                  .toList();
       ServiceImplementations result =
           new ServiceImplementations().withImplementations(implementations);
       asyncResultHandler.handle(
@@ -145,7 +145,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
             .withName(provider.getServiceName())
             .withDescription(provider.getServiceDescription())
             .withType(provider.getServiceType())
-            .withIsAggregator(provider.isAggregator());
+            .withIsAggregator(false);
     if (!provider.getConfigurationParameters().isEmpty()) {
       impl.setConfigurationParameters(provider.getConfigurationParameters());
     }

@@ -2,7 +2,6 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import io.vertx.core.Future;
 import java.util.List;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.slf4j.Logger;
@@ -26,7 +25,7 @@ public class WorkerVerticleITProviderFailsWithGetMessageNull implements ServiceE
   }
 
   @Override
-  public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
+  public ServiceEndpoint create(UsageDataProvider provider) {
 
     return new ServiceEndpoint() {
       private final Logger log =

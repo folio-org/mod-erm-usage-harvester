@@ -18,8 +18,6 @@
             "usagedataproviders.collection.get",
             "usagedataproviders.item.get",
             "usagedataproviders.item.put",
-            "aggregatorsettings.collection.get",
-            "aggregatorsettings.item.get",
             "counterreports.collection.get",
             "counterreports.item.get",
             "counterreports.item.post",
@@ -41,8 +39,6 @@
             "usagedataproviders.collection.get",
             "usagedataproviders.item.get",
             "usagedataproviders.item.put",
-            "aggregatorsettings.collection.get",
-            "aggregatorsettings.item.get",
             "counterreports.collection.get",
             "counterreports.item.get",
             "counterreports.item.post",
@@ -161,10 +157,6 @@
     {
       "id": "usage-data-providers",
       "version": "3.0"
-    },
-    {
-      "id": "aggregator-settings",
-      "version": "2.0"
     },
     {
       "id": "counter-reports",

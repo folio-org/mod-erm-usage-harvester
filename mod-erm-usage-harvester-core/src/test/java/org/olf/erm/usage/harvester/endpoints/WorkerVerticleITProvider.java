@@ -5,7 +5,6 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.web.client.WebClient;
 import java.time.YearMonth;
 import java.util.List;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -35,7 +34,7 @@ public class WorkerVerticleITProvider implements ServiceEndpointProvider {
   }
 
   @Override
-  public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
+  public ServiceEndpoint create(UsageDataProvider provider) {
 
     return new ServiceEndpoint() {
       private final Logger log = LoggerFactory.getLogger(WorkerVerticleITProvider.class);

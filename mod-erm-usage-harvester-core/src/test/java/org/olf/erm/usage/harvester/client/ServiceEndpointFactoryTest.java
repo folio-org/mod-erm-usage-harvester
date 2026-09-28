@@ -1,28 +1,24 @@
 package org.olf.erm.usage.harvester.client;
 
-import static io.vertx.core.Future.succeededFuture;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.io.Resources;
 import io.vertx.core.json.Json;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
+import org.folio.rest.jaxrs.model.Aggregator;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-@RunWith(VertxUnitRunner.class)
-public class ServiceEndpointFactoryTest {
+class ServiceEndpointFactoryTest {
 
   private UsageDataProvider usageDataProvider;
 
-  @Before
-  public void setUp() throws IOException {
+  @BeforeEach
+  void setUp() throws IOException {
     usageDataProvider =
         Json.decodeValue(
             Resources.toString(
@@ -31,52 +27,32 @@ public class ServiceEndpointFactoryTest {
   }
 
   @Test
-  public void testCreateServiceEndpoint(TestContext context) {
-    new ServiceEndpointFactory(provider -> null)
-        .createServiceEndpoint(usageDataProvider)
-        .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
+  void testCreateServiceEndpoint() {
+    assertThat(ServiceEndpointFactory.createServiceEndpoint(usageDataProvider)).isNotNull();
   }
 
   @Test
-  public void testGetServiceEndpointNoImplementation(TestContext context) throws IOException {
+  void testCreateServiceEndpointNoImplementation() {
     usageDataProvider.getHarvestingConfig().getSushiConfig().setServiceType("test3");
-    new ServiceEndpointFactory(provider -> null)
-        .createServiceEndpoint(usageDataProvider)
-        .onComplete(
-            context.asyncAssertFailure(
-                t -> assertThat(t).hasMessageContaining("No service implementation")));
+    assertThatThrownBy(() -> ServiceEndpointFactory.createServiceEndpoint(usageDataProvider))
+        .hasMessageContaining("No service implementation");
   }
 
   @Test
-  public void testGetServiceEndpointAggregator(TestContext context) throws IOException {
-    usageDataProvider.getHarvestingConfig().setHarvestVia(HarvestVia.AGGREGATOR);
-    AggregatorSetting aggregatorSetting =
-        Json.decodeValue(
-            Resources.toString(
-                Resources.getResource("__files/aggregator-setting.json"), StandardCharsets.UTF_8),
-            AggregatorSetting.class);
-    new ServiceEndpointFactory(provider -> succeededFuture(aggregatorSetting))
-        .createServiceEndpoint(usageDataProvider)
-        .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
+  void testCreateServiceEndpointWithoutHarvestVia() {
+    usageDataProvider.getHarvestingConfig().setHarvestVia(null);
+    assertThat(ServiceEndpointFactory.createServiceEndpoint(usageDataProvider)).isNotNull();
   }
 
   @Test
-  public void testGetServiceEndpointAggregatorNull(TestContext context) {
-    usageDataProvider.getHarvestingConfig().setHarvestVia(HarvestVia.AGGREGATOR);
-    usageDataProvider.getHarvestingConfig().setAggregator(null);
-
-    new ServiceEndpointFactory(provider -> null)
-        .createServiceEndpoint(usageDataProvider)
-        .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
-  }
-
-  @Test
-  public void testGetServiceEndpointAggregatorIdNull(TestContext context) {
-    usageDataProvider.getHarvestingConfig().setHarvestVia(HarvestVia.AGGREGATOR);
-    usageDataProvider.getHarvestingConfig().getAggregator().setId(null);
-
-    new ServiceEndpointFactory(provider -> null)
-        .createServiceEndpoint(usageDataProvider)
-        .onComplete(context.asyncAssertSuccess(sep -> assertThat(sep).isNotNull()));
+  void testCreateServiceEndpointIgnoresAggregatorConfig() {
+    usageDataProvider
+        .getHarvestingConfig()
+        .withHarvestVia(HarvestVia.AGGREGATOR)
+        .withAggregator(
+            new Aggregator()
+                .withId("4c66b956-23a8-4418-aef6-1c35dcdaccc4")
+                .withVendorCode("ACMDL"));
+    assertThat(ServiceEndpointFactory.createServiceEndpoint(usageDataProvider)).isNotNull();
   }
 }

@@ -1,6 +1,5 @@
 package org.olf.erm.usage.harvester.endpoints;
 
-import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 
 public class TestProvider implements ServiceEndpointProvider {
@@ -16,7 +15,7 @@ public class TestProvider implements ServiceEndpointProvider {
   }
 
   @Override
-  public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
+  public ServiceEndpoint create(UsageDataProvider provider) {
     return new TestProviderImpl();
   }
 }

@@ -13,7 +13,6 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -25,11 +24,7 @@ class ServiceEndpointTest {
   private final ProxySelector originalProxySelector = ProxySelector.getDefault();
   private final ServiceEndpoint serviceEndpoint = new TestProviderImpl();
 
-  private static UsageDataProvider provider =
-      new UsageDataProvider()
-          .withHarvestingConfig(
-              new HarvestingConfig()
-                  .withSushiConfig(new SushiConfig().withServiceType("TestProviderType")));
+  private static final UsageDataProvider provider = providerWithServiceType("TestProviderType");
 
   @AfterEach
   void tearDown() {
@@ -44,38 +39,33 @@ class ServiceEndpointTest {
     assertThat(list.getFirst().getServiceType()).isEqualTo("TestProviderType");
   }
 
+  private static UsageDataProvider providerWithServiceType(String serviceType) {
+    return new UsageDataProvider()
+        .withHarvestingConfig(
+            new HarvestingConfig().withSushiConfig(new SushiConfig().withServiceType(serviceType)));
+  }
+
   @Test
-  void testCreateNoImplGiven() {
-    ServiceEndpoint sep =
-        ServiceEndpoint.create(provider, new AggregatorSetting().withServiceType(""));
-    assertThat(sep).isNull();
+  void testCreateNoServiceType() {
+    assertThat(ServiceEndpoint.create(providerWithServiceType(""))).isNull();
+    assertThat(ServiceEndpoint.create(providerWithServiceType(null))).isNull();
   }
 
   @Test
   void testCreateNoImplFound() {
-    ServiceEndpoint sep =
-        ServiceEndpoint.create(
-            provider, new AggregatorSetting().withServiceType("TestProviderType2"));
+    ServiceEndpoint sep = ServiceEndpoint.create(providerWithServiceType("TestProviderType2"));
     assertThat(sep).isNull();
   }
 
   @Test
   void testCreateOk() {
-    ServiceEndpoint sep =
-        ServiceEndpoint.create(
-            provider, new AggregatorSetting().withServiceType("TestProviderType"));
-    assertThat(sep).isInstanceOf(TestProviderImpl.class);
-  }
-
-  @Test
-  void testCreateOkNoAggregator() {
-    ServiceEndpoint sep = ServiceEndpoint.create(provider, null);
+    ServiceEndpoint sep = ServiceEndpoint.create(provider);
     assertThat(sep).isInstanceOf(TestProviderImpl.class);
   }
 
   @Test
   void testCreateNoHarvesterConfig() {
-    ServiceEndpoint sep = ServiceEndpoint.create(new UsageDataProvider(), null);
+    ServiceEndpoint sep = ServiceEndpoint.create(new UsageDataProvider());
     assertThat(sep).isNull();
   }
 
@@ -83,7 +73,7 @@ class ServiceEndpointTest {
   void testCreateNoSushiConfig() {
     ServiceEndpoint sep =
         ServiceEndpoint.create(
-            new UsageDataProvider().withHarvestingConfig(new HarvestingConfig()), null);
+            new UsageDataProvider().withHarvestingConfig(new HarvestingConfig()));
     assertThat(sep).isNull();
   }
 

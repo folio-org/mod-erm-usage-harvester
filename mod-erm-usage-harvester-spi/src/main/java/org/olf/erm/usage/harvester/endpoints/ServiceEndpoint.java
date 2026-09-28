@@ -19,9 +19,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.UUID;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.CounterReport;
+import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.Report;
+import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,20 +72,14 @@ public interface ServiceEndpoint {
     return Lists.newArrayList(loader.iterator());
   }
 
-  static ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
+  static ServiceEndpoint create(UsageDataProvider provider) {
     Objects.requireNonNull(provider);
 
-    String serviceType;
-    if (Objects.isNull(aggregator)) {
-      if (Objects.nonNull(provider.getHarvestingConfig())
-          && Objects.nonNull(provider.getHarvestingConfig().getSushiConfig())) {
-        serviceType = provider.getHarvestingConfig().getSushiConfig().getServiceType();
-      } else {
-        serviceType = null;
-      }
-    } else {
-      serviceType = aggregator.getServiceType();
-    }
+    String serviceType =
+        Optional.ofNullable(provider.getHarvestingConfig())
+            .map(HarvestingConfig::getSushiConfig)
+            .map(SushiConfig::getServiceType)
+            .orElse(null);
 
     if (Strings.isNullOrEmpty(serviceType)) {
       LOG.error("ServiceType is null or empty for providerId {}", provider.getId());
@@ -95,7 +90,7 @@ public interface ServiceEndpoint {
         ServiceLoader.load(ServiceEndpointProvider.class);
     for (ServiceEndpointProvider p : loader) {
       if (p.getServiceType().equals(serviceType)) {
-        return p.create(provider, aggregator);
+        return p.create(provider);
       }
     }
 
