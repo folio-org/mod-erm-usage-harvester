@@ -146,9 +146,6 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
             .withDescription(provider.getServiceDescription())
             .withType(provider.getServiceType())
             .withIsAggregator(false);
-    if (!provider.getConfigurationParameters().isEmpty()) {
-      impl.setConfigurationParameters(provider.getConfigurationParameters());
-    }
     if (provider.getReportRelease() != null) {
       impl.setReportRelease(provider.getReportRelease());
     }

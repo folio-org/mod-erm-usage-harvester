@@ -31,10 +31,6 @@ public interface ServiceEndpointProvider {
 
   ServiceEndpoint create(UsageDataProvider provider);
 
-  default List<String> getConfigurationParameters() {
-    return Collections.emptyList();
-  }
-
   default String getReportRelease() {
     return null;
   }

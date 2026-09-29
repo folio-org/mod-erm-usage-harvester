@@ -41,11 +41,6 @@ public class Test1Provider implements ServiceEndpointProvider {
   }
 
   @Override
-  public List<String> getConfigurationParameters() {
-    return List.of("param1", "param2");
-  }
-
-  @Override
   public ServiceEndpoint create(UsageDataProvider provider) {
     return (report, beginDate, endDate) -> {
       List<CounterReport> resultList =

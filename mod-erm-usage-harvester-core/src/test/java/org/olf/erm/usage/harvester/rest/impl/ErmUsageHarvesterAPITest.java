@@ -131,8 +131,7 @@ public class ErmUsageHarvesterAPITest {
                     .withIsAggregator(false)
                     .withReportRelease("5")
                     .withSupportedReports(List.of("DR", "TR"))
-                    .withIsDefault(true)
-                    .withConfigurationParameters(List.of("param1", "param2")),
+                    .withIsDefault(true),
                 new ServiceImplementation()
                     .withType("test2")
                     .withName("test2")
