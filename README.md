@@ -154,23 +154,36 @@ Implementations available at runtime can be listed at `/erm-usage-harvester/impl
 {
   "implementations": [
     {
-      "name": "Counter-Sushi 4.1",
-      "description": "SOAP-based implementation for CounterSushi 4.1",
-      "type": "cs41",
-      "isAggregator": false
-    },
-    {
       "name": "Counter 5.0",
       "description": "Implementation for Counter/Sushi 5",
       "type": "cs50",
-      "isAggregator": false
+      "isAggregator": false,
+      "reportRelease": "5",
+      "supportedReports": ["DR", "IR", "PR", "TR"],
+      "configurationParameters": []
     },
     {
       "name": "Counter 5.1",
       "description": "Implementation for Counter/Sushi 5.1",
       "type": "cs51",
       "isAggregator": false,
-      "isDefault": true
+      "isDefault": true,
+      "reportRelease": "5.1",
+      "supportedReports": ["DR", "IR", "PR", "TR"],
+      "configurationParameters": []
+    },
+    {
+      "name": "Counter-Sushi 4.1",
+      "description": "SOAP-based implementation for CounterSushi 4.1",
+      "type": "cs41",
+      "isAggregator": false,
+      "reportRelease": "4",
+      "supportedReports": [
+        "BR1", "BR2", "BR3", "BR4", "BR5", "BR7", "DB1", "DB2",
+        "JR1", "JR1 GOA", "JR1a", "JR2", "JR3", "JR3 Mobile", "JR4", "JR5",
+        "MR1", "MR1 Mobile", "PR1", "TR1", "TR2", "TR3", "TR3 Mobile"
+      ],
+      "configurationParameters": []
     }
   ]
 }
