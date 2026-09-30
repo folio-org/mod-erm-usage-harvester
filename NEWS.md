@@ -1,4 +1,5 @@
 # 6.0.0 (IN PROGRESS)
+* [UIEUS-531](https://folio-org.atlassian.net/browse/UIEUS-531) Remove the Counter-Sushi 4.1 implementation (`cs41`) and the `mod-erm-usage-harvester-cs41` module (*BREAKING*: providers with service type `cs41` can no longer be harvested)
 * [MODEUSHARV-187](https://folio-org.atlassian.net/browse/MODEUSHARV-187) Remove aggregator harvesting and the NSS implementation (*BREAKING* SPI change: `ServiceEndpointProvider.create` takes only the `UsageDataProvider`, `isAggregator()` and `getConfigurationParameters()` are removed)
 * [MODEUSHARV-182](https://folio-org.atlassian.net/browse/MODEUSHARV-182) Move error handling closed to the `ServiceEndpoint` implementation, introducing the concept of `ErrorHandlingStrategies`
 * [MODEUSHARV-176](https://folio-org.atlassian.net/browse/MODEUSHARV-176) Refactor `WorkerVerticle` into single-responsibility classes (`WorkerController`, `Fetcher`, `FetcherErrorHandler`, `Uploader`, `Orchestrator`) and expand unit test coverage

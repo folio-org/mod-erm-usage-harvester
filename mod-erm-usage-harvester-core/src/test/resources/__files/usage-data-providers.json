@@ -7,13 +7,13 @@
         "harvestingStatus": "active",
         "harvestVia": "sushi",
         "sushiConfig": {
-          "serviceType": "cs41",
+          "serviceType": "cs51",
           "serviceUrl": "http://myvendor.com"
         },
-        "reportRelease": "4",
+        "reportRelease": "5.1",
         "requestedReports": [
-          "JR1",
-          "TR1"
+          "TR",
+          "DR"
         ],
         "harvestingStart": "2018-01",
         "harvestingEnd": "2018-12"
@@ -34,13 +34,13 @@
         "harvestingStatus": "active",
         "harvestVia": "sushi",
         "sushiConfig": {
-          "serviceType": "cs41",
+          "serviceType": "cs51",
           "serviceUrl": "http://myvendor.com"
         },
-        "reportRelease": "4",
+        "reportRelease": "5.1",
         "requestedReports": [
-          "JR1",
-          "TR1"
+          "TR",
+          "DR"
         ],
         "harvestingStart": "2018-01",
         "harvestingEnd": "2018-12"
@@ -60,13 +60,13 @@
       "harvestingConfig": {
         "harvestingStatus": "active",
         "sushiConfig": {
-          "serviceType": "cs41",
+          "serviceType": "cs51",
           "serviceUrl": "http://myvendor.com"
         },
-        "reportRelease": "4",
+        "reportRelease": "5.1",
         "requestedReports": [
-          "JR1",
-          "TR1"
+          "TR",
+          "DR"
         ],
         "harvestingStart": "2018-01"
       },

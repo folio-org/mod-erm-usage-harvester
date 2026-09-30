@@ -139,10 +139,8 @@ you will need to implement the
 [ServiceEndpointProvider](mod-erm-usage-harvester-spi/src/main/java/org/olf/erm/usage/harvester/endpoints/ServiceEndpointProvider.java)
 interface and make it available on the classpath.
 
-So far 3 implementations are provided:
+So far 2 implementations are provided:
 
-* `mod-erm-usage-harvester-cs41`
-  – [Counter Sushi 4.1](https://www.projectcounter.org/code-of-practice-sections/sushi/)
 * `mod-erm-usage-harvester-cs50`
   – [Counter Sushi 5.0 API](https://app.swaggerhub.com/apis/COUNTER/counter-sushi_5_0_api/1.0.0)
 * `mod-erm-usage-harvester-cs51`
@@ -170,19 +168,6 @@ Implementations available at runtime can be listed at `/erm-usage-harvester/impl
       "isDefault": true,
       "reportRelease": "5.1",
       "supportedReports": ["DR", "IR", "PR", "TR"],
-      "configurationParameters": []
-    },
-    {
-      "name": "Counter-Sushi 4.1",
-      "description": "SOAP-based implementation for CounterSushi 4.1",
-      "type": "cs41",
-      "isAggregator": false,
-      "reportRelease": "4",
-      "supportedReports": [
-        "BR1", "BR2", "BR3", "BR4", "BR5", "BR7", "DB1", "DB2",
-        "JR1", "JR1 GOA", "JR1a", "JR2", "JR3", "JR3 Mobile", "JR4", "JR5",
-        "MR1", "MR1 Mobile", "PR1", "TR1", "TR2", "TR3", "TR3 Mobile"
-      ],
       "configurationParameters": []
     }
   ]
