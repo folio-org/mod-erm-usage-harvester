@@ -145,7 +145,8 @@ So far 3 implementations are provided:
   – [Counter Sushi 4.1](https://www.projectcounter.org/code-of-practice-sections/sushi/)
 * `mod-erm-usage-harvester-cs50`
   – [Counter Sushi 5.0 API](https://app.swaggerhub.com/apis/COUNTER/counter-sushi_5_0_api/1.0.0)
-* `mod-erm-usage-harvester-nss` – [Germanys National Statistics Server](https://statistik.hebis.de/)
+* `mod-erm-usage-harvester-cs51`
+  – [COUNTER Release 5.1.0.1](https://cop5.countermetrics.org/en/5.1.0.1/)
 
 Implementations available at runtime can be listed at `/erm-usage-harvester/impl`.
 
@@ -153,28 +154,36 @@ Implementations available at runtime can be listed at `/erm-usage-harvester/impl
 {
   "implementations": [
     {
-      "name": "Counter-Sushi 4.1",
-      "description": "SOAP-based implementation for CounterSushi 4.1",
-      "type": "cs41",
-      "isAggregator": false
-    },
-    {
       "name": "Counter 5.0",
       "description": "Implementation for Counter/Sushi 5",
       "type": "cs50",
-      "isAggregator": false
+      "isAggregator": false,
+      "reportRelease": "5",
+      "supportedReports": ["DR", "IR", "PR", "TR"],
+      "configurationParameters": []
     },
     {
-      "name": "Nationaler Statistikserver",
-      "description": "Implementation for Germanys National Statistics Server (https://sushi.redi-bw.de).",
-      "type": "NSS",
-      "isAggregator": true,
-      "configurationParameters": [
-        "apiKey",
-        "requestorId",
-        "customerId",
-        "reportRelease"
-      ]
+      "name": "Counter 5.1",
+      "description": "Implementation for Counter/Sushi 5.1",
+      "type": "cs51",
+      "isAggregator": false,
+      "isDefault": true,
+      "reportRelease": "5.1",
+      "supportedReports": ["DR", "IR", "PR", "TR"],
+      "configurationParameters": []
+    },
+    {
+      "name": "Counter-Sushi 4.1",
+      "description": "SOAP-based implementation for CounterSushi 4.1",
+      "type": "cs41",
+      "isAggregator": false,
+      "reportRelease": "4",
+      "supportedReports": [
+        "BR1", "BR2", "BR3", "BR4", "BR5", "BR7", "DB1", "DB2",
+        "JR1", "JR1 GOA", "JR1a", "JR2", "JR3", "JR3 Mobile", "JR4", "JR5",
+        "MR1", "MR1 Mobile", "PR1", "TR1", "TR2", "TR3", "TR3 Mobile"
+      ],
+      "configurationParameters": []
     }
   ]
 }

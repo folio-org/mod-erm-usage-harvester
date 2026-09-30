@@ -9,8 +9,6 @@ import io.vertx.ext.web.client.WebClient;
 import java.util.concurrent.CompletableFuture;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.WebClientProvider;
-import org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClient;
-import org.olf.erm.usage.harvester.client.ExtAggregatorSettingsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
@@ -44,8 +42,6 @@ public class HarvestProviderJob extends AbstractHarvestJob {
 
     WebClient webClient = WebClientProvider.get(vertxContext.owner());
     SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, webClient);
-    ExtAggregatorSettingsClient aggregatorSettingsClient =
-        new ExtAggregatorSettingsClientImpl(okapiUrl, tenantId, webClient);
     ExtCounterReportsClient counterReportsClient =
         new ExtCounterReportsClientImpl(okapiUrl, tenantId, webClient);
     ExtUsageDataProvidersClient usageDataProvidersClient =
@@ -61,11 +57,7 @@ public class HarvestProviderJob extends AbstractHarvestJob {
               .get();
 
       ServiceEndpoint serviceEndpoint =
-          new ServiceEndpointFactory(aggregatorSettingsClient)
-              .createServiceEndpoint(usageDataProvider)
-              .toCompletionStage()
-              .toCompletableFuture()
-              .get();
+          ServiceEndpointFactory.createServiceEndpoint(usageDataProvider);
 
       WorkerVerticle workerVerticle =
           new WorkerVerticle(

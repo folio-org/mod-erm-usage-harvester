@@ -1,7 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import java.util.List;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 
 public class CS41Provider implements ServiceEndpointProvider {
@@ -19,11 +18,6 @@ public class CS41Provider implements ServiceEndpointProvider {
   @Override
   public String getServiceDescription() {
     return "SOAP-based implementation for CounterSushi 4.1";
-  }
-
-  @Override
-  public Boolean isAggregator() {
-    return false;
   }
 
   @Override
@@ -60,7 +54,7 @@ public class CS41Provider implements ServiceEndpointProvider {
   }
 
   @Override
-  public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
+  public ServiceEndpoint create(UsageDataProvider provider) {
     return new CS41Impl(provider);
   }
 }

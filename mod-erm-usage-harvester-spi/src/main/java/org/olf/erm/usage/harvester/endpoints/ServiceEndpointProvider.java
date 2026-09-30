@@ -2,7 +2,6 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import java.util.Collections;
 import java.util.List;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 
 public interface ServiceEndpointProvider {
@@ -30,15 +29,7 @@ public interface ServiceEndpointProvider {
     return null;
   }
 
-  default Boolean isAggregator() {
-    return false;
-  }
-
-  ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator);
-
-  default List<String> getConfigurationParameters() {
-    return Collections.emptyList();
-  }
+  ServiceEndpoint create(UsageDataProvider provider);
 
   default String getReportRelease() {
     return null;

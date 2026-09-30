@@ -1,4 +1,5 @@
-# 5.3.0 (IN PROGRESS)
+# 6.0.0 (IN PROGRESS)
+* [MODEUSHARV-187](https://folio-org.atlassian.net/browse/MODEUSHARV-187) Remove aggregator harvesting and the NSS implementation (*BREAKING* SPI change: `ServiceEndpointProvider.create` takes only the `UsageDataProvider`, `isAggregator()` and `getConfigurationParameters()` are removed)
 * [MODEUSHARV-182](https://folio-org.atlassian.net/browse/MODEUSHARV-182) Move error handling closed to the `ServiceEndpoint` implementation, introducing the concept of `ErrorHandlingStrategies`
 * [MODEUSHARV-176](https://folio-org.atlassian.net/browse/MODEUSHARV-176) Refactor `WorkerVerticle` into single-responsibility classes (`WorkerController`, `Fetcher`, `FetcherErrorHandler`, `Uploader`, `Orchestrator`) and expand unit test coverage
 * [MODEUSHARV-167](https://folio-org.atlassian.net/browse/MODEUSHARV-167) Add regression tests asserting CS50/CS51 follow HTTP 3xx redirects

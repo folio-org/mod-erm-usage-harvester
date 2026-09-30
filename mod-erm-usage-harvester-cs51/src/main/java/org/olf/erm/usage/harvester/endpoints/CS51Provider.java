@@ -1,7 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import java.util.List;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 
 public class CS51Provider implements ServiceEndpointProvider {
@@ -37,7 +36,7 @@ public class CS51Provider implements ServiceEndpointProvider {
   }
 
   @Override
-  public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
+  public ServiceEndpoint create(UsageDataProvider provider) {
     return new CS51Impl(provider);
   }
 }

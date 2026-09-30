@@ -7,7 +7,6 @@ import java.time.YearMonth;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import org.folio.rest.jaxrs.model.AggregatorSetting;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -38,7 +37,7 @@ public class WorkerVerticleITProvider3 implements ServiceEndpointProvider {
   }
 
   @Override
-  public ServiceEndpoint create(UsageDataProvider provider, AggregatorSetting aggregator) {
+  public ServiceEndpoint create(UsageDataProvider provider) {
 
     return new ServiceEndpoint() {
       private final Logger log = LoggerFactory.getLogger(WorkerVerticleITProvider3.class);
