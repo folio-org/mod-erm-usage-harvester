@@ -15,11 +15,6 @@
     </dependency>
     <dependency>
       <groupId>org.olf</groupId>
-      <artifactId>mod-erm-usage-harvester-cs41</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.olf</groupId>
       <artifactId>mod-erm-usage-harvester-cs50</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
@@ -65,9 +60,6 @@
             </goals>
             <configuration>
               <transformers>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                  <resource>META-INF/cxf/bus-extensions.txt</resource>
-                </transformer>
                 <!-- merge services -->
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">

@@ -17,7 +17,6 @@
   <modules>
     <module>mod-erm-usage-harvester-spi</module>
     <module>mod-erm-usage-harvester-core</module>
-    <module>mod-erm-usage-harvester-cs41</module>
     <module>mod-erm-usage-harvester-cs50</module>
     <module>mod-erm-usage-harvester-bundle</module>
     <module>mod-erm-usage-harvester-cs51</module>
@@ -80,11 +79,6 @@
         <version>5.12.0</version>
         <type>pom</type>
         <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.olf</groupId>
-        <artifactId>mod-erm-usage-counter41</artifactId>
-        <version>${erm.usage.counter.version}</version>
       </dependency>
       <dependency>
         <groupId>org.olf</groupId>
