@@ -33,7 +33,7 @@
     <vertx.version>5.0.10</vertx.version>
     <aspect.version>1.9.22.1</aspect.version>
     <aspectj-maven-plugin.version>1.14</aspectj-maven-plugin.version>
-    <erm.usage.version>5.1.0</erm.usage.version>
+    <erm.usage.version>6.0.0</erm.usage.version>
     <erm.usage.counter.version>6.1.0-SNAPSHOT</erm.usage.counter.version>
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
     <spotless.version>3.10.2</spotless.version>

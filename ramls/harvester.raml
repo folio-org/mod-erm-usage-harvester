@@ -59,11 +59,6 @@ resourceTypes:
   /impl:
     get:
       description: Get available service implementations
-      queryParameters:
-        aggregator:
-          description: Filter by 'isAggregator' property (true or false)
-          type: string
-          required: false
       responses:
         200:
           description: List of available service implementations

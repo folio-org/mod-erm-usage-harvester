@@ -3,7 +3,6 @@
   "label": "ACM Digital Library2",
   "harvestingConfig": {
     "harvestingStatus": "active",
-    "harvestVia": "sushi",
     "sushiConfig": {
       "serviceType": "test1",
       "serviceUrl": "http://myvendor.com"
