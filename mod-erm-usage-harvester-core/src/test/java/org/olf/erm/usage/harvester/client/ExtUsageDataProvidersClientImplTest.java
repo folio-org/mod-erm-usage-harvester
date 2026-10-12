@@ -98,7 +98,7 @@ public class ExtUsageDataProvidersClientImplTest {
     udpClient
         .getActiveProviders()
         .onComplete(
-            context.asyncAssertSuccess(udps -> assertThat(udps.getTotalRecords()).isEqualTo(3)));
+            context.asyncAssertSuccess(udps -> assertThat(udps.getTotalRecords()).isEqualTo(2)));
   }
 
   @Test

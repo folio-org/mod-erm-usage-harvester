@@ -114,20 +114,15 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
 
   @Override
   public void getErmUsageHarvesterImpl(
-      String aggregator,
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
     try {
-      // No implementation is an aggregator. Remove the parameter with erm-usage-harvester 3.0
-      // (MODEUSHARV-186).
       List<ServiceImplementation> implementations =
-          Boolean.parseBoolean(aggregator)
-              ? List.of()
-              : ServiceEndpoint.getAvailableProviders().stream()
-                  .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))
-                  .map(ErmUsageHarvesterAPI::toServiceImplementation)
-                  .toList();
+          ServiceEndpoint.getAvailableProviders().stream()
+              .sorted(Comparator.comparing(ServiceEndpointProvider::getServiceName))
+              .map(ErmUsageHarvesterAPI::toServiceImplementation)
+              .toList();
       ServiceImplementations result =
           new ServiceImplementations().withImplementations(implementations);
       asyncResultHandler.handle(
@@ -144,8 +139,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
         new ServiceImplementation()
             .withName(provider.getServiceName())
             .withDescription(provider.getServiceDescription())
-            .withType(provider.getServiceType())
-            .withIsAggregator(false);
+            .withType(provider.getServiceType());
     if (provider.getReportRelease() != null) {
       impl.setReportRelease(provider.getReportRelease());
     }

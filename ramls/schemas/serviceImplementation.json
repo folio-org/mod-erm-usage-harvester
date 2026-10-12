@@ -17,10 +17,6 @@
       "description": "Service type identifier",
       "type": "string"
     },
-    "isAggregator": {
-      "description": "Whether this is an aggregator implementation",
-      "type": "boolean"
-    },
     "isDefault": {
       "description": "Whether this is the default implementation",
       "type": "boolean"
@@ -35,19 +31,11 @@
       "items": {
         "type": "string"
       }
-    },
-    "configurationParameters": {
-      "description": "List of configuration parameter names",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
     }
   },
   "required": [
     "name",
-    "type",
-    "isAggregator"
+    "type"
   ],
   "additionalProperties": false
 }

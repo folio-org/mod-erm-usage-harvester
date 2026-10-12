@@ -61,7 +61,6 @@ import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.CounterReports;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
-import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
 import org.folio.rest.jaxrs.model.Report;
 import org.folio.rest.jaxrs.model.SushiConfig;
@@ -132,7 +131,6 @@ public class HarvestingIT {
                     .withHarvestingStart("2018-01")
                     .withHarvestingEnd("2020-04")
                     .withHarvestingStatus(HarvestingStatus.ACTIVE)
-                    .withHarvestVia(HarvestVia.SUSHI)
                     .withSushiConfig(
                         new SushiConfig()
                             .withServiceType("wvitp")
@@ -153,7 +151,6 @@ public class HarvestingIT {
                     .withHarvestingStart("2018-01")
                     .withHarvestingEnd("2020-04")
                     .withHarvestingStatus(HarvestingStatus.ACTIVE)
-                    .withHarvestVia(HarvestVia.SUSHI)
                     .withSushiConfig(
                         new SushiConfig()
                             .withServiceType("wvitp")

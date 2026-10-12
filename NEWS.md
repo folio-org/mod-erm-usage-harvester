@@ -9,6 +9,7 @@
 * [MODEUSHARV-170](https://folio-org.atlassian.net/browse/MODEUSHARV-170) Allow both registry domains for `Registry_Record` in COUNTER 5.1 reports
 * [MODEUSHARV-171](https://folio-org.atlassian.net/browse/MODEUSHARV-171) Remove optional `version` property from RAML files
 * [MODEUSHARV-177](https://folio-org.atlassian.net/browse/MODEUSHARV-177) Harden `PostgresContainerRule` against early class initialization and setup failures
+* [MODEUSHARV-186](https://folio-org.atlassian.net/browse/MODEUSHARV-186) *BREAKING* Drop isAggregator and ?aggregator (erm-usage-harvester 3.0), require usage-data-providers 4.0
 
 # 5.2.0
 * [MODEUSHARV-126](https://folio-org.atlassian.net/browse/MODEUSHARV-126) Migrate settings from `mod-configuration` to `mod-settings`

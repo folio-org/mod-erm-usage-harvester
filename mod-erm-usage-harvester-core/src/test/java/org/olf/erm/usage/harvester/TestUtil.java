@@ -3,7 +3,6 @@ package org.olf.erm.usage.harvester;
 import java.util.Arrays;
 import java.util.Collection;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
-import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestVia;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
 import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.SushiCredentials;
@@ -34,7 +33,6 @@ public class TestUtil {
         .withHarvestingConfig(
             new HarvestingConfig()
                 .withHarvestingStatus(HarvestingStatus.ACTIVE)
-                .withHarvestVia(HarvestVia.SUSHI)
                 .withSushiConfig(new SushiConfig().withServiceType("test1"))
                 .withReportRelease("4")
                 .withHarvestingStart("2017-12")

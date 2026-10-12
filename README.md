@@ -155,20 +155,16 @@ Implementations available at runtime can be listed at `/erm-usage-harvester/impl
       "name": "Counter 5.0",
       "description": "Implementation for Counter/Sushi 5",
       "type": "cs50",
-      "isAggregator": false,
       "reportRelease": "5",
-      "supportedReports": ["DR", "IR", "PR", "TR"],
-      "configurationParameters": []
+      "supportedReports": ["DR", "IR", "PR", "TR"]
     },
     {
       "name": "Counter 5.1",
       "description": "Implementation for Counter/Sushi 5.1",
       "type": "cs51",
-      "isAggregator": false,
       "isDefault": true,
       "reportRelease": "5.1",
-      "supportedReports": ["DR", "IR", "PR", "TR"],
-      "configurationParameters": []
+      "supportedReports": ["DR", "IR", "PR", "TR"]
     }
   ]
 }

@@ -5,10 +5,6 @@ import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.everyItem;
-import static org.hamcrest.Matchers.hasItems;
-import static org.hamcrest.Matchers.is;
 
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
@@ -128,36 +124,9 @@ public class ErmUsageHarvesterAPITest {
                     .withType("test1")
                     .withName("test1")
                     .withDescription("Test1 description")
-                    .withIsAggregator(false)
                     .withReportRelease("5")
                     .withSupportedReports(List.of("DR", "TR"))
                     .withIsDefault(true),
-                new ServiceImplementation()
-                    .withType("test2")
-                    .withName("test2")
-                    .withIsAggregator(false)));
-  }
-
-  @Test
-  public void getImplementationsAggregator() {
-    given()
-        .header(TENANT_HEADER)
-        .when()
-        .get("/impl?aggregator=true")
-        .then()
-        .statusCode(200)
-        .body("implementations", empty());
-  }
-
-  @Test
-  public void getImplementationsNonAggregator() {
-    given()
-        .header(TENANT_HEADER)
-        .when()
-        .get("/impl?aggregator=false")
-        .then()
-        .statusCode(200)
-        .body("implementations.type", hasItems("test1", "test2"))
-        .body("implementations.isAggregator", everyItem(is(false)));
+                new ServiceImplementation().withType("test2").withName("test2")));
   }
 }
