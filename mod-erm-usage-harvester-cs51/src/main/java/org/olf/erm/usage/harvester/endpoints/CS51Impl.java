@@ -112,9 +112,17 @@ public class CS51Impl implements ServiceEndpoint {
   private ObjectNode throwIfReportContainsExceptions(ObjectNode objectNode) {
     JsonNode exceptionsNode = objectNode.path(REPORT_HEADER).path(EXCEPTIONS);
     if (exceptionsNode.isArray() && !exceptionsNode.isEmpty()) {
-      throw new InvalidReportException(exceptionsNode.toString());
+      String exceptionsJson = exceptionsNode.toString();
+      throw CounterApiException.fromReportHeader(exceptionsJson)
+          .<RuntimeException>map(e -> e)
+          .orElseGet(() -> new InvalidReportException(exceptionsJson));
     }
     return objectNode;
+  }
+
+  @Override
+  public ErrorHandlingStrategy getErrorHandlingStrategy(UsageDataProvider provider) {
+    return new CS51ErrorHandlingStrategy(provider);
   }
 
   private CounterReport createCounterReport(

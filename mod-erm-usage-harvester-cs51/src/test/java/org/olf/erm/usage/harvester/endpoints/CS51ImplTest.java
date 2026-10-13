@@ -12,6 +12,9 @@ import static org.olf.erm.usage.harvester.endpoints.CS51Impl.ATTRIBUTES_TO_SHOW_
 import static org.olf.erm.usage.harvester.endpoints.CS51Impl.ATTRIBUTES_TO_SHOW_IR;
 import static org.olf.erm.usage.harvester.endpoints.CS51Impl.ATTRIBUTES_TO_SHOW_PR;
 import static org.olf.erm.usage.harvester.endpoints.CS51Impl.ATTRIBUTES_TO_SHOW_TR;
+import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.BARE_ERROR_STATUS;
+import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.BARE_SUCCESS_STATUS;
+import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.REPORT_HEADER;
 import static org.olf.erm.usage.harvester.endpoints.InvalidServiceURLException.MSG_INVALID_SERVICE_URL;
 import static org.olf.erm.usage.harvester.endpoints.UnsupportedReportTypeException.MSG_UNSUPPORTED_REPORT_TYPE;
 
@@ -44,6 +47,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery;
 
 @ExtendWith(VertxExtension.class)
 class CS51ImplTest {
@@ -227,9 +231,97 @@ class CS51ImplTest {
                     .verify(
                         () -> {
                           assertThat(ar.succeeded()).isFalse();
-                          assertThat(ar.cause())
-                              .isInstanceOf(InvalidReportException.class)
-                              .hasMessageContaining(MSG_USAGE_NOT_READY);
+                          assertCounterApiException(ar.cause(), REPORT_HEADER, 3031);
+                          assertThat(ar.cause()).hasMessageContaining(MSG_USAGE_NOT_READY);
+                        })
+                    .completeNow());
+  }
+
+  @Test
+  void testReceiveBareExceptionWithStatus200(VertxTestContext testContext) throws IOException {
+    String body = readBodyFile("Exception_2010.json");
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(200).withBody(body)));
+
+    new CS51Impl(provider)
+        .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+        .onComplete(
+            ar ->
+                testContext
+                    .verify(
+                        () -> {
+                          assertThat(ar.succeeded()).isFalse();
+                          assertCounterApiException(ar.cause(), BARE_SUCCESS_STATUS, 2010);
+                          assertThat(ar.cause()).hasMessage(body);
+                        })
+                    .completeNow());
+  }
+
+  @Test
+  void testGetErrorHandlingStrategy() {
+    assertThat(new CS51Impl(provider).getErrorHandlingStrategy(provider))
+        .isInstanceOf(CS51ErrorHandlingStrategy.class);
+  }
+
+  @Test
+  void testReceiveReportWithTooManyRequestsExceptionInHeader(VertxTestContext testContext)
+      throws IOException {
+    String body = readBodyFile("TR_with_exception.json").replace("3031", "1020");
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(200).withBody(body)));
+
+    new CS51Impl(provider)
+        .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+        .onComplete(
+            ar ->
+                testContext
+                    .verify(
+                        () -> {
+                          assertThat(ar.succeeded()).isFalse();
+                          assertCounterApiException(ar.cause(), REPORT_HEADER, 1020);
+                        })
+                    .completeNow());
+  }
+
+  @Test
+  void testReceiveReportWithNonStandardExceptionMessageInHeader(VertxTestContext testContext)
+      throws IOException {
+    String body =
+        readBodyFile("TR_with_exception.json")
+            .replace(MSG_USAGE_NOT_READY, "Custom provider message");
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(200).withBody(body)));
+
+    new CS51Impl(provider)
+        .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+        .onComplete(
+            ar ->
+                testContext
+                    .verify(
+                        () -> {
+                          assertThat(ar.succeeded()).isFalse();
+                          assertCounterApiException(ar.cause(), REPORT_HEADER, 3031);
+                          assertThat(ar.cause()).hasMessageContaining("Custom provider message");
+                        })
+                    .completeNow());
+  }
+
+  @Test
+  void testReceiveReportWithHeaderExceptionWithoutCode(VertxTestContext testContext)
+      throws IOException {
+    String body = readBodyFile("TR_with_exception.json").replace("\"Code\": 3031,", "");
+    serviceMock.stubFor(
+        get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(200).withBody(body)));
+
+    new CS51Impl(provider)
+        .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
+        .onComplete(
+            ar ->
+                testContext
+                    .verify(
+                        () -> {
+                          assertThat(ar.succeeded()).isFalse();
+                          assertThat(ar.cause()).isInstanceOf(InvalidReportException.class);
                         })
                     .completeNow());
   }
@@ -286,8 +378,8 @@ class CS51ImplTest {
                     .verify(
                         () -> {
                           assertThat(ar.failed()).isTrue();
+                          assertCounterApiException(ar.cause(), BARE_ERROR_STATUS, 2010);
                           assertThat(ar.cause())
-                              .isInstanceOf(ServiceEndpointException.class)
                               .hasMessageContaining(
                                   "Requestor is Not Authorized to Access Usage for Institution");
                         })
@@ -310,13 +402,13 @@ class CS51ImplTest {
                     .verify(
                         () -> {
                           assertThat(ar.failed()).isTrue();
+                          assertCounterApiException(ar.cause(), BARE_ERROR_STATUS, 3030);
                           assertThat(ar.cause())
                               .isInstanceOfSatisfying(
-                                  ServiceEndpointException.class,
+                                  CounterApiException.class,
                                   ex -> {
                                     assertThat(ex).hasMessage("HTTP 404: Not Found - " + errorBody);
-                                    assertThat(ex.getStatusCode()).isEqualTo(404);
-                                    assertThat(ex.getResponseBody()).isEqualTo(errorBody);
+                                    assertThat(ex.statusCode()).isEqualTo(404);
                                   });
                         })
                     .completeNow());
@@ -487,6 +579,17 @@ class CS51ImplTest {
                         serviceMock.verify(1, getRequestedFor(urlPathEqualTo(PATH_TR + "/")));
                       })
                   .completeNow();
+            });
+  }
+
+  private static void assertCounterApiException(
+      Throwable t, CounterExceptionDelivery delivery, Integer... codes) {
+    assertThat(t)
+        .isInstanceOfSatisfying(
+            CounterApiException.class,
+            e -> {
+              assertThat(e.delivery()).isEqualTo(delivery);
+              assertThat(e.codes()).containsExactly(codes);
             });
   }
 }

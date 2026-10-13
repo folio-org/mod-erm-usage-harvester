@@ -8,6 +8,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClientOptions;
+import java.util.Optional;
 import org.olf.erm.usage.counter50.client.Counter50Auth;
 import org.olf.erm.usage.counter50.client.Counter50Client;
 import org.openapitools.counter50.model.SUSHIErrorModel;
@@ -15,14 +16,17 @@ import org.openapitools.counter50.model.SUSHIErrorModel;
 /**
  * Extended Counter 5.0 client that validates responses and handles malformed provider behavior.
  *
- * <p>Some providers incorrectly return SUSHI error responses with 2xx status codes instead of
- * proper 4xx/5xx codes. This client detects these cases and wraps them in {@link
- * ServiceEndpointException}.
+ * <p>A response body consisting only of COUNTER exceptions (one object or an array) is wrapped in
+ * {@link CounterApiException}, for both success and error status codes.
  *
- * <p>Rate limit errors (429) are wrapped in {@link TooManyRequestsException}. Other HTTP errors are
- * wrapped in {@link ServiceEndpointException} with format: "HTTP {statusCode}: {statusMessage} -
- * {responseBody}". The full body is available via {@link
+ * <p>Otherwise, rate limit errors (429) are wrapped in {@link TooManyRequestsException}. Other HTTP
+ * errors are wrapped in {@link ServiceEndpointException} with format: "HTTP {statusCode}:
+ * {statusMessage} - {responseBody}". The full body is available via {@link
  * ServiceEndpointException#getResponseBody()}.
+ *
+ * <p>Some providers incorrectly return SUSHI error responses with 2xx status codes instead of
+ * proper 4xx/5xx codes. If such a body isn't a list of COUNTER exceptions, but still looks like a
+ * SUSHI error or a JSON array, it is wrapped in {@link ServiceEndpointException}.
  *
  * <p>Parse errors (malformed responses) are wrapped in {@link InvalidReportException}.
  */
@@ -42,6 +46,13 @@ public class ExtendedCounter50Client extends Counter50Client {
     if (statusCode >= 200 && statusCode < 300) {
       String body = buffer.toString();
 
+      // COUNTER exceptions delivered with a success status code
+      Optional<CounterApiException> counterApiException =
+          CounterApiException.fromBareBody(statusCode, null, body);
+      if (counterApiException.isPresent()) {
+        return failedFuture(counterApiException.get());
+      }
+
       // Check if it's actually a SUSHI error or error array (malformed provider response)
       if (JsonUtil.isOfType(body, SUSHIErrorModel.class) || isJsonArray(body)) {
         return failedFuture(new ServiceEndpointException(body));
@@ -56,12 +67,16 @@ public class ExtendedCounter50Client extends Counter50Client {
 
   @Override
   protected <T> Future<T> handleErrorResponse(HttpResponse<Buffer> response) {
-    if (response.statusCode() == 429) {
-      return failedFuture(new TooManyRequestsException());
-    }
-
+    int statusCode = response.statusCode();
     String body = response.body() != null ? response.body().toString() : "";
     return failedFuture(
-        new ServiceEndpointException(response.statusCode(), response.statusMessage(), body));
+        CounterApiException.fromBareBody(statusCode, response.statusMessage(), body)
+            .<Throwable>map(e -> e)
+            .orElseGet(
+                () ->
+                    statusCode == 429
+                        ? new TooManyRequestsException()
+                        : new ServiceEndpointException(
+                            statusCode, response.statusMessage(), body)));
   }
 }

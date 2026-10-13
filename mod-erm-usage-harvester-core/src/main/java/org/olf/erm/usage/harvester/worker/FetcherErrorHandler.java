@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.List;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.endpoints.CounterApiException;
 import org.olf.erm.usage.harvester.endpoints.ErrorHandlingStrategy;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.slf4j.Logger;
@@ -56,6 +57,17 @@ interface FetcherErrorHandler {
 
       final var errorHandlingResult =
           strategy.handleFetchError(queueItem.item(), queueItem.retryCount(), t);
+
+      if (t instanceof CounterApiException e) {
+        LOGGER.info(
+            logCtx.createMsg(
+                "{} COUNTER exception code(s) {}, deciding code {}, delivered in {}, handled as {}",
+                queueItem.item(),
+                e.codes(),
+                e.decidingException().code(),
+                e.delivery(),
+                errorHandlingResult.getClass().getSimpleName()));
+      }
 
       return switch (errorHandlingResult) {
         case Throttle(var items, var retryCount) -> handleThrottle(items, retryCount, queueItem);
