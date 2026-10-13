@@ -12,7 +12,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/** ... */
+/**
+ * COUNTER exceptions returned by a provider instead of (or within) a report, carrying the codes so
+ * an {@link ErrorHandlingStrategy} can decide per code. Created by the {@code from…} factories; the
+ * message equals the failed reason recorded for the affected reports.
+ */
 public final class CounterApiException extends RuntimeException {
 
   private final List<CounterException> exceptions;
@@ -93,13 +97,16 @@ public final class CounterApiException extends RuntimeException {
   }
 
   /**
-   * @return the received HTTP status code
+   * @return the HTTP status of the response, or {@code null} for {@link
+   *     CounterExceptionDelivery#REPORT_HEADER}
    */
   public Integer statusCode() {
     return statusCode;
   }
 
   /**
+   * The exception with the lowest code; the COUNTER CoP defines no precedence.
+   *
    * @return the {@link CounterException} deciding the error handling behavior.
    */
   public CounterException decidingException() {
@@ -114,16 +121,29 @@ public final class CounterApiException extends RuntimeException {
   }
 
   /**
+   * @param code the COUNTER exception code
    * @return {@code true} if the error codes received contain the code
    */
   public boolean containsCode(final int code) {
     return codes().contains(code);
   }
 
-  /** ... */
+  /**
+   * One COUNTER exception object (CoP 5.1 Appendix D).
+   *
+   * @param code the exception code, e.g. 1020
+   * @param message the {@code Message}, may be {@code null}
+   * @param data the {@code Data}, as JSON text if it isn't a string, may be {@code null}
+   * @param helpUrl the {@code Help_URL}, may be {@code null}
+   */
   public record CounterException(int code, String message, String data, String helpUrl) {}
 
-  /** ... */
+  /** Note: We can use this to encode specific behavior we read from settings */
+  public record CounterExceptionPolicy() {
+    // TODO
+  }
+
+  /** How the provider delivered the COUNTER exceptions. */
   public enum CounterExceptionDelivery {
     /** inside Report_Header exceptions from an otherwise valid report */
     REPORT_HEADER,
@@ -135,7 +155,10 @@ public final class CounterApiException extends RuntimeException {
     BARE_ERROR_STATUS
   }
 
-  /** ... */
+  /**
+   * Maps JSON to {@link CounterException}s: one object or an array of objects with a numeric (or
+   * numeric string) {@code Code}; all-or-nothing.
+   */
   static final class CounterExceptionParser {
 
     private CounterExceptionParser() {
@@ -143,7 +166,9 @@ public final class CounterApiException extends RuntimeException {
     }
 
     /**
-     * @return the list of {@link CounterException}s extracted from the response string
+     * @param responseBody the JSON to parse
+     * @return the {@link CounterException}s, or empty unless every element is a valid COUNTER
+     *     exception
      */
     static Optional<List<CounterException>> parse(final String responseBody) {
       if (responseBody == null || responseBody.isBlank()) {

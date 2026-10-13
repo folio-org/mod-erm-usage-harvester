@@ -2,6 +2,8 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
+import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterException;
+import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionPolicy;
 import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createCounterReport;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
@@ -23,7 +25,10 @@ public class DefaultErrorHandlingStrategy implements ErrorHandlingStrategy {
 
   /**
    * Creates the strategy. Use {@link ErrorHandlingStrategy#create(UsageDataProvider)} to get an
-   * instance; subclasses call this constructor.
+   * instance; subclasses call this constructor. Note: We could pass in {@link
+   * CounterExceptionPolicy} here and make {@link
+   * DefaultErrorHandlingStrategy#handleCounterApiException(FetchItem, int, CounterApiException)}
+   * make use of it. So it becomes configurable.
    *
    * @param usageDataProvider the provider the failed reports are created for
    */
@@ -46,6 +51,12 @@ public class DefaultErrorHandlingStrategy implements ErrorHandlingStrategy {
     };
   }
 
+  /**
+   * Note: If we wanted more subtle behavioral differences depending on the {@link
+   * CounterApiException}'s content, this is where we could extend, e.g. by handling certain
+   * different {@link CounterException#code()}'s differently or considering the {@link
+   * CounterExceptionPolicy} we passed in.
+   */
   protected ErrorHandlingResult handleCounterApiException(
       final FetchItem fetchItem, final int retryCount, final CounterApiException e) {
     if (isTooManyRequests(e)) {
