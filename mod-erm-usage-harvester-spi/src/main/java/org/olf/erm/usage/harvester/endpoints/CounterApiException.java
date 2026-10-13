@@ -180,16 +180,26 @@ public final class CounterApiException extends RuntimeException {
     }
 
     private static Optional<CounterException> toCounterException(final Object candidate) {
-      if (!(candidate instanceof JsonObject o) || !(o.getValue("Code") instanceof Number code)) {
+      if (!(candidate instanceof JsonObject o)) {
         return Optional.empty();
       }
 
-      return Optional.of(
-          new CounterException(
-              code.intValue(),
-              asString(o.getValue("Message")),
-              asString(o.getValue("Data")),
-              asString(o.getValue("Help_URL"))));
+      return toCode(o.getValue("Code"))
+          .map(
+              code ->
+                  new CounterException(
+                      code,
+                      asString(o.getValue("Message")),
+                      asString(o.getValue("Data")),
+                      asString(o.getValue("Help_URL"))));
+    }
+
+    private static Optional<Integer> toCode(final Object value) {
+      return switch (value) {
+        case Number n -> Optional.of(n.intValue());
+        case String s when s.matches("\\d{1,9}") -> Optional.of(Integer.parseInt(s));
+        case null, default -> Optional.empty();
+      };
     }
 
     private static String asString(final Object value) {

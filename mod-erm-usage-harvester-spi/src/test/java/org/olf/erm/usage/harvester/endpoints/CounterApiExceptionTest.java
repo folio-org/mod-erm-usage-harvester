@@ -50,6 +50,12 @@ class CounterApiExceptionTest {
   }
 
   @Test
+  void testParseCodeAsNumericString() {
+    assertThat(CounterExceptionParser.parse("{\"Code\":\"2020\",\"Message\":\"api_key Invalid\"}"))
+        .contains(List.of(new CounterException(2020, "api_key Invalid", null, null)));
+  }
+
+  @Test
   void testParseDataObjectAsJsonString() {
     assertThat(
             CounterExceptionParser.parse("{\"Code\":3040,\"Data\":{\"Begin_Date\":\"2025-01\"}}"))
@@ -66,7 +72,10 @@ class CounterApiExceptionTest {
         "[]",
         "{}",
         "{\"Message\":\"no code\"}",
-        "{\"Code\":\"1020\"}",
+        "{\"Code\":\"abc\"}",
+        "{\"Code\":\"\"}",
+        "{\"Code\":\"-1\"}",
+        "{\"Code\":\"99999999999\"}",
         "{\"Code\":null}",
         "[{\"Code\":1020},\"foo\"]",
         "[{\"Code\":1020},{\"Message\":\"no code\"}]",
