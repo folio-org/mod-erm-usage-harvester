@@ -24,6 +24,9 @@ class CS51ErrorHandlingStrategyTest {
 
   private static final String BODY = "{\"Code\":3030,\"Message\":\"No Usage Available\"}";
 
+  private static final String TOO_MANY_REQUESTS_BODY =
+      "{\"Code\":1020,\"Message\":\"Client has made too many requests\"}";
+
   private final ErrorHandlingStrategy strategy = new CS51ErrorHandlingStrategy(USAGE_DATA_PROVIDER);
 
   @Test
@@ -63,8 +66,35 @@ class CS51ErrorHandlingStrategyTest {
   }
 
   @Test
-  void testBareTooManyRequestsWithSuccessStatusReturnsThrottle() {
-    var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, bare(200, "{\"Code\":1020}"));
+  void testBareTooManyRequestsWithSuccessStatusReturnsRetryNow() {
+    var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, bare(200, TOO_MANY_REQUESTS_BODY));
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            RetryNow.class, retryNow -> assertThat(retryNow.items()).hasSize(3));
+  }
+
+  @Test
+  void testBareTooManyRequestsWithErrorStatusReturnsGiveUp() {
+    var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, bare(400, TOO_MANY_REQUESTS_BODY));
+
+    assertThat(result)
+        .isInstanceOfSatisfying(GiveUp.class, giveUp -> assertThat(giveUp.reports()).hasSize(3));
+  }
+
+  @Test
+  void testHeaderTooManyRequestsReturnsRetryNow() {
+    var e = CounterApiException.fromReportHeader("[" + TOO_MANY_REQUESTS_BODY + "]").orElseThrow();
+    var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, e);
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            RetryNow.class, retryNow -> assertThat(retryNow.items()).hasSize(3));
+  }
+
+  @Test
+  void testBareExceptionWithStatus429ReturnsThrottle() {
+    var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, bare(429, BODY));
 
     assertThat(result)
         .isInstanceOfSatisfying(

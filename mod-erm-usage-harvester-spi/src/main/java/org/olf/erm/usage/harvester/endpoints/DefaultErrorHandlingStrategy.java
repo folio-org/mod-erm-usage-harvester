@@ -2,8 +2,6 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
-import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterException;
-import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionPolicy;
 import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createCounterReport;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
@@ -25,10 +23,8 @@ public class DefaultErrorHandlingStrategy implements ErrorHandlingStrategy {
 
   /**
    * Creates the strategy. Use {@link ErrorHandlingStrategy#create(UsageDataProvider)} to get an
-   * instance; subclasses call this constructor. Note: We could pass in {@link
-   * CounterExceptionPolicy} here and make {@link
-   * DefaultErrorHandlingStrategy#handleCounterApiException(FetchItem, int, CounterApiException)}
-   * make use of it. So it becomes configurable.
+   * instance; subclasses call this constructor. A future {@code CounterExceptionPolicy} would be
+   * passed in here (see {@link #handleCounterApiException(FetchItem, int, CounterApiException)}).
    *
    * @param usageDataProvider the provider the failed reports are created for
    */
@@ -52,10 +48,12 @@ public class DefaultErrorHandlingStrategy implements ErrorHandlingStrategy {
   }
 
   /**
-   * Note: If we wanted more subtle behavioral differences depending on the {@link
-   * CounterApiException}'s content, this is where we could extend, e.g. by handling certain
-   * different {@link CounterException#code()}'s differently or considering the {@link
-   * CounterExceptionPolicy} we passed in.
+   * Handles a {@link CounterApiException}. For now this keeps the existing, rather unspecific error
+   * handling: the exception codes only matter for the throttle check ({@link
+   * #isTooManyRequests(CounterApiException)}), and otherwise the delivery situation decides.
+   *
+   * <p>In the future, this is the extension point for more targeted handling based on the exception
+   * codes, see UIEUS-430, UIEUS-389, UIEUS-371, UIEUS-431 and UIEUS-499.
    */
   protected ErrorHandlingResult handleCounterApiException(
       final FetchItem fetchItem, final int retryCount, final CounterApiException e) {
@@ -69,7 +67,12 @@ public class DefaultErrorHandlingStrategy implements ErrorHandlingStrategy {
     };
   }
 
-  private static boolean isTooManyRequests(CounterApiException e) {
+  /**
+   * Decides whether a {@link CounterApiException} is treated like HTTP 429: the status is 429, a
+   * 1020 is among the exceptions, or a message contains "too many requests". Subclasses may narrow
+   * this down.
+   */
+  protected boolean isTooManyRequests(CounterApiException e) {
     return Integer.valueOf(429).equals(e.statusCode())
         || e.containsCode(TOO_MANY_REQUEST_ERROR_CODE)
         || e.exceptions().stream()

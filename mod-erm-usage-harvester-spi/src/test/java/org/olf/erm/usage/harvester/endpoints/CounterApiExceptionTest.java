@@ -65,6 +65,18 @@ class CounterApiExceptionTest {
   }
 
   @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "[{\"Code\":1020},\"foo\"]",
+        "[{\"Code\":1020},{\"Message\":\"no code\"}]",
+        "[{\"Code\":null},{\"Code\":1020}]"
+      })
+  void testParseSkipsInvalidElements(String body) {
+    assertThat(CounterExceptionParser.parse(body))
+        .contains(List.of(new CounterException(1020, null, null, null)));
+  }
+
+  @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(
       strings = {
@@ -77,8 +89,6 @@ class CounterApiExceptionTest {
         "{\"Code\":\"-1\"}",
         "{\"Code\":\"99999999999\"}",
         "{\"Code\":null}",
-        "[{\"Code\":1020},\"foo\"]",
-        "[{\"Code\":1020},{\"Message\":\"no code\"}]",
         "<html><body>Service Unavailable</body></html>",
         "{\"Code\":1020",
         "null",

@@ -115,6 +115,11 @@ public class CS50Impl implements ServiceEndpoint {
   }
 
   @Override
+  public ErrorHandlingStrategy getErrorHandlingStrategy(UsageDataProvider provider) {
+    return new CS50ErrorHandlingStrategy(provider);
+  }
+
+  @Override
   public Future<List<CounterReport>> fetchReport(
       String reportName, String beginDate, String endDate) {
     String reportID = reportName.replace("_", "").toUpperCase();

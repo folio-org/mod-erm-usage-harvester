@@ -138,11 +138,6 @@ public final class CounterApiException extends RuntimeException {
    */
   public record CounterException(int code, String message, String data, String helpUrl) {}
 
-  /** Note: We can use this to encode specific behavior we read from settings */
-  public record CounterExceptionPolicy() {
-    // TODO
-  }
-
   /** How the provider delivered the COUNTER exceptions. */
   public enum CounterExceptionDelivery {
     /** inside Report_Header exceptions from an otherwise valid report */
@@ -157,7 +152,7 @@ public final class CounterApiException extends RuntimeException {
 
   /**
    * Maps JSON to {@link CounterException}s: one object or an array of objects with a numeric (or
-   * numeric string) {@code Code}; all-or-nothing.
+   * numeric string) {@code Code}; elements that aren't valid COUNTER exceptions are skipped.
    */
   static final class CounterExceptionParser {
 
@@ -167,8 +162,7 @@ public final class CounterApiException extends RuntimeException {
 
     /**
      * @param responseBody the JSON to parse
-     * @return the {@link CounterException}s, or empty unless every element is a valid COUNTER
-     *     exception
+     * @return the valid {@link CounterException}s, or empty if there is none
      */
     static Optional<List<CounterException>> parse(final String responseBody) {
       if (responseBody == null || responseBody.isBlank()) {
@@ -199,9 +193,8 @@ public final class CounterApiException extends RuntimeException {
               .flatMap(Optional::stream)
               .toList();
 
-      // If we couldn't map each of the received error objects, we return an empty optional
-      return Optional.of(exceptions)
-          .filter(list -> !list.isEmpty() && list.size() == candidates.size());
+      // Skip invalid elements, so that one malformed entry doesn't hide e.g. a 1020
+      return Optional.of(exceptions).filter(list -> !list.isEmpty());
     }
 
     private static Optional<CounterException> toCounterException(final Object candidate) {
