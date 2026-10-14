@@ -1,5 +1,7 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingStrategy.DefaultErrorHandlingStrategy;
+
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.FetchItem;
 
