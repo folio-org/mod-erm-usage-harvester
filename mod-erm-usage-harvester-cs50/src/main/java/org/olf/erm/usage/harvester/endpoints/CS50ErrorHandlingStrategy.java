@@ -15,6 +15,12 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
  *       is. A bare body with a success status gives up, as does one with an error status.
  * </ul>
  *
+ * <p>Known difference from 5.2.x: a report header entry with a null {@code Message} (or with a null
+ * {@code Code} and a non-matching {@code Message}) made the old check fail with a {@link
+ * NullPointerException}, so the item gave up. Now it is handled like any other header exception.
+ * Also, the "too many requests" alias in a report header now ignores case, so e.g. "Too Many
+ * Requests" throttles instead of splitting and retrying.
+ *
  * <p>The {@code failedReason} of a 429 with a COUNTER exception body names the body instead of
  * {@link TooManyRequestsException}'s message.
  */

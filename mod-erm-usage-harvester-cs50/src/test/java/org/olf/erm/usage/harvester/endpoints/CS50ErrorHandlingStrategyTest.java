@@ -72,6 +72,18 @@ class CS50ErrorHandlingStrategyTest {
   }
 
   @Test
+  void testHeaderMessageOnlyTooManyRequestsReturnsThrottle() {
+    var result =
+        strategy.handleFetchError(
+            FETCH_ITEM_DR, 0, header("{\"Message\":\"Client has made too many requests\"}"));
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            Throttle.class,
+            throttle -> assertThat(throttle.items()).containsExactly(FETCH_ITEM_DR));
+  }
+
+  @Test
   void testHeaderExceptionReturnsRetryNow() {
     var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, header(BODY));
 

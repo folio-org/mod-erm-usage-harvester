@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.olf.erm.usage.harvester.FetchItem;
 
 /** Tests {@link DefaultErrorHandlingStrategy}. */
@@ -216,6 +217,29 @@ class DefaultErrorHandlingStrategyTest {
                           assertThat(cr.getYearMonth()).isEqualTo("2025-01");
                           assertThat(cr.getFailedReason()).isEqualTo("Report not valid: " + json);
                         }));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"Too Many Requests", "TOO MANY REQUESTS", "Client has made too many requests"})
+  void testCounterApiExceptionWithAliasIgnoresCase(String message) {
+    var e = header("[{\"Code\":2000,\"Message\":\"" + message + "\"}]");
+
+    var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, e);
+
+    assertThat(result).isInstanceOf(Throttle.class);
+  }
+
+  @Test
+  void testCounterApiExceptionInReportHeaderWithMessageOnlyAliasReturnsThrottle() {
+    var e = header("[{\"Message\":\"Client has made too many requests\"}]");
+
+    var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, e);
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            Throttle.class,
+            throttle -> assertThat(throttle.items()).containsExactly(FETCH_ITEM_DR));
   }
 
   @Test

@@ -2,12 +2,13 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import static org.apache.commons.lang3.StringUtils.abbreviate;
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_ERROR_BODY_LENGTH;
+import static org.olf.erm.usage.harvester.endpoints.ServiceEndpointException.createHttpErrorMessage;
 
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import java.util.Comparator;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -52,7 +53,9 @@ public final class CounterApiException extends RuntimeException {
         .map(
             list ->
                 new CounterApiException(
-                    "Report not valid: " + exceptionsJson,
+                    // Abbreviated like fromBareBody, since it ends up in every expanded report's
+                    // failedReason
+                    "Report not valid: " + abbreviate(exceptionsJson, MAX_ERROR_BODY_LENGTH),
                     list,
                     CounterExceptionDelivery.REPORT_HEADER,
                     null));
@@ -68,17 +71,33 @@ public final class CounterApiException extends RuntimeException {
    */
   public static Optional<CounterApiException> fromBareBody(
       final int statusCode, final String statusMessage, final String body) {
+    return fromBareBody(statusCode, statusMessage, body, CounterExceptionParser.decode(body));
+  }
+
+  /**
+   * Like {@link #fromBareBody(int, String, String)}, for a body the caller has already decoded, so
+   * it isn't decoded again.
+   *
+   * @param statusCode the HTTP status of the response
+   * @param statusMessage the HTTP status message, ignored for 2xx
+   * @param body the response body, used for the message
+   * @param json the body decoded with {@link Json#decodeValue(String)}, or {@code null} if it isn't
+   *     JSON
+   * @return the exception, or empty if {@code json} isn't a list of COUNTER exceptions
+   */
+  public static Optional<CounterApiException> fromBareBody(
+      final int statusCode, final String statusMessage, final String body, final Object json) {
     final var success = statusCode >= 200 && statusCode < 300;
     final var abbreviatedBody = abbreviate(body, MAX_ERROR_BODY_LENGTH);
     final var message =
         success
             ? abbreviatedBody
-            : "HTTP " + statusCode + ": " + statusMessage + " - " + abbreviatedBody;
+            : createHttpErrorMessage(statusCode, statusMessage, abbreviatedBody);
     final var delivery =
         success
             ? CounterExceptionDelivery.BARE_SUCCESS_STATUS
             : CounterExceptionDelivery.BARE_ERROR_STATUS;
-    return CounterExceptionParser.parse(body)
+    return CounterExceptionParser.parseDecoded(json)
         .map(list -> new CounterApiException(message, list, delivery, statusCode));
   }
 
@@ -105,19 +124,10 @@ public final class CounterApiException extends RuntimeException {
   }
 
   /**
-   * The exception with the lowest code; the COUNTER CoP defines no precedence.
-   *
-   * @return the {@link CounterException} deciding the error handling behavior.
-   */
-  public CounterException decidingException() {
-    return exceptions.stream().min(Comparator.comparingInt(CounterException::code)).orElseThrow();
-  }
-
-  /**
-   * @return the list of all the error codes received
+   * @return the codes of the exceptions that have one
    */
   public List<Integer> codes() {
-    return exceptions.stream().map(CounterException::code).toList();
+    return exceptions.stream().map(CounterException::code).filter(Objects::nonNull).toList();
   }
 
   /**
@@ -131,12 +141,13 @@ public final class CounterApiException extends RuntimeException {
   /**
    * One COUNTER exception object (CoP 5.1 Appendix D).
    *
-   * @param code the exception code, e.g. 1020
+   * @param code the exception code, e.g. 1020, may be {@code null} if the provider sent none (or an
+   *     invalid one)
    * @param message the {@code Message}, may be {@code null}
    * @param data the {@code Data}, as JSON text if it isn't a string, may be {@code null}
    * @param helpUrl the {@code Help_URL}, may be {@code null}
    */
-  public record CounterException(int code, String message, String data, String helpUrl) {}
+  public record CounterException(Integer code, String message, String data, String helpUrl) {}
 
   /** How the provider delivered the COUNTER exceptions. */
   public enum CounterExceptionDelivery {
@@ -152,7 +163,7 @@ public final class CounterApiException extends RuntimeException {
 
   /**
    * Maps JSON to {@link CounterException}s: one object or an array of objects with a numeric (or
-   * numeric string) {@code Code}; elements that aren't valid COUNTER exceptions are skipped.
+   * numeric string) {@code Code} and/or a {@code Message}; other elements are skipped.
    */
   static final class CounterExceptionParser {
 
@@ -165,17 +176,29 @@ public final class CounterApiException extends RuntimeException {
      * @return the valid {@link CounterException}s, or empty if there is none
      */
     static Optional<List<CounterException>> parse(final String responseBody) {
+      return parseDecoded(decode(responseBody));
+    }
+
+    /**
+     * @param responseBody the JSON to decode
+     * @return the decoded value, or {@code null} if {@code responseBody} is blank or isn't JSON
+     */
+    static Object decode(final String responseBody) {
       if (responseBody == null || responseBody.isBlank()) {
-        return Optional.empty();
+        return null;
       }
-
-      final Object decoded;
       try {
-        decoded = Json.decodeValue(responseBody);
+        return Json.decodeValue(responseBody);
       } catch (DecodeException e) {
-        return Optional.empty();
+        return null;
       }
+    }
 
+    /**
+     * @param decoded the JSON decoded with {@link Json#decodeValue(String)}, may be {@code null}
+     * @return the valid {@link CounterException}s, or empty if there is none
+     */
+    static Optional<List<CounterException>> parseDecoded(final Object decoded) {
       final List<Object> candidates =
           switch (decoded) {
             case JsonObject o -> List.of(o);
@@ -202,22 +225,33 @@ public final class CounterApiException extends RuntimeException {
         return Optional.empty();
       }
 
-      return toCode(o.getValue("Code"))
-          .map(
-              code ->
-                  new CounterException(
-                      code,
-                      asString(o.getValue("Message")),
-                      asString(o.getValue("Data")),
-                      asString(o.getValue("Help_URL"))));
+      // Keep entries without a (valid) code if they have a message, e.g. "too many requests"
+      final var code = toCode(o.getValue("Code")).orElse(null);
+      final var message = asString(o.getValue("Message"));
+      if (code == null && message == null) {
+        return Optional.empty();
+      }
+      return Optional.of(
+          new CounterException(
+              code, message, asString(o.getValue("Data")), asString(o.getValue("Help_URL"))));
     }
 
     private static Optional<Integer> toCode(final Object value) {
       return switch (value) {
-        case Number n -> Optional.of(n.intValue());
+        case Integer i -> Optional.of(i);
+        case Number n -> toIntExact(n);
         case String s when s.matches("\\d{1,9}") -> Optional.of(Integer.parseInt(s));
         case null, default -> Optional.empty();
       };
+    }
+
+    /** Accepts only whole numbers within the {@code int} range, e.g. not 1020.7. */
+    private static Optional<Integer> toIntExact(final Number n) {
+      try {
+        return Optional.of(new BigDecimal(n.toString()).intValueExact());
+      } catch (NumberFormatException | ArithmeticException e) {
+        return Optional.empty();
+      }
     }
 
     private static String asString(final Object value) {

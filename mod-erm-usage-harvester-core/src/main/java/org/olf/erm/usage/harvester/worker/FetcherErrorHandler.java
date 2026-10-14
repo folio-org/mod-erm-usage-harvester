@@ -61,10 +61,9 @@ interface FetcherErrorHandler {
       if (t instanceof CounterApiException e) {
         LOGGER.info(
             logCtx.createMsg(
-                "{} COUNTER exception code(s) {}, deciding code {}, delivered in {}, handled as {}",
+                "{} COUNTER exception code(s) {}, delivered in {}, handled as {}",
                 queueItem.item(),
                 e.codes(),
-                e.decidingException().code(),
                 e.delivery(),
                 errorHandlingResult.getClass().getSimpleName()));
       }

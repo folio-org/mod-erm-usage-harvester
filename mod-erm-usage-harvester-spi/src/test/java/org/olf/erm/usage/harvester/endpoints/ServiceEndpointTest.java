@@ -18,6 +18,7 @@ import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery;
 
 class ServiceEndpointTest {
 
@@ -140,5 +141,47 @@ class ServiceEndpointTest {
     public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {
       // no-op
     }
+  }
+
+  private static final String COUNTER_BODY = "{\"Code\":2010,\"Message\":\"Not Authorized\"}";
+
+  @Test
+  void testCreateErrorResponseExceptionCounterExceptionBodyReturnsCounterApiException() {
+    assertThat(ServiceEndpoint.createErrorResponseException(403, "Forbidden", COUNTER_BODY))
+        .isInstanceOfSatisfying(
+            CounterApiException.class,
+            e -> {
+              assertThat(e.delivery()).isEqualTo(CounterExceptionDelivery.BARE_ERROR_STATUS);
+              assertThat(e.codes()).containsExactly(2010);
+              assertThat(e).hasMessage("HTTP 403: Forbidden - " + COUNTER_BODY);
+            });
+  }
+
+  @Test
+  void
+      testCreateErrorResponseExceptionCounterExceptionBodyWithStatus429ReturnsCounterApiException() {
+    assertThat(ServiceEndpoint.createErrorResponseException(429, "Too Many Requests", COUNTER_BODY))
+        .isInstanceOfSatisfying(
+            CounterApiException.class, e -> assertThat(e.statusCode()).isEqualTo(429));
+  }
+
+  @Test
+  void
+      testCreateErrorResponseExceptionStatus429WithoutCounterBodyReturnsTooManyRequestsException() {
+    assertThat(ServiceEndpoint.createErrorResponseException(429, "Too Many Requests", ""))
+        .isInstanceOf(TooManyRequestsException.class);
+  }
+
+  @Test
+  void
+      testCreateErrorResponseExceptionOtherStatusWithoutCounterBodyReturnsServiceEndpointException() {
+    assertThat(
+            ServiceEndpoint.createErrorResponseException(500, "Internal Server Error", "<html/>"))
+        .isInstanceOfSatisfying(
+            ServiceEndpointException.class,
+            e -> {
+              assertThat(e).hasMessage("HTTP 500: Internal Server Error - <html/>");
+              assertThat(e.getResponseBody()).isEqualTo("<html/>");
+            });
   }
 }

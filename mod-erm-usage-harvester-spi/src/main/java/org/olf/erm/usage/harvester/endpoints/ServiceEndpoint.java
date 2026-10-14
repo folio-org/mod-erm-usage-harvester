@@ -71,6 +71,22 @@ public interface ServiceEndpoint {
     return cr;
   }
 
+  static Throwable createErrorResponseException(int statusCode, String statusMessage, String body) {
+    return CounterApiException.fromBareBody(statusCode, statusMessage, body)
+        .<Throwable>map(e -> e)
+        .orElseGet(
+            () ->
+                statusCode == 429
+                    ? new TooManyRequestsException()
+                    : new ServiceEndpointException(statusCode, statusMessage, body));
+  }
+
+  static RuntimeException createReportHeaderException(String exceptionsJson) {
+    return CounterApiException.fromReportHeader(exceptionsJson)
+        .<RuntimeException>map(e -> e)
+        .orElseGet(() -> new InvalidReportException(exceptionsJson));
+  }
+
   static List<ServiceEndpointProvider> getAvailableProviders() {
     ServiceLoader<ServiceEndpointProvider> loader =
         ServiceLoader.load(ServiceEndpointProvider.class);

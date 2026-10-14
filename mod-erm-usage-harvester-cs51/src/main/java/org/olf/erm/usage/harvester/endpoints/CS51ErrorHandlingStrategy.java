@@ -33,7 +33,11 @@ final class CS51ErrorHandlingStrategy extends DefaultErrorHandlingStrategy {
     return Integer.valueOf(429).equals(e.statusCode());
   }
 
-  /** Deviation from the default: split and retry instead of giving up. */
+  /**
+   * Deviation from the default: split and retry instead of giving up. Note: This also means that
+   * even if the {@link CounterApiException} contains a 1020 error code, we split and retry instead
+   * of throttling. This should be fixed in the future.
+   */
   @Override
   protected ErrorHandlingResult handleBareSuccess(FetchItem fetchItem, CounterApiException e) {
     return handleInvalidReport(fetchItem, e);

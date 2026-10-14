@@ -68,8 +68,8 @@ class CounterApiExceptionTest {
   @ValueSource(
       strings = {
         "[{\"Code\":1020},\"foo\"]",
-        "[{\"Code\":1020},{\"Message\":\"no code\"}]",
-        "[{\"Code\":null},{\"Code\":1020}]"
+        "[{\"Code\":null},{\"Code\":1020}]",
+        "[{\"Code\":\"abc\"},{\"Code\":1020}]"
       })
   void testParseSkipsInvalidElements(String body) {
     assertThat(CounterExceptionParser.parse(body))
@@ -83,12 +83,13 @@ class CounterApiExceptionTest {
         "   ",
         "[]",
         "{}",
-        "{\"Message\":\"no code\"}",
         "{\"Code\":\"abc\"}",
         "{\"Code\":\"\"}",
         "{\"Code\":\"-1\"}",
         "{\"Code\":\"99999999999\"}",
         "{\"Code\":null}",
+        "{\"Code\":1020.7}",
+        "{\"Code\":4294968316}",
         "<html><body>Service Unavailable</body></html>",
         "{\"Code\":1020",
         "null",
@@ -114,8 +115,27 @@ class CounterApiExceptionTest {
 
   @Test
   void testFromReportHeaderReturnsEmptyForInvalidJson() {
-    assertThat(CounterApiException.fromReportHeader("[{\"Message\":\"no code\"}]")).isEmpty();
+    assertThat(CounterApiException.fromReportHeader("[{\"Severity\":\"Error\"}]")).isEmpty();
     assertThat(CounterApiException.fromReportHeader(null)).isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {SINGLE_EXCEPTION, EXCEPTION_ARRAY, "<html/>", "{}"})
+  void testFromBareBodyWithDecodedJsonMatchesStringVariant(String body) {
+    var fromString = CounterApiException.fromBareBody(400, "Bad Request", body);
+    var fromDecoded =
+        CounterApiException.fromBareBody(
+            400, "Bad Request", body, CounterExceptionParser.decode(body));
+
+    assertThat(fromDecoded.map(CounterApiException::getMessage))
+        .isEqualTo(fromString.map(CounterApiException::getMessage));
+    assertThat(fromDecoded.map(CounterApiException::exceptions))
+        .isEqualTo(fromString.map(CounterApiException::exceptions));
+  }
+
+  @Test
+  void testFromBareBodyWithNullJsonReturnsEmpty() {
+    assertThat(CounterApiException.fromBareBody(200, null, SINGLE_EXCEPTION, null)).isEmpty();
   }
 
   @ParameterizedTest
@@ -158,6 +178,22 @@ class CounterApiExceptionTest {
   }
 
   @Test
+  void testFromReportHeaderAbbreviatesLongExceptionsInMessageOnly() {
+    String data = "x".repeat(MAX_ERROR_BODY_LENGTH + 1000);
+    String json = "[{\"Code\":3030,\"Data\":\"" + data + "\"}]";
+
+    assertThat(CounterApiException.fromReportHeader(json))
+        .hasValueSatisfying(
+            e -> {
+              assertThat(e.getMessage())
+                  .startsWith("Report not valid: [{")
+                  .hasSize("Report not valid: ".length() + MAX_ERROR_BODY_LENGTH)
+                  .endsWith("...");
+              assertThat(e.exceptions().getFirst().data()).isEqualTo(data);
+            });
+  }
+
+  @Test
   void testFromBareBodyReturnsEmptyForNonCounterBody() {
     assertThat(
             CounterApiException.fromBareBody(
@@ -166,10 +202,34 @@ class CounterApiExceptionTest {
   }
 
   @Test
-  void testDecidingExceptionIsLowestCode() {
-    CounterApiException e = CounterApiException.fromReportHeader(EXCEPTION_ARRAY).orElseThrow();
+  void testParseKeepsEntriesWithMessageButWithoutCode() {
+    assertThat(CounterExceptionParser.parse("[{\"Code\":1020},{\"Message\":\"no code\"}]"))
+        .contains(
+            List.of(
+                new CounterException(1020, null, null, null),
+                new CounterException(null, "no code", null, null)));
+  }
 
-    assertThat(e.decidingException().code()).isEqualTo(1020);
+  @Test
+  void testParseAcceptsWholeNumberAsDecimal() {
+    assertThat(CounterExceptionParser.parse("{\"Code\":3030.0}"))
+        .contains(List.of(new CounterException(3030, null, null, null)));
+  }
+
+  @Test
+  void testParseKeepsMessageOfEntryWithFractionalCode() {
+    assertThat(CounterExceptionParser.parse("{\"Code\":1020.7,\"Message\":\"x\"}"))
+        .contains(List.of(new CounterException(null, "x", null, null)));
+  }
+
+  @Test
+  void testCodesSkipsEntriesWithoutCode() {
+    CounterApiException e =
+        CounterApiException.fromReportHeader("[{\"Message\":\"no code\"},{\"Code\":3030}]")
+            .orElseThrow();
+
+    assertThat(e.codes()).containsExactly(3030);
+    assertThat(e.containsCode(3030)).isTrue();
   }
 
   @Test

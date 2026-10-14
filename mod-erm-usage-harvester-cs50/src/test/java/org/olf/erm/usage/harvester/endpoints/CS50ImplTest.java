@@ -231,6 +231,66 @@ public class CS50ImplTest {
   }
 
   @Test
+  public void testFetchReportTooManyRequestsByErrorMessageWithoutCode(TestContext context)
+      throws IOException {
+    String reportStr =
+        Resources.toString(
+            Resources.getResource("SampleReportEmptyItems.json"), StandardCharsets.UTF_8);
+    COUNTERTitleReport tr = Json.decodeValue(reportStr, COUNTERTitleReport.class);
+    SUSHIErrorModel error = new SUSHIErrorModel();
+    error.setMessage(TOO_MANY_REQUEST_STR);
+    tr.getReportHeader().setExceptions(List.of(error));
+    createStubWithBody(200, Json.encode(tr));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertCounterApiException(t, REPORT_HEADER);
+                  assertThat(t).hasMessageContaining(TOO_MANY_REQUEST_STR);
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
+  public void testFetchReportHeaderExceptionWithoutMessage(TestContext context) throws IOException {
+    String reportStr =
+        Resources.toString(
+            Resources.getResource("SampleReportEmptyItems.json"), StandardCharsets.UTF_8);
+    COUNTERTitleReport tr = Json.decodeValue(reportStr, COUNTERTitleReport.class);
+    SUSHIErrorModel noMessage = new SUSHIErrorModel();
+    noMessage.setCode(3030);
+    SUSHIErrorModel tooManyRequests = new SUSHIErrorModel();
+    tooManyRequests.setCode(TOO_MANY_REQUEST_ERROR_CODE);
+    tr.getReportHeader().setExceptions(List.of(noMessage, tooManyRequests));
+    createStubWithBody(200, Json.encode(tr));
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertCounterApiException(t, REPORT_HEADER, 3030, TOO_MANY_REQUEST_ERROR_CODE);
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
+  public void testFetchReportBareExceptionNotSushiErrorWithStatus200(TestContext context) {
+    createStubWithBody(200, "{\"Code\":3030,\"Data\":{\"Begin_Date\":\"2025-01\"}}");
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertThat(t).isInstanceOf(InvalidReportException.class);
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
   public void testFetchReportTooManyRequestsByHttpStatusCode(TestContext context) {
     createStubWithBody(429, null);
     new CS50Impl(provider)

@@ -321,7 +321,9 @@ class CS51ImplTest {
                     .verify(
                         () -> {
                           assertThat(ar.succeeded()).isFalse();
-                          assertThat(ar.cause()).isInstanceOf(InvalidReportException.class);
+                          assertCounterApiException(ar.cause(), REPORT_HEADER);
+                          assertThat(ar.cause())
+                              .hasMessageContaining("Usage Not Ready for Requested Dates");
                         })
                     .completeNow());
   }

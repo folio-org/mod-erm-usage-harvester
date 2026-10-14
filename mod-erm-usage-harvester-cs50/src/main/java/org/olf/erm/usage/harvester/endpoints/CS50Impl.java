@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import static io.vertx.core.Future.failedFuture;
 import static java.util.Objects.requireNonNull;
+import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createReportHeaderException;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -106,9 +107,7 @@ public class CS50Impl implements ServiceEndpoint {
     }
     if (reportHeader.getExceptions() != null && !reportHeader.getExceptions().isEmpty()) {
       String exceptionsJson = Json.encode(reportHeader.getExceptions());
-      throw CounterApiException.fromReportHeader(exceptionsJson)
-          .<RuntimeException>map(e -> e)
-          .orElseGet(() -> new InvalidReportException(exceptionsJson));
+      throw createReportHeaderException(exceptionsJson);
     }
 
     return report;

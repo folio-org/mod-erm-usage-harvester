@@ -7,6 +7,7 @@ import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
 import java.util.List;
+import java.util.Locale;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.FetchItem;
@@ -69,14 +70,17 @@ public class DefaultErrorHandlingStrategy implements ErrorHandlingStrategy {
 
   /**
    * Decides whether a {@link CounterApiException} is treated like HTTP 429: the status is 429, a
-   * 1020 is among the exceptions, or a message contains "too many requests". Subclasses may narrow
-   * this down.
+   * 1020 is among the exceptions, or a message contains "too many requests" (ignoring case).
+   * Subclasses may narrow this down.
    */
   protected boolean isTooManyRequests(CounterApiException e) {
     return Integer.valueOf(429).equals(e.statusCode())
         || e.containsCode(TOO_MANY_REQUEST_ERROR_CODE)
         || e.exceptions().stream()
-            .anyMatch(x -> x.message() != null && x.message().contains(TOO_MANY_REQUEST_STR));
+            .anyMatch(
+                x ->
+                    x.message() != null
+                        && x.message().toLowerCase(Locale.ROOT).contains(TOO_MANY_REQUEST_STR));
   }
 
   protected ErrorHandlingResult handleBareSuccess(FetchItem fetchItem, CounterApiException e) {

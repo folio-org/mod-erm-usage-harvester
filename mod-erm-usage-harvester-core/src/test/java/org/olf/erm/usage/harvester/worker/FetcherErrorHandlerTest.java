@@ -180,11 +180,11 @@ class FetcherErrorHandlerTest {
     assertThat(result).as("... no reports are returned yet").isEmpty();
     assertThat(controller.concurrencyWasDisabled).as("... concurrency was disabled").isTrue();
     assertThat(loggedMessages())
-        .as("... the codes, the deciding code, the delivery and the outcome are logged")
+        .as("... the codes, the delivery and the outcome are logged")
         .anyMatch(
             msg ->
                 msg.contains(
-                    "COUNTER exception code(s) [3030, 1020], deciding code 1020, delivered in"
+                    "COUNTER exception code(s) [3030, 1020], delivered in"
                         + " REPORT_HEADER, handled as Throttle"));
   }
 
@@ -204,7 +204,7 @@ class FetcherErrorHandlerTest {
         .anyMatch(
             msg ->
                 msg.contains(
-                    "COUNTER exception code(s) [2010], deciding code 2010, delivered in"
+                    "COUNTER exception code(s) [2010], delivered in"
                         + " BARE_ERROR_STATUS, handled as GiveUp"));
   }
 

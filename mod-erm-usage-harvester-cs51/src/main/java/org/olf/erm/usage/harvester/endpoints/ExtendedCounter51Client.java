@@ -7,6 +7,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.DecodeException;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpResponse;
@@ -43,9 +44,11 @@ public class ExtendedCounter51Client extends Counter51Client {
   protected <T> Future<T> handleParseError(
       Buffer buffer, int statusCode, Class<T> responseType, Exception parseException) {
     String body = buffer.toString();
+    // Decode the (possibly large) body only once for all checks below
+    Object json = decodeOrNull(body);
     return Future.failedFuture(
-        CounterApiException.fromBareBody(statusCode, null, body)
-            .or(() -> reportHeaderExceptions(body).flatMap(CounterApiException::fromReportHeader))
+        CounterApiException.fromBareBody(statusCode, null, body, json)
+            .or(() -> reportHeaderExceptions(json).flatMap(CounterApiException::fromReportHeader))
             .<Throwable>map(e -> e)
             .orElseGet(() -> new InvalidReportException(parseException)));
   }
@@ -54,29 +57,33 @@ public class ExtendedCounter51Client extends Counter51Client {
    * Returns {@code Report_Header.Exceptions} of a report the typed model rejected, e.g. because it
    * contains a 1020, which COUNTER 5.1 doesn't allow in the report header.
    */
-  private static Optional<String> reportHeaderExceptions(String body) {
+  private static Optional<String> reportHeaderExceptions(Object json) {
+    if (!(json instanceof JsonObject report)) {
+      return Optional.empty();
+    }
     try {
-      return Optional.ofNullable(new JsonObject(body).getJsonObject(REPORT_HEADER))
+      return Optional.ofNullable(report.getJsonObject(REPORT_HEADER))
           .map(header -> header.getValue(EXCEPTIONS))
           .filter(exceptions -> exceptions instanceof JsonArray array && !array.isEmpty())
           .map(Object::toString);
-    } catch (DecodeException | ClassCastException e) {
+    } catch (ClassCastException e) {
       return Optional.empty();
+    }
+  }
+
+  private static Object decodeOrNull(String body) {
+    try {
+      return Json.decodeValue(body);
+    } catch (DecodeException e) {
+      return null;
     }
   }
 
   @Override
   protected <T> Future<T> handleErrorResponse(HttpResponse<Buffer> response) {
-    int statusCode = response.statusCode();
     String body = response.body() != null ? response.body().toString() : "";
     return Future.failedFuture(
-        CounterApiException.fromBareBody(statusCode, response.statusMessage(), body)
-            .<Throwable>map(e -> e)
-            .orElseGet(
-                () ->
-                    statusCode == 429
-                        ? new TooManyRequestsException()
-                        : new ServiceEndpointException(
-                            statusCode, response.statusMessage(), body)));
+        ServiceEndpoint.createErrorResponseException(
+            response.statusCode(), response.statusMessage(), body));
   }
 }
