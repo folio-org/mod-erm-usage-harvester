@@ -1,5 +1,7 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingStrategy.DefaultErrorHandlingStrategy;
+
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import io.vertx.core.Future;

@@ -66,30 +66,34 @@ class CS51ErrorHandlingStrategyTest {
   }
 
   @Test
-  void testBareTooManyRequestsWithSuccessStatusReturnsRetryNow() {
+  void testBareTooManyRequestsWithSuccessStatusReturnsThrottle() {
     var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, bare(200, TOO_MANY_REQUESTS_BODY));
 
     assertThat(result)
         .isInstanceOfSatisfying(
-            RetryNow.class, retryNow -> assertThat(retryNow.items()).hasSize(3));
+            Throttle.class,
+            throttle -> assertThat(throttle.items()).containsExactly(FETCH_ITEM_DR));
   }
 
   @Test
-  void testBareTooManyRequestsWithErrorStatusReturnsGiveUp() {
+  void testBareTooManyRequestsWithErrorStatusReturnsThrottle() {
     var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, bare(400, TOO_MANY_REQUESTS_BODY));
 
     assertThat(result)
-        .isInstanceOfSatisfying(GiveUp.class, giveUp -> assertThat(giveUp.reports()).hasSize(3));
+        .isInstanceOfSatisfying(
+            Throttle.class,
+            throttle -> assertThat(throttle.items()).containsExactly(FETCH_ITEM_DR));
   }
 
   @Test
-  void testHeaderTooManyRequestsReturnsRetryNow() {
+  void testHeaderTooManyRequestsReturnsThrottle() {
     var e = CounterApiException.fromReportHeader("[" + TOO_MANY_REQUESTS_BODY + "]").orElseThrow();
     var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, e);
 
     assertThat(result)
         .isInstanceOfSatisfying(
-            RetryNow.class, retryNow -> assertThat(retryNow.items()).hasSize(3));
+            Throttle.class,
+            throttle -> assertThat(throttle.items()).containsExactly(FETCH_ITEM_DR));
   }
 
   @Test

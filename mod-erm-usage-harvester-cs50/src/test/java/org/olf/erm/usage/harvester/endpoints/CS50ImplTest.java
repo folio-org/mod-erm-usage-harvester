@@ -277,7 +277,8 @@ public class CS50ImplTest {
   }
 
   @Test
-  public void testFetchReportBareExceptionNotSushiErrorWithStatus200(TestContext context) {
+  public void testFetchReportBareExceptionNotSushiErrorWithStatus200ReturnsCounterApiException(
+      TestContext context) {
     createStubWithBody(200, "{\"Code\":3030,\"Data\":{\"Begin_Date\":\"2025-01\"}}");
 
     new CS50Impl(provider)
@@ -285,7 +286,22 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).isInstanceOf(InvalidReportException.class);
+                  assertCounterApiException(t, BARE_SUCCESS_STATUS, 3030);
+                  verifyApiCall();
+                }));
+  }
+
+  @Test
+  public void testFetchReportTooManyRequestsBareExceptionNotSushiErrorWithStatus200(
+      TestContext context) {
+    createStubWithBody(200, "{\"Code\":1020,\"Data\":{\"Retry_After\":60}}");
+
+    new CS50Impl(provider)
+        .fetchReport(REPORT, BEGIN_DATE, END_DATE)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> {
+                  assertCounterApiException(t, BARE_SUCCESS_STATUS, TOO_MANY_REQUEST_ERROR_CODE);
                   verifyApiCall();
                 }));
   }

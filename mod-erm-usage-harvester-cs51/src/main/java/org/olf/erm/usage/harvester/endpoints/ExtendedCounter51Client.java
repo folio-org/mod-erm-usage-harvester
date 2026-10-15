@@ -43,9 +43,8 @@ public class ExtendedCounter51Client extends Counter51Client {
   @Override
   protected <T> Future<T> handleParseError(
       Buffer buffer, int statusCode, Class<T> responseType, Exception parseException) {
-    String body = buffer.toString();
-    // Decode the (possibly large) body only once for all checks below
-    Object json = decodeOrNull(body);
+    final var body = Optional.ofNullable(buffer).map(Buffer::toString).orElse("");
+    final var json = decodeOrNull(body);
     return Future.failedFuture(
         CounterApiException.fromBareBody(statusCode, null, body, json)
             .or(() -> reportHeaderExceptions(json).flatMap(CounterApiException::fromReportHeader))
@@ -81,7 +80,7 @@ public class ExtendedCounter51Client extends Counter51Client {
 
   @Override
   protected <T> Future<T> handleErrorResponse(HttpResponse<Buffer> response) {
-    String body = response.body() != null ? response.body().toString() : "";
+    final var body = Optional.ofNullable(response.body()).map(Buffer::toString).orElse("");
     return Future.failedFuture(
         ServiceEndpoint.createErrorResponseException(
             response.statusCode(), response.statusMessage(), body));

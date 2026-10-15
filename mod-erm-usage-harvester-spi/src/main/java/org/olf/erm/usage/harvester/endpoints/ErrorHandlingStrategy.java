@@ -71,21 +71,6 @@ public interface ErrorHandlingStrategy {
     }
 
     /**
-     * Decides whether a {@link CounterApiException} is treated like HTTP 429: the status is 429, a
-     * 1020 is among the exceptions, or a message contains "too many requests" (ignoring case).
-     * Subclasses may narrow this down.
-     */
-    protected boolean isTooManyRequests(CounterApiException e) {
-      return Integer.valueOf(429).equals(e.statusCode())
-          || e.containsCode(TOO_MANY_REQUEST_ERROR_CODE)
-          || e.exceptions().stream()
-              .anyMatch(
-                  x ->
-                      x.message() != null
-                          && x.message().toLowerCase(Locale.ROOT).contains(TOO_MANY_REQUEST_STR));
-    }
-
-    /**
      * Handles a body of only COUNTER exceptions with a 2xx status. Gives up by default; {@code
      * CS51ErrorHandlingStrategy} splits and retries instead.
      */
@@ -104,6 +89,7 @@ public interface ErrorHandlingStrategy {
         final var reports = createFailedReports(expanded, t, usageDataProvider);
         return new ErrorHandlingResult.GiveUp(reports);
       }
+
       return new ErrorHandlingResult.RetryNow(expanded);
     }
 
@@ -123,6 +109,7 @@ public interface ErrorHandlingStrategy {
       if (isTooManyRequests(e)) {
         return handleTooManyRequests(fetchItem, retryCount, e);
       }
+
       return switch (e.delivery()) {
         case REPORT_HEADER -> handleInvalidReport(fetchItem, e);
         case BARE_ERROR_STATUS -> handleUnknownError(fetchItem, e);
@@ -130,11 +117,22 @@ public interface ErrorHandlingStrategy {
       };
     }
 
+    private boolean isTooManyRequests(CounterApiException e) {
+      return Integer.valueOf(429).equals(e.statusCode())
+          || e.containsCode(TOO_MANY_REQUEST_ERROR_CODE)
+          || e.exceptions().stream()
+              .anyMatch(
+                  x ->
+                      x.message() != null
+                          && x.message().toLowerCase(Locale.ROOT).contains(TOO_MANY_REQUEST_STR));
+    }
+
     private ErrorHandlingResult handleTooManyRequests(
         final FetchItem fetchItem, final int retryCount, final Throwable t) {
       if (retryCount < RETRY_COUNT_TOO_MANY_REQUESTS) {
         return new ErrorHandlingResult.Throttle(List.of(fetchItem), retryCount + 1);
       }
+
       final var reports = createFailedReports(fetchItem, t, usageDataProvider);
       return new ErrorHandlingResult.GiveUpSlowDown(reports);
     }
