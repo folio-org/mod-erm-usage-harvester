@@ -119,11 +119,6 @@ public class CS51Impl implements ServiceEndpoint {
     return objectNode;
   }
 
-  @Override
-  public ErrorHandlingStrategy getErrorHandlingStrategy(UsageDataProvider provider) {
-    return new CS51ErrorHandlingStrategy(provider);
-  }
-
   private CounterReport createCounterReport(
       ObjectNode reportData, String reportName, YearMonth yearMonth, Date downloadTime) {
     CounterReport cr = new CounterReport();
