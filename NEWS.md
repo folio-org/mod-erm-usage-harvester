@@ -10,6 +10,7 @@
 * [MODEUSHARV-171](https://folio-org.atlassian.net/browse/MODEUSHARV-171) Remove optional `version` property from RAML files
 * [MODEUSHARV-177](https://folio-org.atlassian.net/browse/MODEUSHARV-177) Harden `PostgresContainerRule` against early class initialization and setup failures
 * [MODEUSHARV-186](https://folio-org.atlassian.net/browse/MODEUSHARV-186) *BREAKING* Drop isAggregator and ?aggregator (erm-usage-harvester 3.0), require usage-data-providers 4.0
+* [MODEUSHARV-189](https://folio-org.atlassian.net/browse/MODEUSHARV-189) Code-based handling of COUNTER API exceptions: cs50 and cs51 raise the new `CounterApiException` carrying the exception codes for header exceptions and bare exception bodies; outcomes are unchanged (cs50 and cs51 keep them via their own error handling strategies);
 
 # 5.2.0
 * [MODEUSHARV-126](https://folio-org.atlassian.net/browse/MODEUSHARV-126) Migrate settings from `mod-configuration` to `mod-settings`

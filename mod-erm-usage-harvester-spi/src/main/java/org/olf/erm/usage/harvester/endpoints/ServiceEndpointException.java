@@ -50,8 +50,7 @@ public class ServiceEndpointException extends RuntimeException {
    * @param responseBody The response body, can be null or empty
    * @return A formatted error message
    */
-  private static String createHttpErrorMessage(
-      int statusCode, String statusMessage, String responseBody) {
+  static String createHttpErrorMessage(int statusCode, String statusMessage, String responseBody) {
     String body = (responseBody == null || responseBody.isEmpty()) ? "[no body]" : responseBody;
     String bodyAbbr = abbreviate(body, MAX_ERROR_BODY_LENGTH);
     return "HTTP " + statusCode + ": " + statusMessage + " - " + bodyAbbr;

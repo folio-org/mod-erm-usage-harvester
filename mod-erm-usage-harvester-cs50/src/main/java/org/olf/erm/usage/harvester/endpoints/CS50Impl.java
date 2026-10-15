@@ -2,8 +2,7 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import static io.vertx.core.Future.failedFuture;
 import static java.util.Objects.requireNonNull;
-import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
-import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
+import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createReportHeaderException;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -22,7 +21,6 @@ import org.openapitools.counter50.model.COUNTERDatabaseReport;
 import org.openapitools.counter50.model.COUNTERItemReport;
 import org.openapitools.counter50.model.COUNTERPlatformReport;
 import org.openapitools.counter50.model.COUNTERTitleReport;
-import org.openapitools.counter50.model.SUSHIErrorModel;
 import org.openapitools.counter50.model.SUSHIReportHeader;
 
 public class CS50Impl implements ServiceEndpoint {
@@ -82,14 +80,6 @@ public class CS50Impl implements ServiceEndpoint {
         });
   }
 
-  private boolean containsTooManyRequestsError(List<SUSHIErrorModel> errors) {
-    return errors.stream()
-        .anyMatch(
-            em ->
-                (em.getMessage().contains(TOO_MANY_REQUEST_STR))
-                    || (em.getCode().equals(TOO_MANY_REQUEST_ERROR_CODE)));
-  }
-
   private SUSHIReportHeader getReportHeader(Object o) {
     if (o instanceof COUNTERTitleReport) {
       return ((COUNTERTitleReport) o).getReportHeader();
@@ -106,8 +96,7 @@ public class CS50Impl implements ServiceEndpoint {
     return null;
   }
 
-  private Object failIfInvalidReport(Object report)
-      throws InvalidReportException, TooManyRequestsException {
+  private Object failIfInvalidReport(Object report) {
     if (report == null) {
       throw new InvalidReportException("null");
     }
@@ -117,12 +106,8 @@ public class CS50Impl implements ServiceEndpoint {
       throw new InvalidReportException("Report is missing Report_Header");
     }
     if (reportHeader.getExceptions() != null && !reportHeader.getExceptions().isEmpty()) {
-      String exceptionMsg = Json.encode(reportHeader.getExceptions());
-      if (containsTooManyRequestsError(reportHeader.getExceptions())) {
-        throw new TooManyRequestsException(exceptionMsg);
-      } else {
-        throw new InvalidReportException(exceptionMsg);
-      }
+      String exceptionsJson = Json.encode(reportHeader.getExceptions());
+      throw createReportHeaderException(exceptionsJson);
     }
 
     return report;

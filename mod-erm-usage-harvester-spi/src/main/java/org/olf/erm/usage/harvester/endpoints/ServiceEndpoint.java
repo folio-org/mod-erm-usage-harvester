@@ -1,5 +1,7 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingStrategy.DefaultErrorHandlingStrategy;
+
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import io.vertx.core.Future;
@@ -42,9 +44,14 @@ public interface ServiceEndpoint {
    * @param beginDate start date (e.g. "2018-01-01")
    * @param endDate end date (e.g. "2018-12-31")
    * @return Future with a List of {@link CounterReport}
-   * @throws InvalidReportException if the fetched report contains any COUNTER exceptions
+   * @throws CounterApiException if the provider returned COUNTER exceptions, either in the report
+   *     header or as the whole response body; carries the codes for the {@link
+   *     ErrorHandlingStrategy}
+   * @throws InvalidReportException if the fetched report is invalid or can't be parsed
    * @throws InvalidServiceURLException if the service URL is invalid
-   * @throws TooManyRequestsException to signal that too many requests are made
+   * @throws ServiceEndpointException if the provider responded with an HTTP error status
+   * @throws TooManyRequestsException if the provider responded with HTTP 429 without COUNTER
+   *     exceptions
    * @throws UnsupportedReportTypeException if the requested report type is not supported
    */
   Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate);
@@ -64,6 +71,22 @@ public interface ServiceEndpoint {
       cr.setFailedAttempts(1);
     }
     return cr;
+  }
+
+  static Throwable createErrorResponseException(int statusCode, String statusMessage, String body) {
+    return CounterApiException.fromBareBody(statusCode, statusMessage, body)
+        .<Throwable>map(e -> e)
+        .orElseGet(
+            () ->
+                statusCode == 429
+                    ? new TooManyRequestsException()
+                    : new ServiceEndpointException(statusCode, statusMessage, body));
+  }
+
+  static RuntimeException createReportHeaderException(String exceptionsJson) {
+    return CounterApiException.fromReportHeader(exceptionsJson)
+        .<RuntimeException>map(e -> e)
+        .orElseGet(() -> new InvalidReportException(exceptionsJson));
   }
 
   static List<ServiceEndpointProvider> getAvailableProviders() {
@@ -139,6 +162,10 @@ public interface ServiceEndpoint {
   }
 
   /**
+   * Returns the strategy that decides how failed fetches of this endpoint are handled. Override it
+   * to customize the handling, e.g. by subclassing {@link DefaultErrorHandlingStrategy}.
+   *
+   * @param provider the provider failed reports are created for
    * @return An error handling strategy.
    */
   default ErrorHandlingStrategy getErrorHandlingStrategy(UsageDataProvider provider) {

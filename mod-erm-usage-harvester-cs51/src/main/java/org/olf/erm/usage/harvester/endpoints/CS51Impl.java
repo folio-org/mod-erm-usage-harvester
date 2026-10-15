@@ -4,6 +4,7 @@ import static java.util.Objects.requireNonNull;
 import static org.olf.erm.usage.counter51.Counter51Utils.getYearMonths;
 import static org.olf.erm.usage.counter51.JsonProperties.EXCEPTIONS;
 import static org.olf.erm.usage.counter51.JsonProperties.REPORT_HEADER;
+import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createReportHeaderException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -112,9 +113,15 @@ public class CS51Impl implements ServiceEndpoint {
   private ObjectNode throwIfReportContainsExceptions(ObjectNode objectNode) {
     JsonNode exceptionsNode = objectNode.path(REPORT_HEADER).path(EXCEPTIONS);
     if (exceptionsNode.isArray() && !exceptionsNode.isEmpty()) {
-      throw new InvalidReportException(exceptionsNode.toString());
+      String exceptionsJson = exceptionsNode.toString();
+      throw createReportHeaderException(exceptionsJson);
     }
     return objectNode;
+  }
+
+  @Override
+  public ErrorHandlingStrategy getErrorHandlingStrategy(UsageDataProvider provider) {
+    return new CS51ErrorHandlingStrategy(provider);
   }
 
   private CounterReport createCounterReport(
