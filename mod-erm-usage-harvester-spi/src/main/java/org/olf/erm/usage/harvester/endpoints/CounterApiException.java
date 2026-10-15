@@ -8,10 +8,12 @@ import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * COUNTER exceptions returned by a provider instead of (or within) a report, carrying the codes so
@@ -147,7 +149,8 @@ public final class CounterApiException extends RuntimeException {
    * @param data the {@code Data}, as JSON text if it isn't a string, may be {@code null}
    * @param helpUrl the {@code Help_URL}, may be {@code null}
    */
-  public record CounterException(Integer code, String message, String data, String helpUrl) {}
+  public record CounterException(Integer code, String message, String data, String helpUrl)
+      implements Serializable {}
 
   /** How the provider delivered the COUNTER exceptions. */
   public enum CounterExceptionDelivery {
@@ -166,6 +169,9 @@ public final class CounterApiException extends RuntimeException {
    * numeric string) {@code Code} and/or a {@code Message}; other elements are skipped.
    */
   static final class CounterExceptionParser {
+
+    /** Use a static final code pattern to avoid creating it at runtime */
+    private static final Pattern CODE_PATTERN = Pattern.compile("\\d{1,9}");
 
     private CounterExceptionParser() {
       // Utility class
@@ -240,7 +246,7 @@ public final class CounterApiException extends RuntimeException {
       return switch (value) {
         case Integer i -> Optional.of(i);
         case Number n -> toIntExact(n);
-        case String s when s.matches("\\d{1,9}") -> Optional.of(Integer.parseInt(s));
+        case String s when CODE_PATTERN.matcher(s).matches() -> Optional.of(Integer.parseInt(s));
         case null, default -> Optional.empty();
       };
     }

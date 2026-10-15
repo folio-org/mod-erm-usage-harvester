@@ -1,7 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_ERROR_BODY_LENGTH;
 
 import java.util.List;
@@ -242,11 +241,9 @@ class CounterApiExceptionTest {
   }
 
   @Test
-  @SuppressWarnings("DataFlowIssue") // modifying the immutable list is what we test
   void testExceptionsAreUnmodifiable() {
     CounterApiException e = CounterApiException.fromReportHeader(SINGLE_EXCEPTION).orElseThrow();
 
-    assertThatThrownBy(() -> e.exceptions().add(new CounterException(1, null, null, null)))
-        .isInstanceOf(UnsupportedOperationException.class);
+    assertThat(e.exceptions()).isUnmodifiable();
   }
 }
