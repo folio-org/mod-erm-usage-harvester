@@ -71,14 +71,6 @@ public interface ErrorHandlingStrategy {
     }
 
     /**
-     * Handles a body of only COUNTER exceptions with a 2xx status. Gives up by default; {@code
-     * CS51ErrorHandlingStrategy} splits and retries instead.
-     */
-    protected ErrorHandlingResult handleBareSuccess(FetchItem fetchItem, CounterApiException e) {
-      return handleUnknownError(fetchItem, e);
-    }
-
-    /**
      * Handles an invalid report, e.g. one with exceptions in its header. Multi-month items are
      * split into single months and retried; a single month gives up.
      */
@@ -94,9 +86,9 @@ public interface ErrorHandlingStrategy {
     }
 
     /**
-     * Handles a {@link CounterApiException}. For now this keeps the existing, rather unspecific
-     * error handling: the exception codes only matter for the throttle check ({@link
-     * #isTooManyRequests(CounterApiException)}), and otherwise the delivery situation decides.
+     * Handles a {@link CounterApiException} the same way in every delivery situation. For now the
+     * exception codes only matter for the throttle check ({@link
+     * #isTooManyRequests(CounterApiException)}); otherwise it is handled like an invalid report.
      *
      * <p>In the future, this is the extension point for more targeted handling based on the
      * exception codes, see UIEUS-430, UIEUS-389, UIEUS-371, UIEUS-431 and UIEUS-499.
@@ -110,11 +102,7 @@ public interface ErrorHandlingStrategy {
         return handleTooManyRequests(fetchItem, retryCount, e);
       }
 
-      return switch (e.delivery()) {
-        case REPORT_HEADER -> handleInvalidReport(fetchItem, e);
-        case BARE_ERROR_STATUS -> handleUnknownError(fetchItem, e);
-        case BARE_SUCCESS_STATUS -> handleBareSuccess(fetchItem, e);
-      };
+      return handleInvalidReport(fetchItem, e);
     }
 
     private boolean isTooManyRequests(CounterApiException e) {

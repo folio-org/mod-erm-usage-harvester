@@ -199,11 +199,10 @@ class DefaultErrorHandlingStrategyTest {
                     .containsExactly("2025-01", "2025-02", "2025-03"));
   }
 
-  @Test
-  void testCounterApiExceptionInReportHeaderReturnsGiveUpForSingleMonthItem() {
-    var json = "[{\"Code\":3030,\"Message\":\"No Usage Available for Requested Dates\"}]";
-
-    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, header(json));
+  @ParameterizedTest
+  @MethodSource("counterApiExceptions")
+  void testCounterApiExceptionReturnsGiveUpForSingleMonthItem(CounterApiException e) {
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
 
     assertThat(result)
         .isInstanceOfSatisfying(
@@ -215,7 +214,7 @@ class DefaultErrorHandlingStrategyTest {
                         cr -> {
                           assertThat(cr.getReportName()).isEqualTo("TR");
                           assertThat(cr.getYearMonth()).isEqualTo("2025-01");
-                          assertThat(cr.getFailedReason()).isEqualTo("Report not valid: " + json);
+                          assertThat(cr.getFailedReason()).isEqualTo(e.getMessage());
                         }));
   }
 
@@ -242,9 +241,10 @@ class DefaultErrorHandlingStrategyTest {
             throttle -> assertThat(throttle.items()).containsExactly(FETCH_ITEM_DR));
   }
 
-  @Test
-  void testCounterApiExceptionInReportHeaderReturnsRetryNowForMultiMonthItem() {
-    var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, header("{\"Code\":3030}"));
+  @ParameterizedTest
+  @MethodSource("counterApiExceptions")
+  void testCounterApiExceptionReturnsRetryNowForMultiMonthItem(CounterApiException e) {
+    var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, e);
 
     assertThat(result)
         .isInstanceOfSatisfying(
@@ -257,43 +257,15 @@ class DefaultErrorHandlingStrategyTest {
                         new FetchItem("DR", "2025-03-01", "2025-03-31")));
   }
 
-  @Test
-  void testCounterApiExceptionWithErrorStatusReturnsGiveUp() {
-    var body = "{\"Code\":2010,\"Message\":\"Requestor is Not Authorized\"}";
-
-    var result =
-        strategy.handleFetchError(
-            FETCH_ITEM_DR,
-            0,
-            CounterApiException.fromBareBody(401, "Unauthorized", body).orElseThrow());
-
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            GiveUp.class,
-            giveUp ->
-                assertThat(giveUp.reports())
-                    .hasSize(3)
-                    .allSatisfy(
-                        cr ->
-                            assertThat(cr.getFailedReason())
-                                .isEqualTo("HTTP 401: Unauthorized - " + body))
-                    .extracting("yearMonth")
-                    .containsExactly("2025-01", "2025-02", "2025-03"));
-  }
-
-  @Test
-  void testCounterApiExceptionWithSuccessStatusReturnsGiveUp() {
+  private static Stream<Arguments> counterApiExceptions() {
     var body = "{\"Code\":3030,\"Message\":\"No Usage Available for Requested Dates\"}";
-
-    var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, bare(200, body));
-
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            GiveUp.class,
-            giveUp ->
-                assertThat(giveUp.reports())
-                    .hasSize(3)
-                    .allSatisfy(cr -> assertThat(cr.getFailedReason()).isEqualTo(body)));
+    return Stream.of(
+        arguments(named("in report header", header("[" + body + "]"))),
+        arguments(named("in bare body with 2xx", bare(200, body))),
+        arguments(
+            named(
+                "in bare body with error status",
+                bare(401, "{\"Code\":2010,\"Message\":\"Requestor is Not Authorized\"}"))));
   }
 
   private static Stream<Arguments> tooManyRequestsCounterApiExceptions() {
