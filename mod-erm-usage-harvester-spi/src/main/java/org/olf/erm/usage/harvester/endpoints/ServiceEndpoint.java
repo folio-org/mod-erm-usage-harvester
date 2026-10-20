@@ -1,7 +1,5 @@
 package org.olf.erm.usage.harvester.endpoints;
 
-import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingStrategy.DefaultErrorHandlingStrategy;
-
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import io.vertx.core.Future;
@@ -163,7 +161,7 @@ public interface ServiceEndpoint {
 
   /**
    * Returns the strategy that decides how failed fetches of this endpoint are handled. Override it
-   * to customize the handling, e.g. by subclassing {@link DefaultErrorHandlingStrategy}.
+   * to customize the handling.
    *
    * @param provider the provider failed reports are created for
    * @return An error handling strategy.

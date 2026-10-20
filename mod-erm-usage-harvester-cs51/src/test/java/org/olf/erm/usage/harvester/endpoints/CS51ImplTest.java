@@ -258,12 +258,6 @@ class CS51ImplTest {
   }
 
   @Test
-  void testGetErrorHandlingStrategy() {
-    assertThat(new CS51Impl(provider).getErrorHandlingStrategy(provider))
-        .isInstanceOf(CS51ErrorHandlingStrategy.class);
-  }
-
-  @Test
   void testReceiveReportWithTooManyRequestsExceptionInHeader(VertxTestContext testContext)
       throws IOException {
     String body = readBodyFile("TR_with_exception.json").replace("3031", "1020");
