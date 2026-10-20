@@ -44,21 +44,11 @@ public interface ErrorHandlingStrategy {
 
     private final UsageDataProvider usageDataProvider;
 
-    /**
-     * Creates the strategy. Use {@link ErrorHandlingStrategy#create(UsageDataProvider)} to get an
-     * instance; subclasses call this constructor. A future {@code CounterExceptionPolicy} would be
-     * passed in here (see {@link #handleCounterApiException(FetchItem, int, CounterApiException)}).
-     *
-     * @param usageDataProvider the provider the failed reports are created for
-     */
-    protected DefaultErrorHandlingStrategy(UsageDataProvider usageDataProvider) {
+    private DefaultErrorHandlingStrategy(UsageDataProvider usageDataProvider) {
       this.usageDataProvider = usageDataProvider;
     }
 
-    /**
-     * Dispatches the error to the matching handler by its type. Subclasses customize the behavior
-     * by overriding these handlers.
-     */
+    /** Dispatches the error to the matching handler by its type. */
     @Override
     public ErrorHandlingResult handleFetchError(
         final FetchItem fetchItem, final int retryCount, final Throwable t) {
@@ -74,8 +64,7 @@ public interface ErrorHandlingStrategy {
      * Handles an invalid report, e.g. one with exceptions in its header. Multi-month items are
      * split into single months and retried; a single month gives up.
      */
-    protected ErrorHandlingResult handleInvalidReport(
-        final FetchItem fetchItem, final Throwable t) {
+    private ErrorHandlingResult handleInvalidReport(final FetchItem fetchItem, final Throwable t) {
       final var expanded = fetchItem.expand();
       if (expanded.size() <= 1) {
         final var reports = createFailedReports(expanded, t, usageDataProvider);
@@ -92,9 +81,6 @@ public interface ErrorHandlingStrategy {
      *
      * <p>In the future, this is the extension point for more targeted handling based on the
      * exception codes, see UIEUS-430, UIEUS-389, UIEUS-371, UIEUS-431 and UIEUS-499.
-     *
-     * <p>If we needed {@link ServiceEndpoint} implementation specific behavior, we could override
-     * this method too.
      */
     private ErrorHandlingResult handleCounterApiException(
         final FetchItem fetchItem, final int retryCount, final CounterApiException e) {
