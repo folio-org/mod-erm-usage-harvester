@@ -7,6 +7,14 @@
     {
       "run": "after",
       "snippet": "BEGIN; ALTER TABLE periodic DROP CONSTRAINT IF EXISTS check_uuid; ALTER TABLE periodic ADD CONSTRAINT check_uuid CHECK (id='8bf5fe33-5ec8-420c-a86d-6320c55ba554'); COMMIT;"
+    },
+    {
+      "run": "after",
+      "snippet": "ALTER TABLE error_handling ALTER id SET DEFAULT '40dfa132-7ce4-4f34-a3b0-4ac36f28d888';"
+    },
+    {
+      "run": "after",
+      "snippet": "BEGIN; ALTER TABLE error_handling DROP CONSTRAINT IF EXISTS check_uuid; ALTER TABLE error_handling ADD CONSTRAINT check_uuid CHECK (id='40dfa132-7ce4-4f34-a3b0-4ac36f28d888'); COMMIT;"
     }
   ],
   "tables": [
@@ -43,6 +51,11 @@
           "fieldName": "nextStart"
         }
       ]
+    },
+    {
+      "tableName": "error_handling",
+      "fromModuleVersion": "6.0.0",
+      "uniqueIndex": []
     }
   ],
   "views": []

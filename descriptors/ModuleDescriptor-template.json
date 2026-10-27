@@ -110,6 +110,24 @@
           "permissionsRequired": [
             "ermusageharvester.jobs.purge-stale.post"
           ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/erm-usage-harvester/error-handling",
+          "permissionsRequired": [
+            "ermusageharvester.error-handling.get"
+          ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/erm-usage-harvester/error-handling",
+          "permissionsRequired": [
+            "ermusageharvester.error-handling.post"
+          ]
         }
       ]
     },
@@ -228,6 +246,16 @@
       ]
     },
     {
+      "permissionName": "ermusageharvester.error-handling.get",
+      "displayName": "erm-usage-harvester get error handling settings",
+      "description": "Read harvester error handling settings"
+    },
+    {
+      "permissionName": "ermusageharvester.error-handling.post",
+      "displayName": "erm-usage-harvester post error handling settings",
+      "description": "Save harvester error handling settings"
+    },
+    {
       "permissionName": "ermusageharvester.all",
       "displayName": "erm-usage-harvester all",
       "description": "All permissions for the mod-erm-harvester module",
@@ -240,7 +268,9 @@
         "ermusageharvester.periodic.delete",
         "ermusageharvester.jobs.get",
         "ermusageharvester.jobs.purge-finished.post",
-        "ermusageharvester.jobs.purge-stale.post"
+        "ermusageharvester.jobs.purge-stale.post",
+        "ermusageharvester.error-handling.get",
+        "ermusageharvester.error-handling.post"
       ]
     },
     {

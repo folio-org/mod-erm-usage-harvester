@@ -1,0 +1,7 @@
+{
+    "numberOfFailedAttempts": 5,
+    "serviceNotAvailable": 40,
+    "serviceBusy": 70,
+    "reportQueuedForProcessing": 25,
+    "tooManyRequests": 2
+}

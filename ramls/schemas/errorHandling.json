@@ -1,0 +1,37 @@
+{
+  "description": "Harvester error handling settings",
+  "type": "object",
+  "properties": {
+    "numberOfFailedAttempts": {
+      "description": "Number of failed attempts",
+      "type": "integer",
+      "default": 6,
+      "minimum": 1
+    },
+    "serviceNotAvailable": {
+      "description": "1000 - Service Not Available",
+      "type": "integer",
+      "default": 60,
+      "minimum": 1
+    },
+    "serviceBusy": {
+      "description": "1010 - Service Busy",
+      "type": "integer",
+      "default": 60,
+      "minimum": 1
+    },
+    "reportQueuedForProcessing": {
+      "description": "1011 - Report Queued for Processing",
+      "type": "integer",
+      "default": 30,
+      "minimum": 1
+    },
+    "tooManyRequests": {
+      "description": "1020 - Client has made too many requests",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false
+}
