@@ -5,6 +5,10 @@ import io.vertx.core.Future;
 import java.util.Map;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.ErrorHandling;
+import org.folio.rest.jaxrs.model.ReportQueuedForProcessing;
+import org.folio.rest.jaxrs.model.ServiceBusy;
+import org.folio.rest.jaxrs.model.ServiceNotAvailable;
+import org.folio.rest.jaxrs.model.TooManyRequests;
 import org.folio.rest.persist.PostgresClient;
 
 public class ErrorHandlingPgUtil {
@@ -24,11 +28,23 @@ public class ErrorHandlingPgUtil {
 
   public static Future<ErrorHandling> get(Context vertxContext, String tenantId) {
     return PostgresClient.getInstance(vertxContext.owner(), tenantId)
-        .getById(TBL, UUID, ErrorHandling.class);
+        .getById(TBL, UUID, ErrorHandling.class)
+        .map(ErrorHandlingPgUtil::withDefaults);
   }
 
   public static Future<ErrorHandling> get(Context vertxContext, Map<String, String> okapiHeaders) {
     return get(vertxContext, okapiHeaders.get(XOkapiHeaders.TENANT));
+  }
+
+  /** Fills in default values for everything that has not been saved yet. */
+  private static ErrorHandling withDefaults(ErrorHandling errorHandling) {
+    ErrorHandling eh = errorHandling != null ? errorHandling : new ErrorHandling();
+    if (eh.getServiceNotAvailable() == null) eh.setServiceNotAvailable(new ServiceNotAvailable());
+    if (eh.getServiceBusy() == null) eh.setServiceBusy(new ServiceBusy());
+    if (eh.getReportQueuedForProcessing() == null)
+      eh.setReportQueuedForProcessing(new ReportQueuedForProcessing());
+    if (eh.getTooManyRequests() == null) eh.setTooManyRequests(new TooManyRequests());
+    return eh;
   }
 
   private ErrorHandlingPgUtil() {}

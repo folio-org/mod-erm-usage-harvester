@@ -161,7 +161,6 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Context vertxContext) {
 
     ErrorHandlingPgUtil.get(vertxContext, okapiHeaders)
-        .map(eh -> eh != null ? eh : new ErrorHandling())
         .map(
             eh ->
                 (Response)

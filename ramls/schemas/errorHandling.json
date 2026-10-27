@@ -2,35 +2,93 @@
   "description": "Harvester error handling settings",
   "type": "object",
   "properties": {
+    "id": {
+      "type": "string"
+    },
     "numberOfFailedAttempts": {
       "description": "Number of failed attempts",
       "type": "integer",
-      "default": 6,
+      "default": 5,
+      "maximum": 20,
       "minimum": 1
     },
     "serviceNotAvailable": {
       "description": "1000 - Service Not Available",
-      "type": "integer",
-      "default": 60,
-      "minimum": 1
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Whether the configured wait time is used",
+          "type": "boolean",
+          "default": false
+        },
+        "waitTime": {
+          "description": "Wait time in minutes before the next attempt",
+          "type": "integer",
+          "default": 60,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
     },
     "serviceBusy": {
       "description": "1010 - Service Busy",
-      "type": "integer",
-      "default": 60,
-      "minimum": 1
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Whether the configured wait time is used",
+          "type": "boolean",
+          "default": false
+        },
+        "waitTime": {
+          "description": "Wait time in minutes before the next attempt",
+          "type": "integer",
+          "default": 60,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
     },
     "reportQueuedForProcessing": {
       "description": "1011 - Report Queued for Processing",
-      "type": "integer",
-      "default": 30,
-      "minimum": 1
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Whether the configured wait time is used",
+          "type": "boolean",
+          "default": false
+        },
+        "waitTime": {
+          "description": "Wait time in minutes before the next attempt",
+          "type": "integer",
+          "default": 30,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
     },
     "tooManyRequests": {
       "description": "1020 - Client has made too many requests",
-      "type": "integer",
-      "default": 1,
-      "minimum": 1
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Whether the configured request rate is used",
+          "type": "boolean",
+          "default": false
+        },
+        "numberOfRequests": {
+          "description": "Number of requests",
+          "type": "integer",
+          "default": 1,
+          "minimum": 1
+        },
+        "timeframe": {
+          "description": "Timeframe in seconds",
+          "type": "integer",
+          "default": 1,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
