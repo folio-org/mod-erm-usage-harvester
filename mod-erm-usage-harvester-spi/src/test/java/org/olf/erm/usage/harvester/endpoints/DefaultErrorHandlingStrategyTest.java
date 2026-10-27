@@ -8,7 +8,9 @@ import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.GiveUpSl
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.RetryNow;
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.Throttle;
 
+import java.net.URI;
 import java.util.stream.Stream;
+import org.folio.rest.jaxrs.model.ApiException;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.Test;
@@ -255,6 +257,208 @@ class DefaultErrorHandlingStrategyTest {
                         new FetchItem("DR", "2025-01-01", "2025-01-31"),
                         new FetchItem("DR", "2025-02-01", "2025-02-28"),
                         new FetchItem("DR", "2025-03-01", "2025-03-31")));
+  }
+
+  @ParameterizedTest
+  @MethodSource("counterApiExceptions")
+  void testCounterApiExceptionAddsApiExceptionsToFailedReport(CounterApiException e) {
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            GiveUp.class,
+            giveUp ->
+                assertThat(giveUp.reports())
+                    .singleElement()
+                    .satisfies(
+                        cr ->
+                            assertThat(cr.getApiExceptions())
+                                .extracting(ApiException::getCode)
+                                .containsExactlyElementsOf(e.codes())));
+  }
+
+  @Test
+  void testCounterApiExceptionMapsAllFieldsToApiException() {
+    var e =
+        header(
+            "[{\"Code\":3030,\"Message\":\"No Usage Available for Requested Dates\","
+                + "\"Data\":\"No usage for 2025-01\",\"Help_URL\":\"https://example.org/help\"}]");
+
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            GiveUp.class,
+            giveUp ->
+                assertThat(giveUp.reports())
+                    .singleElement()
+                    .satisfies(
+                        cr ->
+                            assertThat(cr.getApiExceptions())
+                                .singleElement()
+                                .satisfies(
+                                    apiException -> {
+                                      assertThat(apiException.getCode()).isEqualTo(3030);
+                                      assertThat(apiException.getMessage())
+                                          .isEqualTo("No Usage Available for Requested Dates");
+                                      assertThat(apiException.getData())
+                                          .isEqualTo("No usage for 2025-01");
+                                      assertThat(apiException.getHelpUrl())
+                                          .isEqualTo(URI.create("https://example.org/help"));
+                                    })));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "[{\"Code\":3030}]",
+        "[{\"Code\":3030,\"Help_URL\":null}]",
+        "[{\"Code\":3030,\"Help_URL\":\"\"}]",
+        "[{\"Code\":3030,\"Help_URL\":\"  \\t\"}]",
+        "[{\"Code\":3030,\"Help_URL\":\"not a valid uri\"}]"
+      })
+  void testCounterApiExceptionWithoutValidHelpUrlHasNoHelpUrl(String exceptionsJson) {
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, header(exceptionsJson));
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            GiveUp.class,
+            giveUp ->
+                assertThat(giveUp.reports())
+                    .singleElement()
+                    .satisfies(
+                        cr ->
+                            assertThat(cr.getApiExceptions())
+                                .singleElement()
+                                .satisfies(
+                                    apiException -> {
+                                      assertThat(apiException.getCode()).isEqualTo(3030);
+                                      assertThat(apiException.getHelpUrl()).isNull();
+                                    })));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "[{\"Code\":3030}]",
+        "[{\"Code\":3030,\"Message\":null,\"Data\":null}]",
+        "[{\"Code\":3030,\"Message\":\"\",\"Data\":\"\"}]",
+        "[{\"Code\":3030,\"Message\":\"  \\t\",\"Data\":\" \\n \"}]"
+      })
+  void testCounterApiExceptionWithoutMessageAndDataHasNoMessageAndData(String exceptionsJson) {
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, header(exceptionsJson));
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            GiveUp.class,
+            giveUp ->
+                assertThat(giveUp.reports())
+                    .singleElement()
+                    .satisfies(
+                        cr ->
+                            assertThat(cr.getApiExceptions())
+                                .singleElement()
+                                .satisfies(
+                                    apiException -> {
+                                      assertThat(apiException.getCode()).isEqualTo(3030);
+                                      assertThat(apiException.getMessage()).isNull();
+                                      assertThat(apiException.getData()).isNull();
+                                    })));
+  }
+
+  @Test
+  void testCounterApiExceptionSkipsExceptionsWithoutCode() {
+    var e =
+        header(
+            "[{\"Message\":\"No code here\"},{\"Code\":3031},{\"Code\":\"x\",\"Message\":\"y\"}]");
+
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            GiveUp.class,
+            giveUp ->
+                assertThat(giveUp.reports())
+                    .singleElement()
+                    .satisfies(
+                        cr ->
+                            assertThat(cr.getApiExceptions())
+                                .extracting(ApiException::getCode)
+                                .containsExactly(3031)));
+  }
+
+  @Test
+  void testCounterApiExceptionWithoutAnyCodeAddsNoApiExceptions() {
+    var e = header("[{\"Message\":\"No code here\"}]");
+
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            GiveUp.class,
+            giveUp ->
+                assertThat(giveUp.reports())
+                    .singleElement()
+                    .satisfies(cr -> assertThat(cr.getApiExceptions()).isNull()));
+  }
+
+  @Test
+  void testCounterApiExceptionTooManyRequestsAddsApiExceptionsToEachExpandedMonth() {
+    var e = header("[{\"Code\":1020,\"Message\":\"Client has made too many requests\"}]");
+
+    var result = strategy.handleFetchError(FETCH_ITEM_DR, 2, e);
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            GiveUpSlowDown.class,
+            giveUpSlowDown ->
+                assertThat(giveUpSlowDown.reports())
+                    .hasSize(3)
+                    .allSatisfy(
+                        cr ->
+                            assertThat(cr.getApiExceptions())
+                                .singleElement()
+                                .satisfies(
+                                    apiException -> {
+                                      assertThat(apiException.getCode()).isEqualTo(1020);
+                                      assertThat(apiException.getMessage())
+                                          .isEqualTo("Client has made too many requests");
+                                    })));
+  }
+
+  @ParameterizedTest
+  @MethodSource("nonCounterApiExceptions")
+  void testNonCounterApiExceptionAddsNoApiExceptions(Throwable t) {
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, t);
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            GiveUp.class,
+            giveUp ->
+                assertThat(giveUp.reports())
+                    .singleElement()
+                    .satisfies(cr -> assertThat(cr.getApiExceptions()).isNull()));
+  }
+
+  @Test
+  void testTooManyRequestsExceptionAddsNoApiExceptions() {
+    var result =
+        strategy.handleFetchError(FETCH_ITEM_TR, 2, new TooManyRequestsException("Slow down"));
+
+    assertThat(result)
+        .isInstanceOfSatisfying(
+            GiveUpSlowDown.class,
+            giveUpSlowDown ->
+                assertThat(giveUpSlowDown.reports())
+                    .singleElement()
+                    .satisfies(cr -> assertThat(cr.getApiExceptions()).isNull()));
+  }
+
+  private static Stream<Arguments> nonCounterApiExceptions() {
+    return Stream.of(
+        arguments(named("InvalidReportException", new InvalidReportException("Invalid"))),
+        arguments(named("ServiceEndpointException", new ServiceEndpointException(500, "Err", "x"))),
+        arguments(named("RuntimeException", new RuntimeException("Something went wrong"))));
   }
 
   private static Stream<Arguments> counterApiExceptions() {
