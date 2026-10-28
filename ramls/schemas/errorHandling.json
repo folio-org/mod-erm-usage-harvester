@@ -1,4 +1,6 @@
 {
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "ErrorHandling Schema",
   "description": "Harvester error handling settings",
   "type": "object",
   "properties": {

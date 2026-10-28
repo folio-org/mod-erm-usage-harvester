@@ -178,7 +178,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       Context vertxContext) {
 
     ErrorHandlingPgUtil.upsert(vertxContext, okapiHeaders, entity)
-        .map(id -> (Response) PostErmUsageHarvesterErrorHandlingResponse.respond204())
+        .<Response>map(PostErmUsageHarvesterErrorHandlingResponse.respond204())
         .otherwise(
             t -> PostErmUsageHarvesterErrorHandlingResponse.respond500WithTextPlain(t.getMessage()))
         .onComplete(asyncResultHandler);
