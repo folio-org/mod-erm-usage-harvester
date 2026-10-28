@@ -43,11 +43,7 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
   private static final String TENANT = "testtenant";
   private static final String TABLE_NAME = "error_handling";
   private static final Vertx vertx = Vertx.vertx();
-  private static final RequestSpecification baseReq =
-      new RequestSpecBuilder()
-          .addHeader(XOkapiHeaders.TENANT, TENANT)
-          .addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
-          .build();
+  private static RequestSpecification baseReq;
   private static final ErrorHandling errorHandling =
       new ErrorHandling()
           .withNumberOfFailedAttempts(3)
@@ -77,6 +73,12 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
     RestAssured.port = port;
     RestAssured.basePath = "erm-usage-harvester/error-handling";
     RestAssured.defaultParser = Parser.JSON;
+    // built after the RestAssured settings above, because the spec copies them on creation
+    baseReq =
+        new RequestSpecBuilder()
+            .addHeader(XOkapiHeaders.TENANT, TENANT)
+            .addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
+            .build();
 
     DeploymentOptions options = new DeploymentOptions();
     options.setConfig(new JsonObject().put("http.port", port).put("testing", true));
