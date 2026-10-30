@@ -46,22 +46,28 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
   private static RequestSpecification baseReq;
   private static final ErrorHandling errorHandling =
       new ErrorHandling()
-          .withNumberOfFailedAttempts(3)
-          .withServiceNotAvailable(new ServiceNotAvailable().withEnabled(true).withWaitTime(10))
-          .withServiceBusy(new ServiceBusy().withEnabled(true).withWaitTime(20))
+          .withMaxFailedAttempts(3)
+          .withServiceNotAvailable(new ServiceNotAvailable().withEnabled(true).withWaitMinutes(10))
+          .withServiceBusy(new ServiceBusy().withEnabled(true).withWaitMinutes(20))
           .withReportQueuedForProcessing(
-              new ReportQueuedForProcessing().withEnabled(false).withWaitTime(30))
+              new ReportQueuedForProcessing().withEnabled(false).withWaitMinutes(30))
           .withTooManyRequests(
-              new TooManyRequests().withEnabled(true).withNumberOfRequests(2).withTimeframe(5));
+              new TooManyRequests()
+                  .withEnabled(true)
+                  .withNumberOfRequests(2)
+                  .withTimeframeSeconds(5));
   private static final ErrorHandling errorHandling2 =
       new ErrorHandling()
-          .withNumberOfFailedAttempts(4)
-          .withServiceNotAvailable(new ServiceNotAvailable().withEnabled(false).withWaitTime(11))
-          .withServiceBusy(new ServiceBusy().withEnabled(false).withWaitTime(21))
+          .withMaxFailedAttempts(4)
+          .withServiceNotAvailable(new ServiceNotAvailable().withEnabled(false).withWaitMinutes(11))
+          .withServiceBusy(new ServiceBusy().withEnabled(false).withWaitMinutes(21))
           .withReportQueuedForProcessing(
-              new ReportQueuedForProcessing().withEnabled(true).withWaitTime(31))
+              new ReportQueuedForProcessing().withEnabled(true).withWaitMinutes(31))
           .withTooManyRequests(
-              new TooManyRequests().withEnabled(false).withNumberOfRequests(3).withTimeframe(6));
+              new TooManyRequests()
+                  .withEnabled(false)
+                  .withNumberOfRequests(3)
+                  .withTimeframeSeconds(6));
 
   @ClassRule public static PostgresContainerRule pgRule = new PostgresContainerRule(vertx, TENANT);
 
@@ -140,7 +146,7 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
   public void testValidation() {
     given()
         .spec(baseReq)
-        .body(new ErrorHandling().withServiceBusy(new ServiceBusy().withWaitTime(0)))
+        .body(new ErrorHandling().withServiceBusy(new ServiceBusy().withWaitMinutes(0)))
         .post()
         .then()
         .statusCode(422);

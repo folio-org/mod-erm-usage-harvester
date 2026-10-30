@@ -1,20 +1,20 @@
 {
-  "numberOfFailedAttempts": 5,
+  "maxFailedAttempts": 5,
   "serviceNotAvailable": {
     "enabled": true,
-    "waitTime": 40
+    "waitMinutes": 40
   },
   "serviceBusy": {
     "enabled": true,
-    "waitTime": 70
+    "waitMinutes": 70
   },
   "reportQueuedForProcessing": {
     "enabled": false,
-    "waitTime": 30
+    "waitMinutes": 30
   },
   "tooManyRequests": {
     "enabled": true,
     "numberOfRequests": 10,
-    "timeframe": 10
+    "timeframeSeconds": 10
   }
 }

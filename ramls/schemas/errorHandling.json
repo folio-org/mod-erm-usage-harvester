@@ -7,7 +7,7 @@
     "id": {
       "type": "string"
     },
-    "numberOfFailedAttempts": {
+    "maxFailedAttempts": {
       "description": "Number of failed attempts",
       "type": "integer",
       "default": 5,
@@ -23,7 +23,7 @@
           "type": "boolean",
           "default": false
         },
-        "waitTime": {
+        "waitMinutes": {
           "description": "Wait time in minutes before the next attempt",
           "type": "integer",
           "default": 60,
@@ -42,7 +42,7 @@
           "type": "boolean",
           "default": false
         },
-        "waitTime": {
+        "waitMinutes": {
           "description": "Wait time in minutes before the next attempt",
           "type": "integer",
           "default": 60,
@@ -61,7 +61,7 @@
           "type": "boolean",
           "default": false
         },
-        "waitTime": {
+        "waitMinutes": {
           "description": "Wait time in minutes before the next attempt",
           "type": "integer",
           "default": 30,
@@ -86,7 +86,7 @@
           "default": 1,
           "minimum": 1
         },
-        "timeframe": {
+        "timeframeSeconds": {
           "description": "Timeframe in seconds",
           "type": "integer",
           "default": 1,
