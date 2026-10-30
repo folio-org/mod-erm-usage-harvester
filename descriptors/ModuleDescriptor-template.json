@@ -117,7 +117,7 @@
           ],
           "pathPattern": "/erm-usage-harvester/error-handling",
           "permissionsRequired": [
-            "ermusageharvester.error-handling.get"
+            "ermusageharvester.settings.error-handling.get"
           ]
         },
         {
@@ -126,7 +126,7 @@
           ],
           "pathPattern": "/erm-usage-harvester/error-handling",
           "permissionsRequired": [
-            "ermusageharvester.error-handling.post"
+            "ermusageharvester.settings.error-handling.post"
           ]
         }
       ]
@@ -246,12 +246,12 @@
       ]
     },
     {
-      "permissionName": "ermusageharvester.error-handling.get",
+      "permissionName": "ermusageharvester.settings.error-handling.get",
       "displayName": "erm-usage-harvester get error handling settings",
       "description": "Read harvester error handling settings"
     },
     {
-      "permissionName": "ermusageharvester.error-handling.post",
+      "permissionName": "ermusageharvester.settings.error-handling.post",
       "displayName": "erm-usage-harvester post error handling settings",
       "description": "Save harvester error handling settings"
     },
@@ -269,8 +269,8 @@
         "ermusageharvester.jobs.get",
         "ermusageharvester.jobs.purge-finished.post",
         "ermusageharvester.jobs.purge-stale.post",
-        "ermusageharvester.error-handling.get",
-        "ermusageharvester.error-handling.post"
+        "ermusageharvester.settings.error-handling.get",
+        "ermusageharvester.settings.error-handling.post"
       ]
     },
     {
