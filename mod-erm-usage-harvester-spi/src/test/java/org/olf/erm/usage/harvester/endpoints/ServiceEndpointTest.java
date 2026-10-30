@@ -166,10 +166,9 @@ class ServiceEndpointTest {
   }
 
   @Test
-  void
-      testCreateErrorResponseExceptionStatus429WithoutCounterBodyReturnsTooManyRequestsException() {
+  void testCreateErrorResponseExceptionStatus429WithoutCounterBodyReturnsCode1020Exception() {
     assertThat(ServiceEndpoint.createErrorResponseException(429, "Too Many Requests", ""))
-        .isInstanceOf(TooManyRequestsException.class);
+        .isInstanceOf(Code1020Exception.class);
   }
 
   @Test

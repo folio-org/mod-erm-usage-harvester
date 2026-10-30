@@ -1,18 +1,18 @@
 {
   "maxFailedAttempts": 5,
-  "serviceNotAvailable": {
+  "code1000": {
     "enabled": true,
     "waitMinutes": 40
   },
-  "serviceBusy": {
+  "code1010": {
     "enabled": true,
     "waitMinutes": 70
   },
-  "reportQueuedForProcessing": {
+  "code1011": {
     "enabled": false,
     "waitMinutes": 30
   },
-  "tooManyRequests": {
+  "code1020": {
     "enabled": true,
     "numberOfRequests": 10,
     "timeframeSeconds": 10

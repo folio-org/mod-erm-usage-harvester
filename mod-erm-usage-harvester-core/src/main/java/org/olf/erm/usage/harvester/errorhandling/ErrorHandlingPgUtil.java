@@ -4,11 +4,11 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import java.util.Map;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.jaxrs.model.Code1000;
+import org.folio.rest.jaxrs.model.Code1010;
+import org.folio.rest.jaxrs.model.Code1011;
+import org.folio.rest.jaxrs.model.Code1020;
 import org.folio.rest.jaxrs.model.ErrorHandling;
-import org.folio.rest.jaxrs.model.ReportQueuedForProcessing;
-import org.folio.rest.jaxrs.model.ServiceBusy;
-import org.folio.rest.jaxrs.model.ServiceNotAvailable;
-import org.folio.rest.jaxrs.model.TooManyRequests;
 import org.folio.rest.persist.PostgresClient;
 
 public class ErrorHandlingPgUtil {
@@ -39,11 +39,10 @@ public class ErrorHandlingPgUtil {
   /** Fills in default values for everything that has not been saved yet. */
   private static ErrorHandling withDefaults(ErrorHandling errorHandling) {
     ErrorHandling eh = errorHandling != null ? errorHandling : new ErrorHandling();
-    if (eh.getServiceNotAvailable() == null) eh.setServiceNotAvailable(new ServiceNotAvailable());
-    if (eh.getServiceBusy() == null) eh.setServiceBusy(new ServiceBusy());
-    if (eh.getReportQueuedForProcessing() == null)
-      eh.setReportQueuedForProcessing(new ReportQueuedForProcessing());
-    if (eh.getTooManyRequests() == null) eh.setTooManyRequests(new TooManyRequests());
+    if (eh.getCode1000() == null) eh.setCode1000(new Code1000());
+    if (eh.getCode1010() == null) eh.setCode1010(new Code1010());
+    if (eh.getCode1011() == null) eh.setCode1011(new Code1011());
+    if (eh.getCode1020() == null) eh.setCode1020(new Code1020());
     return eh;
   }
 

@@ -16,11 +16,11 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.RestVerticle;
+import org.folio.rest.jaxrs.model.Code1000;
+import org.folio.rest.jaxrs.model.Code1010;
+import org.folio.rest.jaxrs.model.Code1011;
+import org.folio.rest.jaxrs.model.Code1020;
 import org.folio.rest.jaxrs.model.ErrorHandling;
-import org.folio.rest.jaxrs.model.ReportQueuedForProcessing;
-import org.folio.rest.jaxrs.model.ServiceBusy;
-import org.folio.rest.jaxrs.model.ServiceNotAvailable;
-import org.folio.rest.jaxrs.model.TooManyRequests;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -47,27 +47,19 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
   private static final ErrorHandling errorHandling =
       new ErrorHandling()
           .withMaxFailedAttempts(3)
-          .withServiceNotAvailable(new ServiceNotAvailable().withEnabled(true).withWaitMinutes(10))
-          .withServiceBusy(new ServiceBusy().withEnabled(true).withWaitMinutes(20))
-          .withReportQueuedForProcessing(
-              new ReportQueuedForProcessing().withEnabled(false).withWaitMinutes(30))
-          .withTooManyRequests(
-              new TooManyRequests()
-                  .withEnabled(true)
-                  .withNumberOfRequests(2)
-                  .withTimeframeSeconds(5));
+          .withCode1000(new Code1000().withEnabled(true).withWaitMinutes(10))
+          .withCode1010(new Code1010().withEnabled(true).withWaitMinutes(20))
+          .withCode1011(new Code1011().withEnabled(false).withWaitMinutes(30))
+          .withCode1020(
+              new Code1020().withEnabled(true).withNumberOfRequests(2).withTimeframeSeconds(5));
   private static final ErrorHandling errorHandling2 =
       new ErrorHandling()
           .withMaxFailedAttempts(4)
-          .withServiceNotAvailable(new ServiceNotAvailable().withEnabled(false).withWaitMinutes(11))
-          .withServiceBusy(new ServiceBusy().withEnabled(false).withWaitMinutes(21))
-          .withReportQueuedForProcessing(
-              new ReportQueuedForProcessing().withEnabled(true).withWaitMinutes(31))
-          .withTooManyRequests(
-              new TooManyRequests()
-                  .withEnabled(false)
-                  .withNumberOfRequests(3)
-                  .withTimeframeSeconds(6));
+          .withCode1000(new Code1000().withEnabled(false).withWaitMinutes(11))
+          .withCode1010(new Code1010().withEnabled(false).withWaitMinutes(21))
+          .withCode1011(new Code1011().withEnabled(true).withWaitMinutes(31))
+          .withCode1020(
+              new Code1020().withEnabled(false).withNumberOfRequests(3).withTimeframeSeconds(6));
 
   @ClassRule public static PostgresContainerRule pgRule = new PostgresContainerRule(vertx, TENANT);
 
@@ -127,10 +119,10 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
         .usingRecursiveComparison()
         .isEqualTo(
             new ErrorHandling()
-                .withServiceNotAvailable(new ServiceNotAvailable())
-                .withServiceBusy(new ServiceBusy())
-                .withReportQueuedForProcessing(new ReportQueuedForProcessing())
-                .withTooManyRequests(new TooManyRequests()));
+                .withCode1000(new Code1000())
+                .withCode1010(new Code1010())
+                .withCode1011(new Code1011())
+                .withCode1020(new Code1020()));
   }
 
   @Test
@@ -146,7 +138,7 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
   public void testValidation() {
     given()
         .spec(baseReq)
-        .body(new ErrorHandling().withServiceBusy(new ServiceBusy().withWaitMinutes(0)))
+        .body(new ErrorHandling().withCode1010(new Code1010().withWaitMinutes(0)))
         .post()
         .then()
         .statusCode(422);

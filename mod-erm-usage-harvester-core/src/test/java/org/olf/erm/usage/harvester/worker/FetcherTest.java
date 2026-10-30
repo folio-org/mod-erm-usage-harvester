@@ -29,9 +29,9 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
+import org.olf.erm.usage.harvester.endpoints.Code1020Exception;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
-import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
 
 /** Test class for {@link Fetcher}. */
 class FetcherTest {
@@ -134,7 +134,7 @@ class FetcherTest {
 
   private static Stream<Arguments> getTestFetchReportWithHandledErrorParameters() {
     return Stream.of(
-        Arguments.of(new TooManyRequestsException("Don't be too greedy")),
+        Arguments.of(new Code1020Exception("Don't be too greedy")),
         Arguments.of(new InvalidReportException("Please be precise")),
         Arguments.of(new RuntimeException("Something went wrong")));
   }

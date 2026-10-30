@@ -6,7 +6,7 @@ import io.vertx.ext.web.client.WebClient;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.tools.utils.VertxUtils;
 
-public class WorkerVerticleITProviderFailsTooManyRequests implements ServiceEndpointProvider {
+public class WorkerVerticleITProviderFailsCode1020 implements ServiceEndpointProvider {
 
   Vertx vertx = VertxUtils.getVertxFromContextOrNew();
   WebClient client = WebClient.create(vertx);
@@ -18,12 +18,12 @@ public class WorkerVerticleITProviderFailsTooManyRequests implements ServiceEndp
 
   @Override
   public String getServiceName() {
-    return "WorkerVerticleITFailsTooManyRequests";
+    return "WorkerVerticleITFailsCode1020";
   }
 
   @Override
   public String getServiceDescription() {
-    return "Test Provider fails with TooManyRequestsException";
+    return "Test Provider fails with Code1020Exception";
   }
 
   @Override
@@ -35,6 +35,6 @@ public class WorkerVerticleITProviderFailsTooManyRequests implements ServiceEndp
             .addQueryParam("begin", beginDate)
             .addQueryParam("end", endDate)
             .send()
-            .transform(ar -> Future.failedFuture(new TooManyRequestsException()));
+            .transform(ar -> Future.failedFuture(new Code1020Exception()));
   }
 }

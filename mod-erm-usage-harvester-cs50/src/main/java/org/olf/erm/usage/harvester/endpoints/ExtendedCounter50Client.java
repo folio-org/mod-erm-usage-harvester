@@ -22,9 +22,9 @@ import org.openapitools.counter50.model.SUSHIErrorModel;
  * <p>A response body consisting only of COUNTER exceptions (one object or an array) is wrapped in
  * {@link CounterApiException}, for both success and error status codes.
  *
- * <p>Otherwise, rate limit errors (429) are wrapped in {@link TooManyRequestsException}. Other HTTP
- * errors are wrapped in {@link ServiceEndpointException} with format: "HTTP {statusCode}:
- * {statusMessage} - {responseBody}". The full body is available via {@link
+ * <p>Otherwise, rate limit errors (429) are wrapped in {@link Code1020Exception}. Other HTTP errors
+ * are wrapped in {@link ServiceEndpointException} with format: "HTTP {statusCode}: {statusMessage}
+ * - {responseBody}". The full body is available via {@link
  * ServiceEndpointException#getResponseBody()}.
  *
  * <p>Some providers incorrectly return SUSHI error responses with 2xx status codes instead of

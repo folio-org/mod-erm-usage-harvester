@@ -22,9 +22,9 @@ import org.olf.erm.usage.counter51.client.Counter51Client;
  * <p>A response body consisting only of COUNTER exceptions (one object or an array) is wrapped in
  * {@link CounterApiException}, for both success and error status codes.
  *
- * <p>Otherwise, rate limit errors (429) are wrapped in {@link TooManyRequestsException}. Other HTTP
- * errors are wrapped in {@link ServiceEndpointException} with format: "HTTP {statusCode}:
- * {statusMessage} - {responseBody}". The full body is available via {@link
+ * <p>Otherwise, rate limit errors (429) are wrapped in {@link Code1020Exception}. Other HTTP errors
+ * are wrapped in {@link ServiceEndpointException} with format: "HTTP {statusCode}: {statusMessage}
+ * - {responseBody}". The full body is available via {@link
  * ServiceEndpointException#getResponseBody()}.
  *
  * <p>A report that can't be parsed but contains exceptions in its {@code Report_Header} (e.g. a
