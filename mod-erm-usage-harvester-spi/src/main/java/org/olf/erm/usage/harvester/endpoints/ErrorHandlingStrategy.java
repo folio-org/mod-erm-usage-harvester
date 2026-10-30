@@ -2,9 +2,9 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
+import static org.olf.erm.usage.harvester.endpoints.Code1020Exception.ERROR_CODE_1020;
+import static org.olf.erm.usage.harvester.endpoints.Code1020Exception.ERROR_CODE_1020_STR;
 import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createCounterReport;
-import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
-import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
 import java.util.List;
 import java.util.Locale;
@@ -40,7 +40,7 @@ public interface ErrorHandlingStrategy {
    */
   class DefaultErrorHandlingStrategy implements ErrorHandlingStrategy {
 
-    private static final int RETRY_COUNT_TOO_MANY_REQUESTS = 2;
+    private static final int RETRY_COUNT_CODE_1020 = 2;
 
     private final UsageDataProvider usageDataProvider;
 
@@ -54,7 +54,7 @@ public interface ErrorHandlingStrategy {
         final FetchItem fetchItem, final int retryCount, final Throwable t) {
       return switch (t) {
         case CounterApiException e -> handleCounterApiException(fetchItem, retryCount, e);
-        case TooManyRequestsException e -> handleTooManyRequests(fetchItem, retryCount, e);
+        case Code1020Exception e -> handleCode1020Exception(fetchItem, retryCount, e);
         case InvalidReportException e -> handleInvalidReport(fetchItem, e);
         default -> handleUnknownError(fetchItem, t);
       };
@@ -77,33 +77,33 @@ public interface ErrorHandlingStrategy {
     /**
      * Handles a {@link CounterApiException} the same way in every delivery situation. For now the
      * exception codes only matter for the throttle check ({@link
-     * #isTooManyRequests(CounterApiException)}); otherwise it is handled like an invalid report.
+     * #isCode1020(CounterApiException)}); otherwise it is handled like an invalid report.
      *
      * <p>In the future, this is the extension point for more targeted handling based on the
      * exception codes, see UIEUS-430, UIEUS-389, UIEUS-371, UIEUS-431 and UIEUS-499.
      */
     private ErrorHandlingResult handleCounterApiException(
         final FetchItem fetchItem, final int retryCount, final CounterApiException e) {
-      if (isTooManyRequests(e)) {
-        return handleTooManyRequests(fetchItem, retryCount, e);
+      if (isCode1020(e)) {
+        return handleCode1020Exception(fetchItem, retryCount, e);
       }
 
       return handleInvalidReport(fetchItem, e);
     }
 
-    private boolean isTooManyRequests(CounterApiException e) {
+    private boolean isCode1020(CounterApiException e) {
       return Integer.valueOf(429).equals(e.statusCode())
-          || e.containsCode(TOO_MANY_REQUEST_ERROR_CODE)
+          || e.containsCode(ERROR_CODE_1020)
           || e.exceptions().stream()
               .anyMatch(
                   x ->
                       x.message() != null
-                          && x.message().toLowerCase(Locale.ROOT).contains(TOO_MANY_REQUEST_STR));
+                          && x.message().toLowerCase(Locale.ROOT).contains(ERROR_CODE_1020_STR));
     }
 
-    private ErrorHandlingResult handleTooManyRequests(
+    private ErrorHandlingResult handleCode1020Exception(
         final FetchItem fetchItem, final int retryCount, final Throwable t) {
-      if (retryCount < RETRY_COUNT_TOO_MANY_REQUESTS) {
+      if (retryCount < RETRY_COUNT_CODE_1020) {
         return new ErrorHandlingResult.Throttle(List.of(fetchItem), retryCount + 1);
       }
 

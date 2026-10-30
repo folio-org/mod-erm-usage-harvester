@@ -63,7 +63,7 @@ public class WorkerVerticleITProvider3 implements ServiceEndpointProvider {
                 resp -> {
                   if (beginDate.equals("2020-01-01") && endDate.equals("2020-04-30")) {
                     if (counter.incrementAndGet() <= 2) {
-                      throw new TooManyRequestsException();
+                      throw new Code1020Exception();
                     }
                   }
                   if (beginDate.equals("2018-01-01") && endDate.equals("2018-12-31")) {

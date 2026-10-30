@@ -26,6 +26,7 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.rest.jaxrs.model.ErrorHandling;
 import org.folio.rest.jaxrs.model.JobInfo;
 import org.folio.rest.jaxrs.model.JobInfo.Result;
 import org.folio.rest.jaxrs.model.JobInfos;
@@ -42,6 +43,7 @@ import org.olf.erm.usage.harvester.client.SettingsClient;
 import org.olf.erm.usage.harvester.client.SettingsClientImpl;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
+import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingPgUtil;
 import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -150,6 +152,36 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
       impl.setIsDefault(true);
     }
     return impl;
+  }
+
+  @Override
+  public void getErmUsageHarvesterErrorHandling(
+      Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+
+    ErrorHandlingPgUtil.get(vertxContext, okapiHeaders)
+        .map(
+            eh ->
+                (Response)
+                    GetErmUsageHarvesterErrorHandlingResponse.respond200WithApplicationJson(eh))
+        .otherwise(
+            t -> GetErmUsageHarvesterErrorHandlingResponse.respond500WithTextPlain(t.getMessage()))
+        .onComplete(asyncResultHandler);
+  }
+
+  @Override
+  public void postErmUsageHarvesterErrorHandling(
+      ErrorHandling entity,
+      Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+
+    ErrorHandlingPgUtil.upsert(vertxContext, okapiHeaders, entity)
+        .<Response>map(PostErmUsageHarvesterErrorHandlingResponse.respond204())
+        .otherwise(
+            t -> PostErmUsageHarvesterErrorHandlingResponse.respond500WithTextPlain(t.getMessage()))
+        .onComplete(asyncResultHandler);
   }
 
   private Criteria createTimestampCriteria(Number timestamp) {

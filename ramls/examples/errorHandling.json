@@ -1,0 +1,20 @@
+{
+  "maxFailedAttempts": 5,
+  "code1000": {
+    "enabled": true,
+    "waitMinutes": 40
+  },
+  "code1010": {
+    "enabled": true,
+    "waitMinutes": 70
+  },
+  "code1011": {
+    "enabled": false,
+    "waitMinutes": 30
+  },
+  "code1020": {
+    "enabled": true,
+    "numberOfRequests": 10,
+    "timeframeSeconds": 10
+  }
+}

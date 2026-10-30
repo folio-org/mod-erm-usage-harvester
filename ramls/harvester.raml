@@ -10,6 +10,7 @@ types:
   jobInfos: !include schemas/jobInfos.json
   serviceImplementations: !include schemas/serviceImplementations.json
   errors: !include raml-util/schemas/errors.schema
+  errorHandling: !include schemas/errorHandling.json
 
 traits:
   orderable: !include ./raml-util/traits/orderable.raml
@@ -149,3 +150,33 @@ resourceTypes:
             description: Internal server error
             body:
               text/plain:
+  /error-handling:
+    description: Harvester error handling settings
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: errorHandling
+              example: !include examples/errorHandling.json
+        500:
+          description: Internal server error
+          body:
+            text/plain:
+    post:
+      body:
+        application/json:
+          type: errorHandling
+          example: !include examples/errorHandling.json
+      responses:
+        204:
+          description: Success
+        422:
+          description: Unprocessable Entity
+          body:
+            application/json:
+              type: errors
+        500:
+          description: Internal server error
+          body:
+            text/plain:

@@ -258,7 +258,7 @@ class CS51ImplTest {
   }
 
   @Test
-  void testReceiveReportWithTooManyRequestsExceptionInHeader(VertxTestContext testContext)
+  void testReceiveReportWithCode1020ExceptionInHeader(VertxTestContext testContext)
       throws IOException {
     String body = readBodyFile("TR_with_exception.json").replace("3031", "1020");
     serviceMock.stubFor(
@@ -344,7 +344,7 @@ class CS51ImplTest {
   }
 
   @Test
-  void testTooManyRequestsException(VertxTestContext testContext) {
+  void testCode1020Exception(VertxTestContext testContext) {
     serviceMock.stubFor(get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(429)));
 
     new CS51Impl(provider)
@@ -355,7 +355,7 @@ class CS51ImplTest {
                     .verify(
                         () -> {
                           assertThat(ar.failed()).isTrue();
-                          assertThat(ar.cause()).isInstanceOf(TooManyRequestsException.class);
+                          assertThat(ar.cause()).isInstanceOf(Code1020Exception.class);
                         })
                     .completeNow());
   }
