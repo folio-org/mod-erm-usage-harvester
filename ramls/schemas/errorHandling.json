@@ -15,73 +15,19 @@
     },
     "code1000": {
       "description": "1000 - Service Not Available",
-      "type": "object",
-      "properties": {
-        "waitMinutes": {
-          "description": "Wait time in minutes before the next attempt",
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1440
-        }
-      },
-      "required": [
-        "waitMinutes"
-      ],
-      "additionalProperties": false
+      "$ref": "waitOption.json"
     },
     "code1010": {
       "description": "1010 - Service Busy",
-      "type": "object",
-      "properties": {
-        "waitMinutes": {
-          "description": "Wait time in minutes before the next attempt",
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1440
-        }
-      },
-      "required": [
-        "waitMinutes"
-      ],
-      "additionalProperties": false
+      "$ref": "waitOption.json"
     },
     "code1011": {
       "description": "1011 - Report Queued for Processing",
-      "type": "object",
-      "properties": {
-        "waitMinutes": {
-          "description": "Wait time in minutes before the next attempt",
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1440
-        }
-      },
-      "required": [
-        "waitMinutes"
-      ],
-      "additionalProperties": false
+      "$ref": "waitOption.json"
     },
     "code1020": {
       "description": "1020 - Client has made too many requests",
-      "type": "object",
-      "properties": {
-        "numberOfRequests": {
-          "description": "Number of requests",
-          "type": "integer",
-          "minimum": 1
-        },
-        "timeframeSeconds": {
-          "description": "Timeframe in seconds",
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 86400
-        }
-      },
-      "required": [
-        "numberOfRequests",
-        "timeframeSeconds"
-      ],
-      "additionalProperties": false
+      "$ref": "rateOption.json"
     }
   },
   "additionalProperties": false

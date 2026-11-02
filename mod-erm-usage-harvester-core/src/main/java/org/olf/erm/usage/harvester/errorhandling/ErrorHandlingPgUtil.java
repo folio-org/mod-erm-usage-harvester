@@ -25,8 +25,8 @@ public class ErrorHandlingPgUtil {
   public static Future<ErrorHandling> get(Context vertxContext, String tenantId) {
     return PostgresClient.getInstance(vertxContext.owner(), tenantId)
         .getById(TBL, UUID, ErrorHandling.class)
-        // nothing saved yet means no option is set
-        .map(eh -> eh != null ? eh : new ErrorHandling());
+        // nothing saved yet means no option is set; the id of the single record is internal
+        .map(eh -> eh != null ? eh.withId(null) : new ErrorHandling());
   }
 
   public static Future<ErrorHandling> get(Context vertxContext, Map<String, String> okapiHeaders) {

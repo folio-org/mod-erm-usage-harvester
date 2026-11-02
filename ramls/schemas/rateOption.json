@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "RateOption Schema",
+  "description": "Error handling option that limits the request rate",
+  "type": "object",
+  "javaType": "org.folio.rest.jaxrs.model.RateOption",
+  "properties": {
+    "numberOfRequests": {
+      "description": "Number of requests",
+      "type": "integer",
+      "minimum": 1
+    },
+    "timeframeSeconds": {
+      "description": "Timeframe in seconds",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 86400
+    }
+  },
+  "required": [
+    "numberOfRequests",
+    "timeframeSeconds"
+  ],
+  "additionalProperties": false
+}

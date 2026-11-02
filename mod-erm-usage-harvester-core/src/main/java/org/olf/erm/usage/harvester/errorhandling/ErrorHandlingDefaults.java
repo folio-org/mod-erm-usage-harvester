@@ -1,10 +1,8 @@
 package org.olf.erm.usage.harvester.errorhandling;
 
-import org.folio.rest.jaxrs.model.Code1000;
-import org.folio.rest.jaxrs.model.Code1010;
-import org.folio.rest.jaxrs.model.Code1011;
-import org.folio.rest.jaxrs.model.Code1020;
 import org.folio.rest.jaxrs.model.ErrorHandling;
+import org.folio.rest.jaxrs.model.RateOption;
+import org.folio.rest.jaxrs.model.WaitOption;
 
 /** Values that apply for every error handling option that has not been set. */
 public final class ErrorHandlingDefaults {
@@ -20,11 +18,11 @@ public final class ErrorHandlingDefaults {
   public static ErrorHandling get() {
     return new ErrorHandling()
         .withMaxFailedAttempts(MAX_FAILED_ATTEMPTS)
-        .withCode1000(new Code1000().withWaitMinutes(CODE_1000_WAIT_MINUTES))
-        .withCode1010(new Code1010().withWaitMinutes(CODE_1010_WAIT_MINUTES))
-        .withCode1011(new Code1011().withWaitMinutes(CODE_1011_WAIT_MINUTES))
+        .withCode1000(new WaitOption().withWaitMinutes(CODE_1000_WAIT_MINUTES))
+        .withCode1010(new WaitOption().withWaitMinutes(CODE_1010_WAIT_MINUTES))
+        .withCode1011(new WaitOption().withWaitMinutes(CODE_1011_WAIT_MINUTES))
         .withCode1020(
-            new Code1020()
+            new RateOption()
                 .withNumberOfRequests(CODE_1020_NUMBER_OF_REQUESTS)
                 .withTimeframeSeconds(CODE_1020_TIMEFRAME_SECONDS));
   }
