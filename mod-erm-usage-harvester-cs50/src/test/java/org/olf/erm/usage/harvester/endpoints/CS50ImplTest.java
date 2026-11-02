@@ -7,12 +7,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.endpoints.Code1020Exception.ERROR_CODE_1020;
-import static org.olf.erm.usage.harvester.endpoints.Code1020Exception.ERROR_CODE_1020_STR;
 import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.BARE_ERROR_STATUS;
 import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.BARE_SUCCESS_STATUS;
 import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.REPORT_HEADER;
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_ERROR_BODY_LENGTH;
+import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
+import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
@@ -186,13 +186,13 @@ public class CS50ImplTest {
   }
 
   @Test
-  public void testFetchReportCode1020ByErrorCode(TestContext context) throws IOException {
+  public void testFetchReportTooManyRequestsByErrorCode(TestContext context) throws IOException {
     String reportStr =
         Resources.toString(
             Resources.getResource("SampleReportEmptyItems.json"), StandardCharsets.UTF_8);
     COUNTERTitleReport tr = Json.decodeValue(reportStr, COUNTERTitleReport.class);
     SUSHIErrorModel error = new SUSHIErrorModel();
-    error.setCode(ERROR_CODE_1020);
+    error.setCode(TOO_MANY_REQUEST_ERROR_CODE);
     error.setMessage("");
     tr.getReportHeader().setExceptions(List.of(error));
     createStubWithBody(200, Json.encode(tr));
@@ -202,20 +202,20 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertCounterApiException(t, REPORT_HEADER, ERROR_CODE_1020);
+                  assertCounterApiException(t, REPORT_HEADER, TOO_MANY_REQUEST_ERROR_CODE);
                   verifyApiCall();
                 }));
   }
 
   @Test
-  public void testFetchReportCode1020ByErrorMessage(TestContext context) throws IOException {
+  public void testFetchReportTooManyRequestsByErrorMessage(TestContext context) throws IOException {
     String reportStr =
         Resources.toString(
             Resources.getResource("SampleReportEmptyItems.json"), StandardCharsets.UTF_8);
     COUNTERTitleReport tr = Json.decodeValue(reportStr, COUNTERTitleReport.class);
     SUSHIErrorModel error = new SUSHIErrorModel();
     error.setCode(1);
-    error.setMessage(ERROR_CODE_1020_STR);
+    error.setMessage(TOO_MANY_REQUEST_STR);
     tr.getReportHeader().setExceptions(List.of(error));
     createStubWithBody(200, Json.encode(tr));
 
@@ -225,20 +225,20 @@ public class CS50ImplTest {
             context.asyncAssertFailure(
                 t -> {
                   assertCounterApiException(t, REPORT_HEADER, 1);
-                  assertThat(t).hasMessageContaining(ERROR_CODE_1020_STR);
+                  assertThat(t).hasMessageContaining(TOO_MANY_REQUEST_STR);
                   verifyApiCall();
                 }));
   }
 
   @Test
-  public void testFetchReportCode1020ByErrorMessageWithoutCode(TestContext context)
+  public void testFetchReportTooManyRequestsByErrorMessageWithoutCode(TestContext context)
       throws IOException {
     String reportStr =
         Resources.toString(
             Resources.getResource("SampleReportEmptyItems.json"), StandardCharsets.UTF_8);
     COUNTERTitleReport tr = Json.decodeValue(reportStr, COUNTERTitleReport.class);
     SUSHIErrorModel error = new SUSHIErrorModel();
-    error.setMessage(ERROR_CODE_1020_STR);
+    error.setMessage(TOO_MANY_REQUEST_STR);
     tr.getReportHeader().setExceptions(List.of(error));
     createStubWithBody(200, Json.encode(tr));
 
@@ -248,7 +248,7 @@ public class CS50ImplTest {
             context.asyncAssertFailure(
                 t -> {
                   assertCounterApiException(t, REPORT_HEADER);
-                  assertThat(t).hasMessageContaining(ERROR_CODE_1020_STR);
+                  assertThat(t).hasMessageContaining(TOO_MANY_REQUEST_STR);
                   verifyApiCall();
                 }));
   }
@@ -261,9 +261,9 @@ public class CS50ImplTest {
     COUNTERTitleReport tr = Json.decodeValue(reportStr, COUNTERTitleReport.class);
     SUSHIErrorModel noMessage = new SUSHIErrorModel();
     noMessage.setCode(3030);
-    SUSHIErrorModel code1020 = new SUSHIErrorModel();
-    code1020.setCode(ERROR_CODE_1020);
-    tr.getReportHeader().setExceptions(List.of(noMessage, code1020));
+    SUSHIErrorModel tooManyRequests = new SUSHIErrorModel();
+    tooManyRequests.setCode(TOO_MANY_REQUEST_ERROR_CODE);
+    tr.getReportHeader().setExceptions(List.of(noMessage, tooManyRequests));
     createStubWithBody(200, Json.encode(tr));
 
     new CS50Impl(provider)
@@ -271,7 +271,7 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertCounterApiException(t, REPORT_HEADER, 3030, ERROR_CODE_1020);
+                  assertCounterApiException(t, REPORT_HEADER, 3030, TOO_MANY_REQUEST_ERROR_CODE);
                   verifyApiCall();
                 }));
   }
@@ -292,7 +292,8 @@ public class CS50ImplTest {
   }
 
   @Test
-  public void testFetchReportCode1020BareExceptionNotSushiErrorWithStatus200(TestContext context) {
+  public void testFetchReportTooManyRequestsBareExceptionNotSushiErrorWithStatus200(
+      TestContext context) {
     createStubWithBody(200, "{\"Code\":1020,\"Data\":{\"Retry_After\":60}}");
 
     new CS50Impl(provider)
@@ -300,26 +301,26 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertCounterApiException(t, BARE_SUCCESS_STATUS, ERROR_CODE_1020);
+                  assertCounterApiException(t, BARE_SUCCESS_STATUS, TOO_MANY_REQUEST_ERROR_CODE);
                   verifyApiCall();
                 }));
   }
 
   @Test
-  public void testFetchReportCode1020ByHttpStatusCode(TestContext context) {
+  public void testFetchReportTooManyRequestsByHttpStatusCode(TestContext context) {
     createStubWithBody(429, null);
     new CS50Impl(provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertThat(t).isInstanceOf(Code1020Exception.class);
+                  assertThat(t).isInstanceOf(TooManyRequestsException.class);
                   verifyApiCall();
                 }));
   }
 
   @Test
-  public void testFetchReportCode1020BareExceptionWithStatus200(TestContext context) {
+  public void testFetchReportTooManyRequestsBareExceptionWithStatus200(TestContext context) {
     String body = "{\"Code\":1020,\"Message\":\"Client has made too many requests\"}";
     createStubWithBody(200, body);
 
@@ -328,14 +329,14 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertCounterApiException(t, BARE_SUCCESS_STATUS, ERROR_CODE_1020);
+                  assertCounterApiException(t, BARE_SUCCESS_STATUS, TOO_MANY_REQUEST_ERROR_CODE);
                   assertThat(t).hasMessage(body);
                   verifyApiCall();
                 }));
   }
 
   @Test
-  public void testFetchReportCode1020BareExceptionWithStatus400(TestContext context) {
+  public void testFetchReportTooManyRequestsBareExceptionWithStatus400(TestContext context) {
     String body = "[{\"Code\":3030},{\"Code\":1020}]";
     createStubWithBody(400, body);
 
@@ -344,7 +345,8 @@ public class CS50ImplTest {
         .onComplete(
             context.asyncAssertFailure(
                 t -> {
-                  assertCounterApiException(t, BARE_ERROR_STATUS, 3030, ERROR_CODE_1020);
+                  assertCounterApiException(
+                      t, BARE_ERROR_STATUS, 3030, TOO_MANY_REQUEST_ERROR_CODE);
                   assertThat(t).hasMessage("HTTP 400: Bad Request - " + body);
                   verifyApiCall();
                 }));

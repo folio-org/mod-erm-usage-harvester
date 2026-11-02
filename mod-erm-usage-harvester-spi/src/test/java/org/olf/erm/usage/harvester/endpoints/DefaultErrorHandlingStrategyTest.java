@@ -33,8 +33,9 @@ class DefaultErrorHandlingStrategyTest {
   private final ErrorHandlingStrategy strategy = ErrorHandlingStrategy.create(USAGE_DATA_PROVIDER);
 
   @Test
-  void testCode1020ReturnsThrottleWhileRetriesRemain() {
-    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, new Code1020Exception("Slow down"));
+  void testTooManyRequestsReturnsThrottleWhileRetriesRemain() {
+    var result =
+        strategy.handleFetchError(FETCH_ITEM_TR, 0, new TooManyRequestsException("Slow down"));
 
     assertThat(result)
         .isInstanceOfSatisfying(
@@ -46,8 +47,9 @@ class DefaultErrorHandlingStrategyTest {
   }
 
   @Test
-  void testCode1020ReturnsThrottleForEachRetryBelowThreshold() {
-    var result = strategy.handleFetchError(FETCH_ITEM_TR, 1, new Code1020Exception("Slow down"));
+  void testTooManyRequestsReturnsThrottleForEachRetryBelowThreshold() {
+    var result =
+        strategy.handleFetchError(FETCH_ITEM_TR, 1, new TooManyRequestsException("Slow down"));
 
     assertThat(result)
         .isInstanceOfSatisfying(
@@ -59,8 +61,9 @@ class DefaultErrorHandlingStrategyTest {
   }
 
   @Test
-  void testCode1020ReturnsGiveUpSlowDownWhenRetriesExhausted() {
-    var result = strategy.handleFetchError(FETCH_ITEM_TR, 2, new Code1020Exception("Slow down"));
+  void testTooManyRequestsReturnsGiveUpSlowDownWhenRetriesExhausted() {
+    var result =
+        strategy.handleFetchError(FETCH_ITEM_TR, 2, new TooManyRequestsException("Slow down"));
 
     assertThat(result)
         .isInstanceOfSatisfying(
@@ -79,8 +82,9 @@ class DefaultErrorHandlingStrategyTest {
   }
 
   @Test
-  void testCode1020GiveUpSlowDownCreatesReportPerExpandedMonth() {
-    var result = strategy.handleFetchError(FETCH_ITEM_DR, 2, new Code1020Exception("Slow down"));
+  void testTooManyRequestsGiveUpSlowDownCreatesReportPerExpandedMonth() {
+    var result =
+        strategy.handleFetchError(FETCH_ITEM_DR, 2, new TooManyRequestsException("Slow down"));
 
     assertThat(result)
         .isInstanceOfSatisfying(
@@ -165,8 +169,8 @@ class DefaultErrorHandlingStrategyTest {
   }
 
   @ParameterizedTest
-  @MethodSource("code1020CounterApiExceptions")
-  void testCounterApiExceptionCode1020ReturnsThrottle(CounterApiException e) {
+  @MethodSource("tooManyRequestsCounterApiExceptions")
+  void testCounterApiExceptionTooManyRequestsReturnsThrottle(CounterApiException e) {
     var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
 
     assertThat(result)
@@ -179,8 +183,8 @@ class DefaultErrorHandlingStrategyTest {
   }
 
   @ParameterizedTest
-  @MethodSource("code1020CounterApiExceptions")
-  void testCounterApiExceptionCode1020ReturnsGiveUpSlowDownWhenRetriesExhausted(
+  @MethodSource("tooManyRequestsCounterApiExceptions")
+  void testCounterApiExceptionTooManyRequestsReturnsGiveUpSlowDownWhenRetriesExhausted(
       CounterApiException e) {
     var result = strategy.handleFetchError(FETCH_ITEM_DR, 2, e);
 
@@ -264,7 +268,7 @@ class DefaultErrorHandlingStrategyTest {
                 bare(401, "{\"Code\":2010,\"Message\":\"Requestor is Not Authorized\"}"))));
   }
 
-  private static Stream<Arguments> code1020CounterApiExceptions() {
+  private static Stream<Arguments> tooManyRequestsCounterApiExceptions() {
     return Stream.of(
         arguments(named("1020 in report header", header("[{\"Code\":1020}]"))),
         arguments(named("1020 in bare body with 2xx", bare(200, "{\"Code\":1020}"))),

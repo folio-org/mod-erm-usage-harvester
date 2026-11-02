@@ -48,7 +48,8 @@ public interface ServiceEndpoint {
    * @throws InvalidReportException if the fetched report is invalid or can't be parsed
    * @throws InvalidServiceURLException if the service URL is invalid
    * @throws ServiceEndpointException if the provider responded with an HTTP error status
-   * @throws Code1020Exception if the provider responded with HTTP 429 without COUNTER exceptions
+   * @throws TooManyRequestsException if the provider responded with HTTP 429 without COUNTER
+   *     exceptions
    * @throws UnsupportedReportTypeException if the requested report type is not supported
    */
   Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate);
@@ -76,7 +77,7 @@ public interface ServiceEndpoint {
         .orElseGet(
             () ->
                 statusCode == 429
-                    ? new Code1020Exception()
+                    ? new TooManyRequestsException()
                     : new ServiceEndpointException(statusCode, statusMessage, body));
   }
 

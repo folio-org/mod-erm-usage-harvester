@@ -20,11 +20,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.olf.erm.usage.harvester.FetchItem;
-import org.olf.erm.usage.harvester.endpoints.Code1020Exception;
 import org.olf.erm.usage.harvester.endpoints.CounterApiException;
 import org.olf.erm.usage.harvester.endpoints.ErrorHandlingStrategy;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
+import org.olf.erm.usage.harvester.endpoints.TooManyRequestsException;
 
 /**
  * Tests for the {@link FetcherErrorHandler} implementation. This currently only tests the {@link
@@ -88,9 +88,10 @@ class FetcherErrorHandlerTest {
   }
 
   @Test
-  void testCode1020HandlerReEnqueuesWhileRetriesRemain() {
+  void testTooManyRequestsHandlerReEnqueuesWhileRetriesRemain() {
     final var result =
-        handler.handleException(new Code1020Exception("Slow down"), QueueItem.of(FETCH_ITEM_TR, 0));
+        handler.handleException(
+            new TooManyRequestsException("Slow down"), QueueItem.of(FETCH_ITEM_TR, 0));
 
     assertThat(result).as("... no reports are returned yet").isEmpty();
     assertThat(controller.concurrencyWasDisabled).as("... concurrency was disabled").isTrue();
@@ -100,9 +101,10 @@ class FetcherErrorHandlerTest {
   }
 
   @Test
-  void testCode1020HandlerReturnsFailedReportsWhenRetriesExhausted() {
+  void testTooManyRequestsHandlerReturnsFailedReportsWhenRetriesExhausted() {
     final var result =
-        handler.handleException(new Code1020Exception("Slow down"), QueueItem.of(FETCH_ITEM_TR, 2));
+        handler.handleException(
+            new TooManyRequestsException("Slow down"), QueueItem.of(FETCH_ITEM_TR, 2));
 
     assertThat(controller.concurrencyWasDisabled).as("... concurrency was disabled").isTrue();
     assertThat(controller.queueItems).as("... nothing was re-enqueued").isEmpty();

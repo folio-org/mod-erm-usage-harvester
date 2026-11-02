@@ -341,7 +341,7 @@ public class HarvestingIT {
   }
 
   @Test
-  public void testNumberOfRequestsMadeForProviderWithCode1020Error(TestContext context) {
+  public void testNumberOfRequestsMadeForProviderWithTooManyRequestsError(TestContext context) {
     tenantUDPMap
         .get(TENANTA)
         .forEach(udp -> udp.getHarvestingConfig().getSushiConfig().setServiceType("wvitp3"));
@@ -593,7 +593,7 @@ public class HarvestingIT {
   }
 
   @Test
-  public void testRetryCode1020(TestContext context) {
+  public void testRetryTooManyRequests(TestContext context) {
     UsageDataProvider usageDataProvider = tenantUDPMap.get(TENANTA).get(0);
     usageDataProvider.getHarvestingConfig().setHarvestingStart("2018-01");
     usageDataProvider.getHarvestingConfig().setHarvestingEnd("2018-03");
@@ -626,7 +626,8 @@ public class HarvestingIT {
                       3,
                       postRequestedFor(urlEqualTo(reportsPath))
                           .withRequestBody(
-                              matchingJsonPath("$.failedReason", containing("Code1020Exception"))));
+                              matchingJsonPath(
+                                  "$.failedReason", containing("TooManyRequestsException"))));
                   baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
                 });
             vertx.cancelTimer(id);
