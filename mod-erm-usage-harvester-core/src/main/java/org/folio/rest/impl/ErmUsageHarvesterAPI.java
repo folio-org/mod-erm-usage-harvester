@@ -43,6 +43,7 @@ import org.olf.erm.usage.harvester.client.SettingsClient;
 import org.olf.erm.usage.harvester.client.SettingsClientImpl;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
+import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingDefaults;
 import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingPgUtil;
 import org.olf.erm.usage.harvester.periodic.SchedulingUtil;
 import org.quartz.Scheduler;
@@ -168,6 +169,18 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
         .otherwise(
             t -> GetErmUsageHarvesterErrorHandlingResponse.respond500WithTextPlain(t.getMessage()))
         .onComplete(asyncResultHandler);
+  }
+
+  @Override
+  public void getErmUsageHarvesterErrorHandlingDefaults(
+      Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) {
+
+    asyncResultHandler.handle(
+        Future.succeededFuture(
+            GetErmUsageHarvesterErrorHandlingDefaultsResponse.respond200WithApplicationJson(
+                ErrorHandlingDefaults.get())));
   }
 
   @Override

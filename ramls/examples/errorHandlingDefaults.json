@@ -1,0 +1,16 @@
+{
+  "maxFailedAttempts": 5,
+  "code1000": {
+    "waitMinutes": 60
+  },
+  "code1010": {
+    "waitMinutes": 60
+  },
+  "code1011": {
+    "waitMinutes": 30
+  },
+  "code1020": {
+    "numberOfRequests": 1,
+    "timeframeSeconds": 1
+  }
+}

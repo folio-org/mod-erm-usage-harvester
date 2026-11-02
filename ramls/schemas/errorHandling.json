@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "title": "ErrorHandling Schema",
-  "description": "Harvester error handling settings",
+  "description": "Harvester error handling settings. An option that is not set uses its default, see /erm-usage-harvester/error-handling/defaults",
   "type": "object",
   "properties": {
     "id": {
@@ -10,7 +10,6 @@
     "maxFailedAttempts": {
       "description": "Number of failed attempts",
       "type": "integer",
-      "default": 5,
       "minimum": 1,
       "maximum": 20
     },
@@ -18,82 +17,70 @@
       "description": "1000 - Service Not Available",
       "type": "object",
       "properties": {
-        "enabled": {
-          "description": "Whether the configured wait time is used",
-          "type": "boolean",
-          "default": false
-        },
         "waitMinutes": {
           "description": "Wait time in minutes before the next attempt",
           "type": "integer",
-          "default": 60,
           "minimum": 1,
           "maximum": 1440
         }
       },
+      "required": [
+        "waitMinutes"
+      ],
       "additionalProperties": false
     },
     "code1010": {
       "description": "1010 - Service Busy",
       "type": "object",
       "properties": {
-        "enabled": {
-          "description": "Whether the configured wait time is used",
-          "type": "boolean",
-          "default": false
-        },
         "waitMinutes": {
           "description": "Wait time in minutes before the next attempt",
           "type": "integer",
-          "default": 60,
           "minimum": 1,
           "maximum": 1440
         }
       },
+      "required": [
+        "waitMinutes"
+      ],
       "additionalProperties": false
     },
     "code1011": {
       "description": "1011 - Report Queued for Processing",
       "type": "object",
       "properties": {
-        "enabled": {
-          "description": "Whether the configured wait time is used",
-          "type": "boolean",
-          "default": false
-        },
         "waitMinutes": {
           "description": "Wait time in minutes before the next attempt",
           "type": "integer",
-          "default": 30,
           "minimum": 1,
           "maximum": 1440
         }
       },
+      "required": [
+        "waitMinutes"
+      ],
       "additionalProperties": false
     },
     "code1020": {
       "description": "1020 - Client has made too many requests",
       "type": "object",
       "properties": {
-        "enabled": {
-          "description": "Whether the configured request rate is used",
-          "type": "boolean",
-          "default": false
-        },
         "numberOfRequests": {
           "description": "Number of requests",
           "type": "integer",
-          "default": 1,
           "minimum": 1
         },
         "timeframeSeconds": {
           "description": "Timeframe in seconds",
           "type": "integer",
-          "default": 1,
           "minimum": 1,
           "maximum": 86400
         }
       },
+      "required": [
+        "numberOfRequests",
+        "timeframeSeconds"
+      ],
       "additionalProperties": false
     }
   },

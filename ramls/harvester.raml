@@ -180,3 +180,12 @@ resourceTypes:
           description: Internal server error
           body:
             text/plain:
+    /defaults:
+      description: Default error handling settings that apply to every option that is not set
+      get:
+        responses:
+          200:
+            body:
+              application/json:
+                type: errorHandling
+                example: !include examples/errorHandlingDefaults.json

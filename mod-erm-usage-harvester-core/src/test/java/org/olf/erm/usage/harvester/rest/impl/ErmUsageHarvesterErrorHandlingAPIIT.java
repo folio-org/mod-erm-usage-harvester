@@ -34,6 +34,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.MethodSorters;
 import org.olf.erm.usage.harvester.PostgresContainerRule;
+import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingDefaults;
 
 // testZDatabaseError stops Postgres and therefore has to run last
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -47,19 +48,15 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
   private static final ErrorHandling errorHandling =
       new ErrorHandling()
           .withMaxFailedAttempts(3)
-          .withCode1000(new Code1000().withEnabled(true).withWaitMinutes(10))
-          .withCode1010(new Code1010().withEnabled(true).withWaitMinutes(20))
-          .withCode1011(new Code1011().withEnabled(false).withWaitMinutes(30))
-          .withCode1020(
-              new Code1020().withEnabled(true).withNumberOfRequests(2).withTimeframeSeconds(5));
+          .withCode1000(new Code1000().withWaitMinutes(10))
+          .withCode1010(new Code1010().withWaitMinutes(20))
+          .withCode1011(new Code1011().withWaitMinutes(30))
+          .withCode1020(new Code1020().withNumberOfRequests(2).withTimeframeSeconds(5));
+  // options that are not set have to stay unset after an update
   private static final ErrorHandling errorHandling2 =
       new ErrorHandling()
-          .withMaxFailedAttempts(4)
-          .withCode1000(new Code1000().withEnabled(false).withWaitMinutes(11))
-          .withCode1010(new Code1010().withEnabled(false).withWaitMinutes(21))
-          .withCode1011(new Code1011().withEnabled(true).withWaitMinutes(31))
-          .withCode1020(
-              new Code1020().withEnabled(false).withNumberOfRequests(3).withTimeframeSeconds(6));
+          .withCode1011(new Code1011().withWaitMinutes(31))
+          .withCode1020(new Code1020().withNumberOfRequests(3).withTimeframeSeconds(6));
 
   @ClassRule public static PostgresContainerRule pgRule = new PostgresContainerRule(vertx, TENANT);
 
@@ -113,16 +110,27 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
     given().spec(baseReq).body(eh).post().then().statusCode(204);
   }
 
+  private static ErrorHandling getErrorHandlingDefaults() {
+    return given()
+        .spec(baseReq)
+        .get("/defaults")
+        .then()
+        .statusCode(200)
+        .extract()
+        .as(ErrorHandling.class);
+  }
+
+  @Test
+  public void testGetNothingSaved() {
+    assertThat(getErrorHandling()).usingRecursiveComparison().isEqualTo(new ErrorHandling());
+  }
+
   @Test
   public void testGetDefaults() {
-    assertThat(getErrorHandling())
+    assertThat(getErrorHandlingDefaults())
+        .hasNoNullFieldsOrPropertiesExcept("id")
         .usingRecursiveComparison()
-        .isEqualTo(
-            new ErrorHandling()
-                .withCode1000(new Code1000())
-                .withCode1010(new Code1010())
-                .withCode1011(new Code1011())
-                .withCode1020(new Code1020()));
+        .isEqualTo(ErrorHandlingDefaults.get());
   }
 
   @Test
@@ -143,6 +151,14 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
         .then()
         .statusCode(422);
     given().spec(baseReq).body("{\"foo\": 1}").post().then().statusCode(422);
+    given().spec(baseReq).body("{\"code1000\": {}}").post().then().statusCode(422);
+    given()
+        .spec(baseReq)
+        .body("{\"code1020\": {\"numberOfRequests\": 2}}")
+        .post()
+        .then()
+        .statusCode(422);
+    given().spec(baseReq).body("{\"code1000\": {\"enabled\": true}}").post().then().statusCode(422);
   }
 
   @Test
@@ -150,5 +166,9 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
     PostgresClient.stopPostgresTester();
     given().spec(baseReq).body(errorHandling).post().then().statusCode(500);
     given().spec(baseReq).get().then().statusCode(500);
+    // the defaults don't need the database
+    assertThat(getErrorHandlingDefaults())
+        .usingRecursiveComparison()
+        .isEqualTo(ErrorHandlingDefaults.get());
   }
 }
