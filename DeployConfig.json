@@ -1,0 +1,202 @@
+{
+  "description": "mod-erm-usage-harvester configuration template",
+  "moduleDefaults": {
+    "resources": [
+      {
+        "name": "cpu",
+        "value": "64",
+        "description": "CPU request/limit for container"
+      },
+      {
+        "name": "memory",
+        "value": "3000",
+        "description": "Memory hard limit for container (MiB)"
+      },
+      {
+        "name": "memoryReservation",
+        "value": "2625",
+        "description": "Memory reservation / soft limit (MiB)"
+      }
+    ],
+    "java": [
+      {
+        "name": "xmx",
+        "value": "1980m",
+        "description": "Maximum Java heap size, 66% of the container memory, leaving room for metaspace, code cache, threads and direct buffers"
+      },
+      {
+        "name": "MaxMetaspaceSize",
+        "value": "128m",
+        "description": "Maximum Java metaspace size"
+      }
+    ],
+    "deployment": {
+      "isHaSupported": true,
+      "replicasRecommendedCount": 1,
+      "description": "Replicas must form one Hazelcast cluster, because Quartz coordinates the periodic harvests through a Hazelcast job store. The module ships Hazelcast's default configuration, so the deployment has to supply discovery for its platform (see the README section Hazelcast) before running more than one instance; otherwise every instance runs every periodic harvest."
+    },
+    "kong": {
+      "timeouts": {
+        "connect": "60s",
+        "send": "60s",
+        "read": "60s"
+      },
+      "description": "Default timeouts suffice: starting a harvest only schedules a job and answers at once, and the other endpoints are short database operations."
+    },
+    "EnvVars": [
+      {
+        "name": "DB_HOST",
+        "value": null,
+        "description": "PostgreSQL host for writes and, unless a read-only replica is configured, for reads.",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_PORT",
+        "value": "5432",
+        "description": "PostgreSQL port; the database client uses 5432 when unset.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_USERNAME",
+        "value": null,
+        "description": "PostgreSQL user that owns the tenant schemas, supplied through secret management.",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_PASSWORD",
+        "value": null,
+        "description": "Password of the PostgreSQL user, supplied through secret management.",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_DATABASE",
+        "value": null,
+        "description": "PostgreSQL database that holds the tenant schemas.",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_HOST_READER",
+        "value": null,
+        "description": "Host of a synchronously replicated read-only replica for read queries, which the write instance must list in synchronous_standby_names; takes effect only together with DB_PORT_READER, otherwise reads go to DB_HOST.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_PORT_READER",
+        "value": null,
+        "description": "Port of the synchronously replicated read-only replica; takes effect only together with DB_HOST_READER.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_SERVER_PEM",
+        "value": null,
+        "description": "PEM certificate or certificate chain to verify the PostgreSQL server; when set, connections require TLS 1.3 and hostname verification, when unset they are unencrypted.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_QUERYTIMEOUT",
+        "value": "0",
+        "description": "Query timeout in milliseconds that RMB applies only when the module passes it to a query; this module does not, so the setting has no effect.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_MAXPOOLSIZE",
+        "value": "4",
+        "description": "Maximum number of concurrent database connections per tenant in one module instance.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_MAXSHAREDPOOLSIZE",
+        "value": null,
+        "description": "Maximum number of concurrent database connections in one module instance, shared by all tenants; when set, DB_MAXPOOLSIZE is ignored and one tenant can block others, so leave it unset unless that is wanted.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_CONNECTIONRELEASEDELAY",
+        "value": "60000",
+        "description": "Milliseconds after which an idle database connection is closed; 0 keeps idle connections open.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_MAX_LIFETIME",
+        "value": "1800000",
+        "description": "Maximum lifetime of a database connection in milliseconds, after which it is closed once idle; 0 means unlimited.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_RECONNECTATTEMPTS",
+        "value": "0",
+        "description": "Number of retries after a failed database connection attempt; 0 disables reconnecting.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_RECONNECTINTERVAL",
+        "value": "1000",
+        "description": "Milliseconds between database reconnection attempts; relevant only when reconnecting is enabled.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_EXPLAIN_QUERY_THRESHOLD",
+        "value": "1000",
+        "description": "Query duration in milliseconds above which RMB logs an EXPLAIN ANALYZE of searches; raise it to reduce the extra load.",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "OKAPI_URL",
+        "value": null,
+        "description": "URL of the gateway for calls to other modules (on Eureka the module's own sidecar), used to fetch providers and store reports in mod-erm-usage; module initialization fails without it.",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "HTTP_PROXY",
+        "value": null,
+        "description": "Proxy for outgoing HTTP calls to provider COUNTER API endpoints; the base image passes it to the JVM as http.proxyHost and http.proxyPort.",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "HTTPS_PROXY",
+        "value": null,
+        "description": "Proxy for outgoing HTTPS calls to provider COUNTER API endpoints; the base image passes it to the JVM as https.proxyHost and https.proxyPort.",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "NO_PROXY",
+        "value": null,
+        "description": "Comma-separated hosts that bypass the proxy; the base image passes them to the JVM as http.nonProxyHosts.",
+        "type": "CONFIG",
+        "essential": false
+      }
+    ]
+  },
+  "sidecarDefaults": {
+    "resources": [],
+    "java": [],
+    "EnvVars": [
+      {
+        "name": "QUARKUS_HTTP_LIMITS_MAX_BODY_SIZE",
+        "value": "200M",
+        "description": "Maximum request body size the sidecar accepts; raised from the 10 MB default because COUNTER report uploads exceed it.",
+        "type": "QUARKUS",
+        "essential": false
+      }
+    ]
+  }
+}
