@@ -8,7 +8,7 @@
       "type": "string"
     },
     "maxFailedAttempts": {
-      "description": "Number of failed attempts",
+      "description": "Maximum number of failed attempts per report and month before harvesting is given up",
       "type": "integer",
       "minimum": 1,
       "maximum": 20
