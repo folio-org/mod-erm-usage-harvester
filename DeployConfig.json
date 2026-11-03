@@ -193,7 +193,7 @@
       {
         "name": "QUARKUS_HTTP_LIMITS_MAX_BODY_SIZE",
         "value": "200M",
-        "description": "Maximum request body size the sidecar accepts; raised from the 10 MB default because COUNTER report uploads exceed it.",
+        "description": "Maximum request body size the sidecar accepts; raised from the 10 MB default because harvested COUNTER reports the module stores in mod-erm-usage through its sidecar can exceed it.",
         "type": "QUARKUS",
         "essential": false
       }
