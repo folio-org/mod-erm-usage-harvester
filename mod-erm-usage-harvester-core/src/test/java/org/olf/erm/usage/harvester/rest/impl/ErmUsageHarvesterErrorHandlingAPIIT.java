@@ -167,8 +167,7 @@ public class ErmUsageHarvesterErrorHandlingAPIIT {
     }
 
     // numberOfRequests: minimum 1, timeframeSeconds: 1 - 86400
-    String rateTemplate =
-        "{\"code1020\": {\"numberOfRequests\": %d, \"timeframeSeconds\": %d}}";
+    String rateTemplate = "{\"code1020\": {\"numberOfRequests\": %d, \"timeframeSeconds\": %d}}";
     assertPostStatus(String.format(rateTemplate, 0, 5), 422);
     assertPostStatus(String.format(rateTemplate, 1, 5), 204);
     assertPostStatus(String.format(rateTemplate, 2, 0), 422);
