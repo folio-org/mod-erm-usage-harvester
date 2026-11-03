@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "ErrorHandling Schema",
+  "description": "Harvester error handling settings. An option that is not set uses its default, see /erm-usage-harvester/error-handling/defaults",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "maxFailedAttempts": {
+      "description": "Maximum number of failed attempts per report and month before harvesting is given up",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20
+    },
+    "code1000": {
+      "description": "1000 - Service Not Available",
+      "$ref": "waitOption.json"
+    },
+    "code1010": {
+      "description": "1010 - Service Busy",
+      "$ref": "waitOption.json"
+    },
+    "code1011": {
+      "description": "1011 - Report Queued for Processing",
+      "$ref": "waitOption.json"
+    },
+    "code1020": {
+      "description": "1020 - Client has made too many requests",
+      "$ref": "rateOption.json"
+    }
+  },
+  "additionalProperties": false
+}
