@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "WaitOption Schema",
+  "description": "Error handling option that waits before the next attempt",
+  "type": "object",
+  "javaType": "org.folio.rest.jaxrs.model.WaitOption",
+  "properties": {
+    "waitMinutes": {
+      "description": "Wait time in minutes before the next attempt",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1440
+    }
+  },
+  "required": [
+    "waitMinutes"
+  ],
+  "additionalProperties": false
+}
