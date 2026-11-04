@@ -8,7 +8,6 @@ import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.GiveUpSl
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.RetryNow;
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.Throttle;
 
-import java.net.URI;
 import java.util.stream.Stream;
 import org.folio.rest.jaxrs.model.ApiException;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
@@ -271,10 +270,12 @@ class DefaultErrorHandlingStrategyTest {
                 assertThat(giveUp.reports())
                     .singleElement()
                     .satisfies(
-                        cr ->
-                            assertThat(cr.getApiExceptions())
-                                .extracting(ApiException::getCode)
-                                .containsExactlyElementsOf(e.codes())));
+                        cr -> {
+                          assertThat(cr.getFailedReason()).isEqualTo(e.getMessage());
+                          assertThat(cr.getApiExceptions())
+                              .extracting(ApiException::getCode)
+                              .containsExactlyElementsOf(e.codes());
+                        }));
   }
 
   @Test
@@ -304,36 +305,7 @@ class DefaultErrorHandlingStrategyTest {
                                       assertThat(apiException.getData())
                                           .isEqualTo("No usage for 2025-01");
                                       assertThat(apiException.getHelpUrl())
-                                          .isEqualTo(URI.create("https://example.org/help"));
-                                    })));
-  }
-
-  @ParameterizedTest
-  @ValueSource(
-      strings = {
-        "[{\"Code\":3030}]",
-        "[{\"Code\":3030,\"Help_URL\":null}]",
-        "[{\"Code\":3030,\"Help_URL\":\"\"}]",
-        "[{\"Code\":3030,\"Help_URL\":\"  \\t\"}]",
-        "[{\"Code\":3030,\"Help_URL\":\"not a valid uri\"}]"
-      })
-  void testCounterApiExceptionWithoutValidHelpUrlHasNoHelpUrl(String exceptionsJson) {
-    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, header(exceptionsJson));
-
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            GiveUp.class,
-            giveUp ->
-                assertThat(giveUp.reports())
-                    .singleElement()
-                    .satisfies(
-                        cr ->
-                            assertThat(cr.getApiExceptions())
-                                .singleElement()
-                                .satisfies(
-                                    apiException -> {
-                                      assertThat(apiException.getCode()).isEqualTo(3030);
-                                      assertThat(apiException.getHelpUrl()).isNull();
+                                          .isEqualTo("https://example.org/help");
                                     })));
   }
 

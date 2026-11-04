@@ -8,8 +8,6 @@ import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createCounte
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -170,23 +168,11 @@ public interface ErrorHandlingStrategy {
               .withCode(e.code())
               .withMessage(toNonBlankString(e.message()).orElse(null))
               .withData(toNonBlankString(e.data()).orElse(null))
-              .withHelpUrl(toUri(e.helpUrl()).orElse(null)));
+              .withHelpUrl(toNonBlankString(e.helpUrl()).orElse(null)));
     }
 
     private static Optional<String> toNonBlankString(final String text) {
       return Optional.ofNullable(text).filter(not(String::isBlank));
-    }
-
-    private static Optional<URI> toUri(final String helpUrl) {
-      if (helpUrl == null || helpUrl.isBlank()) {
-        return Optional.empty();
-      }
-
-      try {
-        return Optional.of(new URI(helpUrl));
-      } catch (URISyntaxException e) {
-        return Optional.empty();
-      }
     }
   }
 }
