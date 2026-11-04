@@ -13,6 +13,7 @@
 * [MODEUSHARV-189](https://folio-org.atlassian.net/browse/MODEUSHARV-189) Code-based handling of COUNTER API exceptions: cs50 and cs51 raise the new `CounterApiException` carrying the exception codes for header exceptions and bare exception bodies; a 1020 in a bare exception body now throttles
 * [MODEUSHARV-191](https://folio-org.atlassian.net/browse/MODEUSHARV-191) Handle COUNTER exceptions the same way in every delivery situation, splitting and retrying multi-month requests
 * [MODEUSHARV-192](https://folio-org.atlassian.net/browse/MODEUSHARV-192) Add endpoint for error-handling settings
+* [MODEUSHARV-174](https://folio-org.atlassian.net/browse/MODEUSHARV-174) Add `DeployConfig.json` (ADR-0013 Configuration Management)
 
 # 5.2.0
 * [MODEUSHARV-126](https://folio-org.atlassian.net/browse/MODEUSHARV-126) Migrate settings from `mod-configuration` to `mod-settings`
