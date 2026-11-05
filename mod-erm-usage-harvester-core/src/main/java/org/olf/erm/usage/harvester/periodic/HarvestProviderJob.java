@@ -14,8 +14,6 @@ import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
 import org.olf.erm.usage.harvester.client.ServiceEndpointFactory;
-import org.olf.erm.usage.harvester.client.SettingsClient;
-import org.olf.erm.usage.harvester.client.SettingsClientImpl;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.worker.WorkerVerticle;
 import org.quartz.JobExecutionContext;
@@ -41,7 +39,6 @@ public class HarvestProviderJob extends AbstractHarvestJob {
     }
 
     WebClient webClient = WebClientProvider.get(vertxContext.owner());
-    SettingsClient settingsClient = new SettingsClientImpl(okapiUrl, tenantId, webClient);
     ExtCounterReportsClient counterReportsClient =
         new ExtCounterReportsClientImpl(okapiUrl, tenantId, webClient);
     ExtUsageDataProvidersClient usageDataProvidersClient =
@@ -61,7 +58,6 @@ public class HarvestProviderJob extends AbstractHarvestJob {
 
       WorkerVerticle workerVerticle =
           new WorkerVerticle(
-              settingsClient,
               counterReportsClient,
               usageDataProvidersClient,
               tenantId,
