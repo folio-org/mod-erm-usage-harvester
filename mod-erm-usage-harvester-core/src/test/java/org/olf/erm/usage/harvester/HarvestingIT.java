@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -60,6 +61,7 @@ import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.CounterReports;
+import org.folio.rest.jaxrs.model.ErrorHandling;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
 import org.folio.rest.jaxrs.model.Report;
@@ -67,6 +69,10 @@ import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
+import org.folio.rest.jaxrs.model.WaitOption;
+import org.folio.rest.persist.Criteria.Criteria;
+import org.folio.rest.persist.Criteria.Criterion;
+import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -76,7 +82,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
-import org.olf.erm.usage.harvester.client.SettingsClientImpl;
+import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingPgUtil;
 import org.quartz.SchedulerException;
 
 @RunWith(VertxUnitRunner.class)
@@ -87,6 +93,7 @@ public class HarvestingIT {
   private static final String TENANTB = "tenantb";
   private static final Map<String, String> OKAPI_HEADERS = Map.of(XOkapiHeaders.TENANT, TENANTA);
   private static final List<String> tenants = List.of(TENANTA, TENANTB);
+  private static final String ERROR_HANDLING_TABLE = "error_handling";
   private static final String HARVESTER_PATH = "/erm-usage-harvester";
   private static final String HARVESTER_START_PATH = "/erm-usage-harvester/start";
   private static final Map<String, List<UsageDataProvider>> tenantUDPMap = new HashMap<>();
@@ -174,10 +181,6 @@ public class HarvestingIT {
         get(urlMatching(HARVESTER_PATH + "/.*"))
             .willReturn(aResponse().proxiedFrom("http://localhost:" + httpPort)));
 
-    baseRule.stubFor(
-        get(urlPathEqualTo(SettingsClientImpl.ENTRIES_PATH))
-            .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
-
     JsonArray entitlementsResponse =
         tenants.stream().collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
     baseRule.stubFor(
@@ -211,6 +214,7 @@ public class HarvestingIT {
   @Before
   public void before() {
     resetTenantUDPMap();
+    deleteErrorHandling();
     baseRule.resetRequests();
     serviceProviderARule.resetRequests();
     serviceProviderBRule.resetRequests();
@@ -861,6 +865,97 @@ public class HarvestingIT {
             async.complete();
           }
         });
+  }
+
+  @Test
+  public void testMaxFailedAttemptsDefaultIfNothingIsStored(TestContext context) {
+    harvestExistingMonth(context);
+
+    verifyReportsQueriedWithMaxFailedAttempts(5);
+  }
+
+  @Test
+  public void testMaxFailedAttemptsDefaultIfOptionIsNotSet(TestContext context) {
+    saveErrorHandling(new ErrorHandling().withCode1000(new WaitOption().withWaitMinutes(10)));
+
+    harvestExistingMonth(context);
+
+    verifyReportsQueriedWithMaxFailedAttempts(5);
+  }
+
+  @Test
+  public void testMaxFailedAttemptsGlobalSetting(TestContext context) {
+    saveErrorHandling(new ErrorHandling().withMaxFailedAttempts(7));
+
+    harvestExistingMonth(context);
+
+    verifyReportsQueriedWithMaxFailedAttempts(7);
+  }
+
+  private static void verifyReportsQueriedWithMaxFailedAttempts(int expected) {
+    baseRule.verify(
+        1,
+        getRequestedFor(urlPathEqualTo(reportsPath))
+            .withQueryParam("query", containing("failedAttempts>=" + expected + ")")));
+  }
+
+  /** Harvests one month that already exists, so the worker has nothing to fetch and ends soon. */
+  private void harvestExistingMonth(TestContext context) {
+    String month = "2018-01";
+    HarvestingConfig harvestingConfig = tenantUDPMap.get(TENANTA).get(0).getHarvestingConfig();
+    harvestingConfig.setHarvestingStart(month);
+    harvestingConfig.setHarvestingEnd(month);
+    baseRule.stubFor(
+        get(urlPathEqualTo(reportsPath))
+            .willReturn(
+                aResponse()
+                    .withStatus(200)
+                    .withBody(
+                        Json.encodePrettily(
+                            new CounterReports()
+                                .withCounterReports(
+                                    List.of(new CounterReport().withYearMonth(month)))
+                                .withTotalRecords(1)))));
+
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
+
+    waitUntil(
+        context,
+        () ->
+            !baseRule.findAll(getRequestedFor(urlPathEqualTo(reportsPath))).isEmpty()
+                && vertx.deploymentIDs().size() <= 1);
+  }
+
+  private static void waitUntil(TestContext context, BooleanSupplier condition) {
+    Async async = context.async();
+    vertx.setPeriodic(
+        100,
+        id -> {
+          if (condition.getAsBoolean()) {
+            vertx.cancelTimer(id);
+            async.complete();
+          }
+        });
+    async.await(10000);
+  }
+
+  private static void saveErrorHandling(ErrorHandling errorHandling) {
+    ErrorHandlingPgUtil.upsert(vertx.getOrCreateContext(), TENANTA, errorHandling)
+        .toCompletionStage()
+        .toCompletableFuture()
+        .join();
+  }
+
+  private static void deleteErrorHandling() {
+    PostgresClient.getInstance(vertx, TENANTA)
+        .delete(ERROR_HANDLING_TABLE, new Criterion(new Criteria()))
+        .toCompletionStage()
+        .toCompletableFuture()
+        .join();
   }
 
   static class UploadResponseTransformer extends ResponseDefinitionTransformer {

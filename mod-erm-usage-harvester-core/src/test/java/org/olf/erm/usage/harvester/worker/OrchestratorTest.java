@@ -112,6 +112,20 @@ class OrchestratorTest {
     assertThat(controller.abortThrowable).as("... the whole thing was aborted").isNotNull();
   }
 
+  @Test
+  void testStartWithFailedMaxFailedAttempts() {
+    final var counterReportsClient = new TestCounterReportsClient(FETCH_LIST);
+    final var fetcher = configureFetcher(counterReportsClient);
+    final var uploader = new Uploader(counterReportsClient, controller, logCtx);
+    final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
+
+    orchestrator.startWith(Future.failedFuture("max failed attempts not available"));
+
+    assertThat(controller.queueItems).as("... nothing was added to the queue").isEmpty();
+    assertThat(controller.startQueueWithWasCalled).as("... the queue was not started").isFalse();
+    assertThat(controller.abortThrowable).as("... the whole thing was aborted").isNotNull();
+  }
+
   private record TestCounterReportsClient(List<FetchItem> fetchItems)
       implements ExtCounterReportsClient {
 

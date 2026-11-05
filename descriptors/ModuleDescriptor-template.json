@@ -22,9 +22,7 @@
             "counterreports.item.get",
             "counterreports.item.post",
             "counterreports.item.put",
-            "counterreports.item.delete",
-            "mod-settings.entries.collection.get",
-            "mod-settings.global.read.mod-erm-usage-harvester.manage"
+            "counterreports.item.delete"
           ]
         },
         {
@@ -43,9 +41,7 @@
             "counterreports.item.get",
             "counterreports.item.post",
             "counterreports.item.put",
-            "counterreports.item.delete",
-            "mod-settings.entries.collection.get",
-            "mod-settings.global.read.mod-erm-usage-harvester.manage"
+            "counterreports.item.delete"
           ]
         },
         {
