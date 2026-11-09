@@ -932,15 +932,20 @@ public class HarvestingIT {
 
   private static void waitUntil(TestContext context, BooleanSupplier condition) {
     Async async = context.async();
-    vertx.setPeriodic(
-        100,
-        id -> {
-          if (condition.getAsBoolean()) {
-            vertx.cancelTimer(id);
-            async.complete();
-          }
-        });
-    async.await(10000);
+    long timerId =
+        vertx.setPeriodic(
+            100,
+            id -> {
+              if (condition.getAsBoolean()) {
+                vertx.cancelTimer(id);
+                async.complete();
+              }
+            });
+    try {
+      async.await(10000);
+    } finally {
+      vertx.cancelTimer(timerId);
+    }
   }
 
   private static void saveErrorHandling(ErrorHandling errorHandling) {
