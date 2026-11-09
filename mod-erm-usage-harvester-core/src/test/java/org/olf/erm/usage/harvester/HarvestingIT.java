@@ -892,6 +892,30 @@ public class HarvestingIT {
     verifyReportsQueriedWithMaxFailedAttempts(7);
   }
 
+  @Test
+  public void testHarvestAbortedIfErrorHandlingCannotBeRead(TestContext context) {
+    saveErrorHandling(new ErrorHandling().withMaxFailedAttempts(7));
+    storeInvalidErrorHandling();
+
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
+
+    waitUntil(
+        context,
+        () ->
+            listAppender.getEvents().stream()
+                    .map(LogEvent::getMessage)
+                    .map(Message::getFormattedMessage)
+                    .anyMatch(msg -> msg.contains("Failed getting maxFailedAttempts"))
+                && vertx.deploymentIDs().size() <= 1);
+
+    baseRule.verify(0, getRequestedFor(urlPathEqualTo(reportsPath)));
+    serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
+  }
+
   private static void verifyReportsQueriedWithMaxFailedAttempts(int expected) {
     baseRule.verify(
         1,
@@ -950,6 +974,20 @@ public class HarvestingIT {
 
   private static void saveErrorHandling(ErrorHandling errorHandling) {
     ErrorHandlingPgUtil.upsert(vertx.getOrCreateContext(), TENANTA, errorHandling)
+        .toCompletionStage()
+        .toCompletableFuture()
+        .join();
+  }
+
+  /** Overwrites the stored record with a value that cannot be mapped, so reading it fails. */
+  private static void storeInvalidErrorHandling() {
+    PostgresClient.getInstance(vertx, TENANTA)
+        .execute(
+            "UPDATE "
+                + PostgresClient.convertToPsqlStandard(TENANTA)
+                + "."
+                + ERROR_HANDLING_TABLE
+                + " SET jsonb = jsonb_set(jsonb, '{maxFailedAttempts}', '\"abc\"')")
         .toCompletionStage()
         .toCompletableFuture()
         .join();
