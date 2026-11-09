@@ -1,9 +1,11 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import static java.util.function.Predicate.not;
+import static org.apache.commons.lang3.StringUtils.abbreviate;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
 import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterException;
+import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_ERROR_BODY_LENGTH;
 import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createCounterReport;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
@@ -144,15 +146,16 @@ public interface ErrorHandlingStrategy {
      * @return an optional list of {@link ApiException}, all of which at least provide an error code
      */
     private static Optional<List<ApiException>> toApiExceptions(final Throwable t) {
-      if (t instanceof CounterApiException counterApiException) {
-        return Optional.of(
-                counterApiException.exceptions().stream()
-                    .flatMap(exception -> toApiException(exception).stream())
-                    .toList())
-            .filter(not(List::isEmpty));
+      if (!(t instanceof CounterApiException cae)) {
+        return Optional.empty();
       }
 
-      return Optional.empty();
+      final var counterExceptions =
+          cae.exceptions().stream()
+              .flatMap(exception -> toApiException(exception).stream())
+              .toList();
+
+      return Optional.of(counterExceptions).filter(not(List::isEmpty));
     }
 
     /**
@@ -172,7 +175,9 @@ public interface ErrorHandlingStrategy {
     }
 
     private static Optional<String> toNonBlankString(final String text) {
-      return Optional.ofNullable(text).filter(not(String::isBlank));
+      return Optional.ofNullable(text)
+          .filter(not(String::isBlank))
+          .map(t -> abbreviate(t, MAX_ERROR_BODY_LENGTH));
     }
   }
 }
