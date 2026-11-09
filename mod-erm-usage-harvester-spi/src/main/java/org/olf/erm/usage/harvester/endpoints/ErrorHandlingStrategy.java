@@ -146,12 +146,12 @@ public interface ErrorHandlingStrategy {
      * @return an optional list of {@link ApiException}, all of which at least provide an error code
      */
     private static Optional<List<ApiException>> toApiExceptions(final Throwable t) {
-      if (!(t instanceof CounterApiException cae)) {
+      if (!(t instanceof CounterApiException counterApiException)) {
         return Optional.empty();
       }
 
       final var counterExceptions =
-          cae.exceptions().stream()
+          counterApiException.exceptions().stream()
               .flatMap(exception -> toApiException(exception).stream())
               .toList();
 

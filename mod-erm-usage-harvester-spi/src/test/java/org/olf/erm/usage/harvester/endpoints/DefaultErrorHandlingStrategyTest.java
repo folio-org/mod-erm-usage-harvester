@@ -339,7 +339,6 @@ class DefaultErrorHandlingStrategyTest {
                                   assertThat(apiException.getCode()).isEqualTo(3030);
                                   assertThat(apiException.getMessage()).isNull();
                                   assertThat(apiException.getData()).isNull();
-                                  assertThat(apiException.getData()).isNull();
                                   assertThat(apiException.getHelpUrl()).isNull();
                                 })));
   }
