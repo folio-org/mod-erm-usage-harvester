@@ -7,6 +7,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Objects;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
@@ -108,9 +109,9 @@ public class WorkerVerticle extends AbstractVerticle {
     return ErrorHandlingPgUtil.get(context, tenantId)
         .map(
             errorHandling ->
-                errorHandling.getMaxFailedAttempts() != null
-                    ? errorHandling.getMaxFailedAttempts()
-                    : ErrorHandlingDefaults.MAX_FAILED_ATTEMPTS)
+                Objects.requireNonNullElse(
+                    errorHandling.getMaxFailedAttempts(),
+                    ErrorHandlingDefaults.MAX_FAILED_ATTEMPTS))
         .onFailure(
             t ->
                 LOGGER.error(
