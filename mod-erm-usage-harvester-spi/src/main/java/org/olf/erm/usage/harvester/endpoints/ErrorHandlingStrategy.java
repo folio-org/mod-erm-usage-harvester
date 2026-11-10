@@ -1,13 +1,19 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import static java.util.function.Predicate.not;
+import static org.apache.commons.lang3.StringUtils.abbreviate;
 import static org.olf.erm.usage.harvester.DateUtil.getYearMonthFromString;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
+import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterException;
+import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingConstants.MAX_ERROR_BODY_LENGTH;
 import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createCounterReport;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_ERROR_CODE;
 import static org.olf.erm.usage.harvester.endpoints.TooManyRequestsException.TOO_MANY_REQUEST_STR;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import org.folio.rest.jaxrs.model.ApiException;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.FetchItem;
@@ -131,8 +137,47 @@ public interface ErrorHandlingStrategy {
                           i.reportType(),
                           usageDataProvider,
                           getYearMonthFromString(i.begin()))
-                      .withFailedReason(getMessageOrToString(t)))
+                      .withFailedReason(getMessageOrToString(t))
+                      .withApiExceptions(toApiExceptions(t).orElse(null)))
           .toList();
+    }
+
+    /**
+     * @return an optional list of {@link ApiException}, all of which at least provide an error code
+     */
+    private static Optional<List<ApiException>> toApiExceptions(final Throwable t) {
+      if (!(t instanceof CounterApiException counterApiException)) {
+        return Optional.empty();
+      }
+
+      final var counterExceptions =
+          counterApiException.exceptions().stream()
+              .flatMap(exception -> toApiException(exception).stream())
+              .toList();
+
+      return Optional.of(counterExceptions).filter(not(List::isEmpty));
+    }
+
+    /**
+     * @return an optional so we can skip exceptions without error code
+     */
+    private static Optional<ApiException> toApiException(final CounterException e) {
+      if (e.code() == null) {
+        return Optional.empty();
+      }
+
+      return Optional.of(
+          new ApiException()
+              .withCode(e.code())
+              .withMessage(toNonBlankString(e.message()).orElse(null))
+              .withData(toNonBlankString(e.data()).orElse(null))
+              .withHelpUrl(toNonBlankString(e.helpUrl()).orElse(null)));
+    }
+
+    private static Optional<String> toNonBlankString(final String text) {
+      return Optional.ofNullable(text)
+          .filter(not(String::isBlank))
+          .map(t -> abbreviate(t, MAX_ERROR_BODY_LENGTH));
     }
   }
 }

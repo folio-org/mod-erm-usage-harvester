@@ -8,7 +8,9 @@ import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.GiveUpSl
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.RetryNow;
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.Throttle;
 
+import java.util.function.Consumer;
 import java.util.stream.Stream;
+import org.folio.rest.jaxrs.model.ApiException;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.Test;
@@ -37,13 +39,13 @@ class DefaultErrorHandlingStrategyTest {
     var result =
         strategy.handleFetchError(FETCH_ITEM_TR, 0, new TooManyRequestsException("Slow down"));
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            Throttle.class,
-            throttle -> {
-              assertThat(throttle.items()).containsExactly(FETCH_ITEM_TR);
-              assertThat(throttle.retryCount()).isEqualTo(1);
-            });
+    assertResult(
+        result,
+        Throttle.class,
+        throttle -> {
+          assertThat(throttle.items()).containsExactly(FETCH_ITEM_TR);
+          assertThat(throttle.retryCount()).isEqualTo(1);
+        });
   }
 
   @Test
@@ -51,13 +53,13 @@ class DefaultErrorHandlingStrategyTest {
     var result =
         strategy.handleFetchError(FETCH_ITEM_TR, 1, new TooManyRequestsException("Slow down"));
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            Throttle.class,
-            throttle -> {
-              assertThat(throttle.items()).containsExactly(FETCH_ITEM_TR);
-              assertThat(throttle.retryCount()).isEqualTo(2);
-            });
+    assertResult(
+        result,
+        Throttle.class,
+        throttle -> {
+          assertThat(throttle.items()).containsExactly(FETCH_ITEM_TR);
+          assertThat(throttle.retryCount()).isEqualTo(2);
+        });
   }
 
   @Test
@@ -65,20 +67,20 @@ class DefaultErrorHandlingStrategyTest {
     var result =
         strategy.handleFetchError(FETCH_ITEM_TR, 2, new TooManyRequestsException("Slow down"));
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            GiveUpSlowDown.class,
-            giveUpSlowDown ->
-                assertThat(giveUpSlowDown.reports())
-                    .singleElement()
-                    .satisfies(
-                        cr -> {
-                          assertThat(cr.getReportName()).isEqualTo("TR");
-                          assertThat(cr.getYearMonth()).isEqualTo("2025-01");
-                          assertThat(cr.getFailedReason()).isEqualTo("Slow down");
-                          assertThat(cr.getProviderId()).isEqualTo("provider-id");
-                          assertThat(cr.getRelease()).isEqualTo("5");
-                        }));
+    assertResult(
+        result,
+        GiveUpSlowDown.class,
+        giveUpSlowDown ->
+            assertThat(giveUpSlowDown.reports())
+                .singleElement()
+                .satisfies(
+                    cr -> {
+                      assertThat(cr.getReportName()).isEqualTo("TR");
+                      assertThat(cr.getYearMonth()).isEqualTo("2025-01");
+                      assertThat(cr.getFailedReason()).isEqualTo("Slow down");
+                      assertThat(cr.getProviderId()).isEqualTo("provider-id");
+                      assertThat(cr.getRelease()).isEqualTo("5");
+                    }));
   }
 
   @Test
@@ -86,15 +88,15 @@ class DefaultErrorHandlingStrategyTest {
     var result =
         strategy.handleFetchError(FETCH_ITEM_DR, 2, new TooManyRequestsException("Slow down"));
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            GiveUpSlowDown.class,
-            giveUpSlowDown ->
-                assertThat(giveUpSlowDown.reports())
-                    .hasSize(3)
-                    .allSatisfy(cr -> assertThat(cr.getFailedReason()).isEqualTo("Slow down"))
-                    .extracting("yearMonth")
-                    .containsExactly("2025-01", "2025-02", "2025-03"));
+    assertResult(
+        result,
+        GiveUpSlowDown.class,
+        giveUpSlowDown ->
+            assertThat(giveUpSlowDown.reports())
+                .hasSize(3)
+                .allSatisfy(cr -> assertThat(cr.getFailedReason()).isEqualTo("Slow down"))
+                .extracting("yearMonth")
+                .containsExactly("2025-01", "2025-02", "2025-03"));
   }
 
   @Test
@@ -102,19 +104,19 @@ class DefaultErrorHandlingStrategyTest {
     var result =
         strategy.handleFetchError(FETCH_ITEM_TR, 0, new InvalidReportException("Invalid report"));
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            GiveUp.class,
-            giveUp ->
-                assertThat(giveUp.reports())
-                    .singleElement()
-                    .satisfies(
-                        cr -> {
-                          assertThat(cr.getReportName()).isEqualTo("TR");
-                          assertThat(cr.getYearMonth()).isEqualTo("2025-01");
-                          assertThat(cr.getFailedReason())
-                              .isEqualTo("Report not valid: Invalid report");
-                        }));
+    assertResult(
+        result,
+        GiveUp.class,
+        giveUp ->
+            assertThat(giveUp.reports())
+                .singleElement()
+                .satisfies(
+                    cr -> {
+                      assertThat(cr.getReportName()).isEqualTo("TR");
+                      assertThat(cr.getYearMonth()).isEqualTo("2025-01");
+                      assertThat(cr.getFailedReason())
+                          .isEqualTo("Report not valid: Invalid report");
+                    }));
   }
 
   @Test
@@ -122,15 +124,15 @@ class DefaultErrorHandlingStrategyTest {
     var result =
         strategy.handleFetchError(FETCH_ITEM_DR, 0, new InvalidReportException("Invalid report"));
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            RetryNow.class,
-            retryNow ->
-                assertThat(retryNow.items())
-                    .containsExactly(
-                        new FetchItem("DR", "2025-01-01", "2025-01-31"),
-                        new FetchItem("DR", "2025-02-01", "2025-02-28"),
-                        new FetchItem("DR", "2025-03-01", "2025-03-31")));
+    assertResult(
+        result,
+        RetryNow.class,
+        retryNow ->
+            assertThat(retryNow.items())
+                .containsExactly(
+                    new FetchItem("DR", "2025-01-01", "2025-01-31"),
+                    new FetchItem("DR", "2025-02-01", "2025-02-28"),
+                    new FetchItem("DR", "2025-03-01", "2025-03-31")));
   }
 
   @Test
@@ -138,19 +140,19 @@ class DefaultErrorHandlingStrategyTest {
     var result =
         strategy.handleFetchError(FETCH_ITEM_DR, 0, new RuntimeException("Something went wrong"));
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            GiveUp.class,
-            giveUp ->
-                assertThat(giveUp.reports())
-                    .hasSize(3)
-                    .allSatisfy(
-                        cr -> {
-                          assertThat(cr.getReportName()).isEqualTo("DR");
-                          assertThat(cr.getFailedReason()).isEqualTo("Something went wrong");
-                        })
-                    .extracting("yearMonth")
-                    .containsExactly("2025-01", "2025-02", "2025-03"));
+    assertResult(
+        result,
+        GiveUp.class,
+        giveUp ->
+            assertThat(giveUp.reports())
+                .hasSize(3)
+                .allSatisfy(
+                    cr -> {
+                      assertThat(cr.getReportName()).isEqualTo("DR");
+                      assertThat(cr.getFailedReason()).isEqualTo("Something went wrong");
+                    })
+                .extracting("yearMonth")
+                .containsExactly("2025-01", "2025-02", "2025-03"));
   }
 
   @Test
@@ -159,13 +161,13 @@ class DefaultErrorHandlingStrategyTest {
 
     var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, error);
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            GiveUp.class,
-            giveUp ->
-                assertThat(giveUp.reports())
-                    .singleElement()
-                    .satisfies(cr -> assertThat(cr.getFailedReason()).isEqualTo(error.toString())));
+    assertResult(
+        result,
+        GiveUp.class,
+        giveUp ->
+            assertThat(giveUp.reports())
+                .singleElement()
+                .satisfies(cr -> assertThat(cr.getFailedReason()).isEqualTo(error.toString())));
   }
 
   @ParameterizedTest
@@ -173,13 +175,13 @@ class DefaultErrorHandlingStrategyTest {
   void testCounterApiExceptionTooManyRequestsReturnsThrottle(CounterApiException e) {
     var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            Throttle.class,
-            throttle -> {
-              assertThat(throttle.items()).containsExactly(FETCH_ITEM_TR);
-              assertThat(throttle.retryCount()).isEqualTo(1);
-            });
+    assertResult(
+        result,
+        Throttle.class,
+        throttle -> {
+          assertThat(throttle.items()).containsExactly(FETCH_ITEM_TR);
+          assertThat(throttle.retryCount()).isEqualTo(1);
+        });
   }
 
   @ParameterizedTest
@@ -188,15 +190,15 @@ class DefaultErrorHandlingStrategyTest {
       CounterApiException e) {
     var result = strategy.handleFetchError(FETCH_ITEM_DR, 2, e);
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            GiveUpSlowDown.class,
-            giveUpSlowDown ->
-                assertThat(giveUpSlowDown.reports())
-                    .hasSize(3)
-                    .allSatisfy(cr -> assertThat(cr.getFailedReason()).isEqualTo(e.getMessage()))
-                    .extracting("yearMonth")
-                    .containsExactly("2025-01", "2025-02", "2025-03"));
+    assertResult(
+        result,
+        GiveUpSlowDown.class,
+        giveUpSlowDown ->
+            assertThat(giveUpSlowDown.reports())
+                .hasSize(3)
+                .allSatisfy(cr -> assertThat(cr.getFailedReason()).isEqualTo(e.getMessage()))
+                .extracting("yearMonth")
+                .containsExactly("2025-01", "2025-02", "2025-03"));
   }
 
   @ParameterizedTest
@@ -204,18 +206,18 @@ class DefaultErrorHandlingStrategyTest {
   void testCounterApiExceptionReturnsGiveUpForSingleMonthItem(CounterApiException e) {
     var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            GiveUp.class,
-            giveUp ->
-                assertThat(giveUp.reports())
-                    .singleElement()
-                    .satisfies(
-                        cr -> {
-                          assertThat(cr.getReportName()).isEqualTo("TR");
-                          assertThat(cr.getYearMonth()).isEqualTo("2025-01");
-                          assertThat(cr.getFailedReason()).isEqualTo(e.getMessage());
-                        }));
+    assertResult(
+        result,
+        GiveUp.class,
+        giveUp ->
+            assertThat(giveUp.reports())
+                .singleElement()
+                .satisfies(
+                    cr -> {
+                      assertThat(cr.getReportName()).isEqualTo("TR");
+                      assertThat(cr.getYearMonth()).isEqualTo("2025-01");
+                      assertThat(cr.getFailedReason()).isEqualTo(e.getMessage());
+                    }));
   }
 
   @ParameterizedTest
@@ -235,10 +237,10 @@ class DefaultErrorHandlingStrategyTest {
 
     var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, e);
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            Throttle.class,
-            throttle -> assertThat(throttle.items()).containsExactly(FETCH_ITEM_DR));
+    assertResult(
+        result,
+        Throttle.class,
+        throttle -> assertThat(throttle.items()).containsExactly(FETCH_ITEM_DR));
   }
 
   @ParameterizedTest
@@ -246,15 +248,199 @@ class DefaultErrorHandlingStrategyTest {
   void testCounterApiExceptionReturnsRetryNowForMultiMonthItem(CounterApiException e) {
     var result = strategy.handleFetchError(FETCH_ITEM_DR, 0, e);
 
-    assertThat(result)
-        .isInstanceOfSatisfying(
-            RetryNow.class,
-            retryNow ->
-                assertThat(retryNow.items())
-                    .containsExactly(
-                        new FetchItem("DR", "2025-01-01", "2025-01-31"),
-                        new FetchItem("DR", "2025-02-01", "2025-02-28"),
-                        new FetchItem("DR", "2025-03-01", "2025-03-31")));
+    assertResult(
+        result,
+        RetryNow.class,
+        retryNow ->
+            assertThat(retryNow.items())
+                .containsExactly(
+                    new FetchItem("DR", "2025-01-01", "2025-01-31"),
+                    new FetchItem("DR", "2025-02-01", "2025-02-28"),
+                    new FetchItem("DR", "2025-03-01", "2025-03-31")));
+  }
+
+  @ParameterizedTest
+  @MethodSource("counterApiExceptions")
+  void testCounterApiExceptionAddsApiExceptionsToFailedReport(CounterApiException e) {
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
+
+    assertResult(
+        result,
+        GiveUp.class,
+        giveUp ->
+            assertThat(giveUp.reports())
+                .singleElement()
+                .satisfies(
+                    cr -> {
+                      assertThat(cr.getFailedReason()).isEqualTo(e.getMessage());
+                      assertThat(cr.getApiExceptions())
+                          .extracting(ApiException::getCode)
+                          .containsExactlyElementsOf(e.codes());
+                    }));
+  }
+
+  @Test
+  void testCounterApiExceptionMapsAllFieldsToApiException() {
+    var e =
+        header(
+            "[{\"Code\":3030,\"Message\":\"No Usage Available for Requested Dates\","
+                + "\"Data\":\"No usage for 2025-01\",\"Help_URL\":\"https://example.org/help\"}]");
+
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
+
+    assertResult(
+        result,
+        GiveUp.class,
+        giveUp ->
+            assertThat(giveUp.reports())
+                .singleElement()
+                .satisfies(
+                    cr ->
+                        assertThat(cr.getApiExceptions())
+                            .singleElement()
+                            .satisfies(
+                                apiException -> {
+                                  assertThat(apiException.getCode()).isEqualTo(3030);
+                                  assertThat(apiException.getMessage())
+                                      .isEqualTo("No Usage Available for Requested Dates");
+                                  assertThat(apiException.getData())
+                                      .isEqualTo("No usage for 2025-01");
+                                  assertThat(apiException.getHelpUrl())
+                                      .isEqualTo("https://example.org/help");
+                                })));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "[{\"Code\":3030}]",
+        "[{\"Code\":3030,\"Message\":null,\"Data\":null}]",
+        "[{\"Code\":3030,\"Message\":\"\",\"Data\":\"\"}]",
+        "[{\"Code\":3030,\"Message\":\"  \\t\",\"Data\":\" \\n \"}]",
+        "[{\"Code\":3030,\"Message\":null,\"Data\":null,\"Help_URL\":null}]",
+        "[{\"Code\":3030,\"Message\":\"\",\"Data\":\"\",\"Help_URL\":\"\"}]",
+        "[{\"Code\":3030,\"Message\":\"  \\t\",\"Data\":\" \\n \",\"Help_URL\":\" \"}]"
+      })
+  void testCounterApiExceptionWithoutOptionalFieldsHasNoOptionalFields(String exceptionsJson) {
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, header(exceptionsJson));
+
+    assertResult(
+        result,
+        GiveUp.class,
+        giveUp ->
+            assertThat(giveUp.reports())
+                .singleElement()
+                .satisfies(
+                    cr ->
+                        assertThat(cr.getApiExceptions())
+                            .singleElement()
+                            .satisfies(
+                                apiException -> {
+                                  assertThat(apiException.getCode()).isEqualTo(3030);
+                                  assertThat(apiException.getMessage()).isNull();
+                                  assertThat(apiException.getData()).isNull();
+                                  assertThat(apiException.getHelpUrl()).isNull();
+                                })));
+  }
+
+  @Test
+  void testCounterApiExceptionSkipsExceptionsWithoutCode() {
+    var e =
+        header(
+            "[{\"Message\":\"No code here\"},{\"Code\":3031},{\"Code\":\"x\",\"Message\":\"y\"}]");
+
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
+
+    assertResult(
+        result,
+        GiveUp.class,
+        giveUp ->
+            assertThat(giveUp.reports())
+                .singleElement()
+                .satisfies(
+                    cr ->
+                        assertThat(cr.getApiExceptions())
+                            .extracting(ApiException::getCode)
+                            .containsExactly(3031)));
+  }
+
+  @Test
+  void testCounterApiExceptionWithoutAnyCodeAddsNoApiExceptions() {
+    var e = header("[{\"Message\":\"No code here\"}]");
+
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, e);
+
+    assertResult(
+        result,
+        GiveUp.class,
+        giveUp ->
+            assertThat(giveUp.reports())
+                .singleElement()
+                .satisfies(cr -> assertThat(cr.getApiExceptions()).isNull()));
+  }
+
+  @Test
+  void testCounterApiExceptionTooManyRequestsAddsApiExceptionsToEachExpandedMonth() {
+    var e = header("[{\"Code\":1020,\"Message\":\"Client has made too many requests\"}]");
+
+    var result = strategy.handleFetchError(FETCH_ITEM_DR, 2, e);
+
+    assertResult(
+        result,
+        GiveUpSlowDown.class,
+        giveUpSlowDown ->
+            assertThat(giveUpSlowDown.reports())
+                .hasSize(3)
+                .allSatisfy(
+                    cr ->
+                        assertThat(cr.getApiExceptions())
+                            .singleElement()
+                            .satisfies(
+                                apiException -> {
+                                  assertThat(apiException.getCode()).isEqualTo(1020);
+                                  assertThat(apiException.getMessage())
+                                      .isEqualTo("Client has made too many requests");
+                                })));
+  }
+
+  @ParameterizedTest
+  @MethodSource("nonCounterApiExceptions")
+  void testNonCounterApiExceptionAddsNoApiExceptions(Throwable t) {
+    var result = strategy.handleFetchError(FETCH_ITEM_TR, 0, t);
+
+    assertResult(
+        result,
+        GiveUp.class,
+        giveUp ->
+            assertThat(giveUp.reports())
+                .singleElement()
+                .satisfies(cr -> assertThat(cr.getApiExceptions()).isNull()));
+  }
+
+  @Test
+  void testTooManyRequestsExceptionAddsNoApiExceptions() {
+    var result =
+        strategy.handleFetchError(FETCH_ITEM_TR, 2, new TooManyRequestsException("Slow down"));
+
+    assertResult(
+        result,
+        GiveUpSlowDown.class,
+        giveUpSlowDown ->
+            assertThat(giveUpSlowDown.reports())
+                .singleElement()
+                .satisfies(cr -> assertThat(cr.getApiExceptions()).isNull()));
+  }
+
+  private static <T extends ErrorHandlingResult> void assertResult(
+      final ErrorHandlingResult result, final Class<T> clazz, final Consumer<T> requirements) {
+    assertThat(result).isInstanceOfSatisfying(clazz, requirements);
+  }
+
+  private static Stream<Arguments> nonCounterApiExceptions() {
+    return Stream.of(
+        arguments(named("InvalidReportException", new InvalidReportException("Invalid"))),
+        arguments(named("ServiceEndpointException", new ServiceEndpointException(500, "Err", "x"))),
+        arguments(named("RuntimeException", new RuntimeException("Something went wrong"))));
   }
 
   private static Stream<Arguments> counterApiExceptions() {
