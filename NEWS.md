@@ -1,3 +1,6 @@
+# 5.2.2
+* [MODEUSHARV-174](https://folio-org.atlassian.net/browse/MODEUSHARV-174) Add `DeployConfig.json` (ADR-0013 Configuration Management)
+
 # 5.2.1
 * [MODEUSHARV-169](https://folio-org.atlassian.net/browse/MODEUSHARV-169) Allow both registry domains for `Registry_Record` in COUNTER 5.1 reports
 
