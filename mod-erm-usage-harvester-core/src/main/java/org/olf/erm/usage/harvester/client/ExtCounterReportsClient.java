@@ -25,14 +25,16 @@ public interface ExtCounterReportsClient {
   Future<List<FetchItem>> getFetchList(UsageDataProvider provider, int maxFailedAttempts);
 
   /**
-   * Returns List of months that that dont need fetching.
+   * Returns List of months that don't need fetching.
    *
    * @param providerId providerId
    * @param reportName reportType
    * @param reportRelease report release
    * @param start start month
    * @param end end month
-   * @param maxFailedAttempts number of max failed attempts
+   * @param maxFailedAttempts number of max failed attempts. If there already exists a failed
+   *     counter report with a number of failed attempts >= the maximum failed attempts, then this
+   *     month doesn't need fetching.
    */
   Future<List<YearMonth>> getValidMonths(
       String providerId,
