@@ -20,6 +20,7 @@ import static org.olf.erm.usage.harvester.endpoints.UnsupportedReportTypeExcepti
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
+import io.vertx.junit5.RunTestOnContext;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
@@ -35,6 +36,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.SushiConfig;
@@ -59,6 +61,9 @@ class CS51ImplTest {
   @RegisterExtension
   private static final WireMockExtension proxyMock =
       WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
+
+  // CS51Impl must be created on a Vert.x context, so run every test on one
+  @RegisterExtension RunTestOnContext runTestOnContext = new RunTestOnContext();
 
   private static final String REQUESTOR_ID = "reqId123";
   private static final String API_KEY = "apiKey123";
@@ -166,6 +171,15 @@ class CS51ImplTest {
     assertThatThrownBy(() -> new CS51Impl(invalidProvider))
         .isInstanceOf(InvalidServiceURLException.class)
         .hasMessage(String.format(MSG_INVALID_SERVICE_URL, serviceUrlStr));
+  }
+
+  @Test
+  void testConstructorWithoutContextThrows() {
+    // the common ForkJoinPool has no Vert.x context
+    CompletableFuture<CS51Impl> cf = CompletableFuture.supplyAsync(() -> new CS51Impl(provider));
+    assertThatThrownBy(cf::join)
+        .hasCauseInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Vert.x context");
   }
 
   private static String readBodyFile(String name) throws IOException {

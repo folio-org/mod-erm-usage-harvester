@@ -30,6 +30,13 @@ public class CS50Impl implements ServiceEndpoint {
 
   private final Vertx vertx;
 
+  /**
+   * Creates a COUNTER 5.0 service endpoint. Must be called on a Vert.x context (e.g. in {@code
+   * Verticle.start()}); the endpoint uses that context's Vert.x instance.
+   *
+   * @param provider the usage data provider to harvest
+   * @throws IllegalStateException if called outside a Vert.x context
+   */
   public CS50Impl(UsageDataProvider provider) {
     requireNonNull(provider.getSushiCredentials());
     requireNonNull(provider.getHarvestingConfig());
@@ -48,7 +55,11 @@ public class CS50Impl implements ServiceEndpoint {
     getProxyOptions(baseUrl).ifPresent(webClientOptions::setProxyOptions);
 
     Context context = Vertx.currentContext();
-    vertx = context == null ? Vertx.vertx() : context.owner();
+    if (context == null) {
+      throw new IllegalStateException(
+          "CS50Impl must be created on a Vert.x context (e.g. in Verticle.start())");
+    }
+    vertx = context.owner();
 
     webClientOptions.setIdleTimeout(60);
     client = new ExtendedCounter50Client(vertx, webClientOptions, baseUrl, auth);

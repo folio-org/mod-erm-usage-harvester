@@ -8,6 +8,7 @@ import io.vertx.core.Future;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Objects;
+import java.util.function.Function;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
@@ -34,7 +35,7 @@ public class WorkerVerticle extends AbstractVerticle {
 
   private final UsageDataProvider usageDataProvider;
 
-  private final ServiceEndpoint serviceEndpoint;
+  private final Function<UsageDataProvider, ServiceEndpoint> endpointFactory;
 
   private final int initialConcurrency;
 
@@ -50,7 +51,7 @@ public class WorkerVerticle extends AbstractVerticle {
    * @param tenantId the tenants ID
    * @param usageDataProvider the usage data provider itself, needed by the counter reports client
    *     to create a fetch list
-   * @param serviceEndpoint the service endpoint needed to fetch a reports from
+   * @param endpointFactory factory method yielding a service endpoint
    * @param initialConcurrency the initial maximum number of tasks that are allowed to run in
    *     parallel
    */
@@ -59,13 +60,13 @@ public class WorkerVerticle extends AbstractVerticle {
       final ExtUsageDataProvidersClient usageDataProvidersClient,
       final String tenantId,
       final UsageDataProvider usageDataProvider,
-      final ServiceEndpoint serviceEndpoint,
+      final Function<UsageDataProvider, ServiceEndpoint> endpointFactory,
       final int initialConcurrency) {
     this.counterReportsClient = counterReportsClient;
     this.usageDataProvidersClient = usageDataProvidersClient;
     this.tenantId = tenantId;
     this.usageDataProvider = usageDataProvider;
-    this.serviceEndpoint = serviceEndpoint;
+    this.endpointFactory = endpointFactory;
     this.initialConcurrency = initialConcurrency;
 
     this.logCtx = new LoggerContext(tenantId, usageDataProvider.getLabel());
@@ -74,11 +75,13 @@ public class WorkerVerticle extends AbstractVerticle {
   @Override
   public void start() {
     LOGGER.info(logCtx.createMsg("Deploying WorkerVerticle"));
-    updateUDPLastHarvestingDate();
-
     controller = new DefaultWorkerController(vertx, context, initialConcurrency, logCtx);
 
+    // create the service endpoint first: if that fails, the provider's last harvesting date is
+    // left untouched
     final var fetcher = configureFetcher(controller);
+
+    updateUDPLastHarvestingDate();
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
@@ -87,6 +90,7 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   private Fetcher configureFetcher(final WorkerController controller) {
+    final var serviceEndpoint = endpointFactory.apply(usageDataProvider);
     final var strategy = serviceEndpoint.getErrorHandlingStrategy(usageDataProvider);
     final var errorHandler = FetcherErrorHandler.create(logCtx, controller, strategy);
     return new Fetcher(
