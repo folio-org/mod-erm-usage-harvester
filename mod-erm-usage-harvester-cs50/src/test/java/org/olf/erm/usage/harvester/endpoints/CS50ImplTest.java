@@ -72,8 +72,6 @@ public class CS50ImplTest {
   @Rule public WireMockRule wmRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
   @Rule public WireMockRule proxyRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
   @Rule public Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
-
-  // CS50Impl must be created on a Vert.x context, so run every test on one
   @Rule public RunTestOnContext runTestOnContext = new RunTestOnContext();
 
   static {
