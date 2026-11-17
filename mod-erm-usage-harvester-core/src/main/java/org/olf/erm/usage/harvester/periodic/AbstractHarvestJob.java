@@ -4,10 +4,10 @@ import org.quartz.Job;
 
 public abstract class AbstractHarvestJob implements Job {
 
-  public static final String DATAKEY_TENANT = "tenantId";
-  public static final String DATAKEY_JOB_ID = "jobId";
-  public static final String DATAKEY_PROVIDER_ID = "providerId";
-  public static final String DATAKEY_TIMESTAMP = "timestamp";
+  static final String DATAKEY_TENANT = "tenantId";
+  static final String DATAKEY_JOB_ID = "jobId";
+  static final String DATAKEY_PROVIDER_ID = "providerId";
+  static final String DATAKEY_TIMESTAMP = "timestamp";
 
   private String tenantId;
   private String providerId;

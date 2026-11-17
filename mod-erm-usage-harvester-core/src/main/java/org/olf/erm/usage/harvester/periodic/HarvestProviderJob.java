@@ -21,6 +21,24 @@ import org.quartz.SchedulerException;
 
 public class HarvestProviderJob extends AbstractHarvestJob {
 
+  /**
+   * The maximum number of report requests a single provider run sends to the provider in parallel
+   * at the start.
+   *
+   * <p>"Concurrency" here means requests in flight at the same time, not threads. They all run
+   * asynchronously on the {@link WorkerVerticle}'s context.
+   *
+   * <p>Not to be confused with {@code org.quartz.threadPool.threadCount}, which limits how many
+   * provider runs execute at once per module instance.
+   */
+  private static final int INITIAL_CONCURRENCY = 4;
+
+  /**
+   * Runs one harvest for one provider and blocks the Quartz thread until it has finished.
+   *
+   * <p>Blocking is intended: while the job runs, its {@code JobKey(providerId, tenantId)} exists,
+   * so no second run of the same provider can start.
+   */
   @Override
   public void execute(JobExecutionContext context) throws JobExecutionException {
     String providerId;
@@ -42,7 +60,6 @@ public class HarvestProviderJob extends AbstractHarvestJob {
         new ExtCounterReportsClientImpl(okapiUrl, tenantId, webClient);
     ExtUsageDataProvidersClient usageDataProvidersClient =
         new ExtUsageDataProvidersClientImpl(okapiUrl, tenantId, webClient);
-    int initialConcurrency = 4;
 
     try {
       UsageDataProvider usageDataProvider =
@@ -59,7 +76,8 @@ public class HarvestProviderJob extends AbstractHarvestJob {
               tenantId,
               usageDataProvider,
               ServiceEndpointFactory::createServiceEndpoint,
-              initialConcurrency);
+              INITIAL_CONCURRENCY);
+
       CompletableFuture<String> cfDeploy =
           vertxContext
               .owner()
@@ -67,7 +85,9 @@ public class HarvestProviderJob extends AbstractHarvestJob {
               .toCompletionStage()
               .toCompletableFuture();
 
+      // Waits until the Verticle is deployed
       cfDeploy.get();
+      // Waits until the Verticle is finished
       workerVerticle.getFinished().toCompletionStage().toCompletableFuture().get();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();

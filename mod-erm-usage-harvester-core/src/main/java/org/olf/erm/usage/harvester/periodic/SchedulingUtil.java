@@ -46,6 +46,21 @@ public class SchedulingUtil {
         .build();
   }
 
+  /**
+   * Schedules a one-time {@link HarvestProviderJob} that harvests one provider as soon as a Quartz
+   * worker thread is free. Returns right after registering the job; it doesn't wait for the run.
+   *
+   * <p>The job key {@code (providerId, tenantId)} makes sure a provider has at most one run at a
+   * time, across all module instances. The job exists until its run has finished, and a second
+   * job with the same key is rejected. Runs of different providers execute in parallel, limited
+   * by the Quartz thread pool.
+   *
+   * @param scheduler the Quartz scheduler
+   * @param tenantId the tenant ID, used as the job group
+   * @param providerId the ID of the usage data provider, used as the job name
+   * @throws SchedulerException if a job for this provider is already scheduled or running, or the
+   *     job can't be stored
+   */
   public static void scheduleProviderJob(Scheduler scheduler, String tenantId, String providerId)
       throws SchedulerException {
     JobKey jobKey = new JobKey(providerId, tenantId);
@@ -58,6 +73,23 @@ public class SchedulingUtil {
     }
   }
 
+  /**
+   * Schedules a one-time {@link HarvestTenantJob} that harvests all active providers of a tenant.
+   * Returns right after registering the job; it doesn't wait for the run.
+   *
+   * <p>The tenant job itself only fetches the active providers and calls {@link
+   * #scheduleProviderJob} for each of them, so the provider runs execute in parallel, limited by
+   * the Quartz thread pool.
+   *
+   * <p>Refused while the tenant has any job other than its periodic job, i.e. a tenant job or any
+   * provider run. A single provider can still be started while a tenant harvest is running; the
+   * tenant job then skips that provider.
+   *
+   * @param scheduler the Quartz scheduler
+   * @param tenantId the tenant ID, used as the job group
+   * @throws SchedulerException if a harvest for the tenant is already in progress, or the job can't
+   *     be stored
+   */
   public static void scheduleTenantJob(Scheduler scheduler, String tenantId)
       throws SchedulerException {
     boolean jobForTenantExists =
