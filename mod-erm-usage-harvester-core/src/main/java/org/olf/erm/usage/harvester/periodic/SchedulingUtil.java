@@ -51,9 +51,9 @@ public class SchedulingUtil {
    * worker thread is free. Returns right after registering the job; it doesn't wait for the run.
    *
    * <p>The job key {@code (providerId, tenantId)} makes sure a provider has at most one run at a
-   * time, across all module instances. The job exists until its run has finished, and a second
-   * job with the same key is rejected. Runs of different providers execute in parallel, limited
-   * by the Quartz thread pool.
+   * time, across all module instances. The job exists until its run has finished, and a second job
+   * with the same key is rejected. Runs of different providers execute in parallel, limited by the
+   * Quartz thread pool.
    *
    * @param scheduler the Quartz scheduler
    * @param tenantId the tenant ID, used as the job group
