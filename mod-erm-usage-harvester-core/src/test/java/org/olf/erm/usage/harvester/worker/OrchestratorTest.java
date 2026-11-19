@@ -10,10 +10,8 @@ import io.vertx.ext.web.client.HttpResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.YearMonth;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Function;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.BeforeAll;
@@ -159,51 +157,6 @@ class OrchestratorTest {
         int maxFailedAttempts) {
       // No-op, since we don't need it
       return null;
-    }
-  }
-
-  static class TestWorkerController implements WorkerController {
-
-    final List<QueueItem> queueItems = new ArrayList<>();
-
-    boolean concurrencyWasDisabled = false;
-
-    boolean startQueueWithWasCalled = false;
-
-    boolean undeployWasCalled = false;
-
-    String abortMessage = "";
-
-    Throwable abortThrowable;
-
-    @Override
-    public void enqueue(List<QueueItem> items) {
-      queueItems.addAll(items);
-    }
-
-    @Override
-    public void disableConcurrency() {
-      concurrencyWasDisabled = true;
-    }
-
-    @Override
-    public void startQueueWith(Function<QueueItem, Future<Void>> callback) {
-      this.startQueueWithWasCalled = true;
-    }
-
-    @Override
-    public void abort(Throwable cause) {
-      this.abortThrowable = cause;
-    }
-
-    @Override
-    public void abort(String message) {
-      this.abortMessage = message;
-    }
-
-    @Override
-    public void undeploy() {
-      this.undeployWasCalled = true;
     }
   }
 }

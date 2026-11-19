@@ -1,13 +1,17 @@
 package org.olf.erm.usage.harvester.worker;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.worker.OrchestratorTest.TestWorkerController;
+import static org.olf.erm.usage.harvester.worker.TestWorkerController.ParkCall;
 import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 
 import com.google.common.io.Resources;
 import io.vertx.core.json.Json;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -21,6 +25,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.endpoints.CounterApiException;
+import org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.RetryLater;
 import org.olf.erm.usage.harvester.endpoints.ErrorHandlingStrategy;
 import org.olf.erm.usage.harvester.endpoints.InvalidReportException;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
@@ -57,6 +62,18 @@ class FetcherErrorHandlerTest {
 
   private static final ErrorHandlingStrategy STRATEGY =
       ErrorHandlingStrategy.create(USAGE_DATA_PROVIDER);
+
+  private static final Instant NOW = Instant.parse("2025-02-01T10:00:00Z");
+
+  private static final Clock FIXED_CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
+
+  private static final Duration DELAY = Duration.ofMinutes(30);
+
+  private static final String REASON = "Report Queued for Processing";
+
+  /** A strategy that answers every error with RetryLater for the failed item. */
+  private static final ErrorHandlingStrategy RETRY_LATER_STRATEGY =
+      (item, retryCount, t) -> new RetryLater(List.of(item), retryCount + 1, DELAY, REASON);
 
   private static final String LOGGER_NAME = FetcherErrorHandler.DefaultErrorHandler.class.getName();
 
@@ -214,6 +231,71 @@ class FetcherErrorHandlerTest {
         new InvalidReportException("Invalid report"), QueueItem.of(FETCH_ITEM_TR, 0));
 
     assertThat(loggedMessages()).noneMatch(msg -> msg.contains("COUNTER exception code(s)"));
+  }
+
+  @Test
+  void testRetryLaterParksTheItemWithDueTimeAndRetryCount() {
+    final var retryHandler =
+        FetcherErrorHandler.create(LOG_CTX, controller, RETRY_LATER_STRATEGY, FIXED_CLOCK);
+
+    final var result =
+        retryHandler.handleException(
+            new RuntimeException("try later"), QueueItem.of(FETCH_ITEM_TR, 0));
+
+    assertThat(result).as("... no reports are returned").isEmpty();
+    assertThat(controller.parkCalls)
+        .as("... the item was parked once, due after the delay, with an incremented retry count")
+        .containsExactly(
+            new ParkCall(List.of(QueueItem.of(FETCH_ITEM_TR, 1)), NOW.plus(DELAY), REASON));
+    assertThat(controller.queueItems).as("... nothing was re-enqueued").isEmpty();
+    assertThat(controller.concurrencyWasDisabled).as("... concurrency was not disabled").isFalse();
+  }
+
+  @Test
+  void testRetryLaterUsesTheRetryCountFromTheResult() {
+    final var retryHandler =
+        FetcherErrorHandler.create(LOG_CTX, controller, RETRY_LATER_STRATEGY, FIXED_CLOCK);
+
+    retryHandler.handleException(new RuntimeException("try later"), QueueItem.of(FETCH_ITEM_TR, 2));
+
+    assertThat(controller.parkCalls)
+        .singleElement()
+        .satisfies(
+            call -> assertThat(call.items()).containsExactly(QueueItem.of(FETCH_ITEM_TR, 3)));
+  }
+
+  @Test
+  void testRetryLaterParksAllItemsInOneCall() {
+    final var monthItems = FETCH_ITEM_DR.expand();
+    final ErrorHandlingStrategy splittingStrategy =
+        (item, retryCount, t) -> new RetryLater(item.expand(), retryCount + 1, DELAY, REASON);
+    final var retryHandler =
+        FetcherErrorHandler.create(LOG_CTX, controller, splittingStrategy, FIXED_CLOCK);
+
+    retryHandler.handleException(new RuntimeException("try later"), QueueItem.of(FETCH_ITEM_DR, 0));
+
+    assertThat(controller.parkCalls)
+        .as("... all items were parked in one call with the same due time")
+        .containsExactly(
+            new ParkCall(QueueItem.createQueueItemList(monthItems, 1), NOW.plus(DELAY), REASON));
+  }
+
+  @Test
+  void testRetryLaterForCounterApiExceptionIsLogged() {
+    final var exception = CounterApiException.fromReportHeader("[{\"Code\":1011}]").orElseThrow();
+    final var retryHandler =
+        FetcherErrorHandler.create(LOG_CTX, controller, RETRY_LATER_STRATEGY, FIXED_CLOCK);
+
+    retryHandler.handleException(exception, QueueItem.of(FETCH_ITEM_TR, 0));
+
+    assertThat(loggedMessages())
+        .as("... the outcome and the parking are logged")
+        .anyMatch(
+            msg ->
+                msg.contains("COUNTER exception code(s) [1011]")
+                    && msg.contains("handled as RetryLater"))
+        .anyMatch(
+            msg -> msg.contains("Parking 1 item(s)") && msg.contains(NOW.plus(DELAY).toString()));
   }
 
   private List<String> loggedMessages() {

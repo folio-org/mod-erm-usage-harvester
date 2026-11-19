@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import java.time.Duration;
 import java.util.List;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.olf.erm.usage.harvester.FetchItem;
@@ -35,4 +36,15 @@ public sealed interface ErrorHandlingResult {
    * @param reports the failed reports
    */
   record GiveUp(List<CounterReport> reports) implements ErrorHandlingResult {}
+
+  /**
+   * Retry to fetch the items later, in a separate retry run.
+   *
+   * @param items the items to retry
+   * @param retryCount the retry counter the items get for the retry, usually the current count + 1
+   * @param delay the exact minimum time to wait before the retry
+   * @param reason a short description for logs, e.g. the COUNTER code and message
+   */
+  record RetryLater(List<FetchItem> items, int retryCount, Duration delay, String reason)
+      implements ErrorHandlingResult {}
 }

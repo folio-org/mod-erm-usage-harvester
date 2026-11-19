@@ -3,13 +3,18 @@ package org.olf.erm.usage.harvester.worker;
 import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.GiveUp;
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.GiveUpSlowDown;
+import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.RetryLater;
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.RetryNow;
 import static org.olf.erm.usage.harvester.endpoints.ErrorHandlingResult.Throttle;
 import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import org.folio.rest.jaxrs.model.CounterReport;
+import org.olf.erm.usage.harvester.ClockProvider;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.endpoints.CounterApiException;
 import org.olf.erm.usage.harvester.endpoints.ErrorHandlingStrategy;
@@ -37,7 +42,19 @@ interface FetcherErrorHandler {
       final LoggerContext logCtx,
       final WorkerController controller,
       final ErrorHandlingStrategy strategy) {
-    return new DefaultErrorHandler(logCtx, controller, strategy);
+    return create(logCtx, controller, strategy, ClockProvider.getClock());
+  }
+
+  /**
+   * Like {@link #create(LoggerContext, WorkerController, ErrorHandlingStrategy)}, with the clock
+   * used to compute the due time of parked items. Only used for tests.
+   */
+  static FetcherErrorHandler create(
+      final LoggerContext logCtx,
+      final WorkerController controller,
+      final ErrorHandlingStrategy strategy,
+      final Clock clock) {
+    return new DefaultErrorHandler(logCtx, controller, strategy, clock);
   }
 
   class DefaultErrorHandler implements FetcherErrorHandler {
@@ -49,6 +66,8 @@ interface FetcherErrorHandler {
     private final WorkerController controller;
 
     private final ErrorHandlingStrategy strategy;
+
+    private final Clock clock;
 
     /** {@inheritDoc} */
     @Override
@@ -73,6 +92,8 @@ interface FetcherErrorHandler {
         case RetryNow(var items) -> handleRetryNow(items, 0, queueItem);
         case GiveUpSlowDown(var reports) -> handleGiveUpSlowDown(reports, queueItem);
         case GiveUp(var reports) -> handleGiveUp(reports, queueItem);
+        case RetryLater(var items, var retryCount, var delay, var reason) ->
+            handleRetryLater(items, retryCount, delay, reason, queueItem);
       };
     }
 
@@ -107,13 +128,35 @@ interface FetcherErrorHandler {
       return reports;
     }
 
+    private List<CounterReport> handleRetryLater(
+        final List<FetchItem> items,
+        final int retryCount,
+        final Duration delay,
+        final String reason,
+        final QueueItem queueItem) {
+      final var dueAt = Instant.now(clock).plus(delay);
+      final var queueItems = QueueItem.createQueueItemList(items, retryCount);
+      LOGGER.info(
+          logCtx.createMsg(
+              "Parking {} item(s) for {} until {}: {}",
+              queueItems.size(),
+              queueItem,
+              dueAt,
+              reason));
+      controller.park(queueItems, dueAt, reason);
+
+      return Collections.emptyList();
+    }
+
     private DefaultErrorHandler(
         final LoggerContext logCtx,
         final WorkerController controller,
-        final ErrorHandlingStrategy strategy) {
+        final ErrorHandlingStrategy strategy,
+        final Clock clock) {
       this.logCtx = logCtx;
       this.controller = controller;
       this.strategy = strategy;
+      this.clock = clock;
     }
   }
 }

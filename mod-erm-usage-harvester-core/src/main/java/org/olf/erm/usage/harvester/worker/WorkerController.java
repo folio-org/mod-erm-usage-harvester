@@ -4,11 +4,14 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.retry.ParkedItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +52,29 @@ interface WorkerController {
   /** Undeploy all the "Verticles" */
   void undeploy();
 
+  /**
+   * Parks items that are to be retried later, in a separate retry run.
+   *
+   * @param items the queue items to retry, with the retry count they get in the retry run
+   * @param dueAt the earliest point in time the items may be retried
+   * @param reason a short description of why the items are retried, for logs
+   */
+  void park(List<QueueItem> items, Instant dueAt, String reason);
+
+  /**
+   * Closes the list of parked items and returns it. Later calls to {@link #park(List, Instant,
+   * String)} don't add anything, and later calls to this method return the same items.
+   *
+   * <p>Why sealing: a run can end while fetches are still in flight, because {@link #abort(String)}
+   * completes the run immediately (e.g. after too many failed uploads). If such a fetch parks an
+   * item after the parked items were handed over, the item can no longer be scheduled. Sealing
+   * turns this silent loss into a logged warning; the month is fetched again by the next regular
+   * run, and its failed attempts don't change.
+   *
+   * @return an immutable snapshot of the parked items
+   */
+  List<ParkedItem> sealParked();
+
   final class DefaultWorkerController implements WorkerController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultWorkerController.class);
@@ -66,6 +92,10 @@ interface WorkerController {
     private final LinkedBlockingQueue<QueueItem> queue;
 
     private final Promise<Void> finished;
+
+    private final List<ParkedItem> parked;
+
+    private boolean sealed;
 
     /**
      * @param vertx the entry point to the Vert.x core
@@ -86,6 +116,8 @@ interface WorkerController {
       this.currentTasks = new AtomicInteger(0);
       this.queue = new LinkedBlockingQueue<>();
       this.finished = Promise.promise();
+      this.parked = new ArrayList<>();
+      this.sealed = false;
     }
 
     /** {@inheritDoc} */
@@ -167,6 +199,31 @@ interface WorkerController {
               t ->
                   LOGGER.error(
                       logCtx.createMsg("Error during undeploying: {}", t.getMessage()), t));
+    }
+
+    // park() runs on the Vert.x context and sealParked() on the Quartz thread: synchronized makes
+    // them thread-safe, and the sealed flag rejects late parks after the hand-off.
+
+    /** {@inheritDoc} */
+    @Override
+    public synchronized void park(List<QueueItem> items, Instant dueAt, String reason) {
+      if (sealed) {
+        LOGGER.warn(
+            logCtx.createMsg(
+                "Parked items already handed over, dropping {} (due at {}, reason: {})",
+                items,
+                dueAt,
+                reason));
+        return;
+      }
+      items.forEach(qi -> parked.add(new ParkedItem(qi.item(), qi.retryCount(), dueAt, reason)));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public synchronized List<ParkedItem> sealParked() {
+      sealed = true;
+      return List.copyOf(parked);
     }
 
     /**
