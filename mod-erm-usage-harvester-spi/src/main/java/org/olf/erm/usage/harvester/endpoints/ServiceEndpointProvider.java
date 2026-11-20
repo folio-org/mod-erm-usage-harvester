@@ -22,6 +22,15 @@ public interface ServiceEndpointProvider {
     return null;
   }
 
+  /**
+   * Creates a service endpoint for the given provider.
+   *
+   * <p>Must be called on a Vert.x context (e.g. in {@code Verticle.start()}). Implementations
+   * should use the Vert.x instance of the current context and must not create their own.
+   *
+   * @param provider the usage data provider to harvest
+   * @return the service endpoint
+   */
   ServiceEndpoint create(UsageDataProvider provider);
 
   default String getReportRelease() {

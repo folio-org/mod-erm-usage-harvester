@@ -7,6 +7,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.BARE_ERROR_STATUS;
 import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.BARE_SUCCESS_STATUS;
 import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.REPORT_HEADER;
@@ -21,6 +22,7 @@ import com.google.common.io.Resources;
 import io.vertx.core.http.HttpClosedException;
 import io.vertx.core.json.Json;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
@@ -34,6 +36,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
@@ -69,6 +72,7 @@ public class CS50ImplTest {
   @Rule public WireMockRule wmRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
   @Rule public WireMockRule proxyRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
   @Rule public Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
+  @Rule public RunTestOnContext runTestOnContext = new RunTestOnContext();
 
   static {
     emptyReport = new COUNTERTitleReport();
@@ -142,6 +146,15 @@ public class CS50ImplTest {
 
   private Report decodeReport(String str, Class<?> reportClass) {
     return Json.decodeValue(Json.encode(Json.decodeValue(str, reportClass)), Report.class);
+  }
+
+  @Test
+  public void testConstructorWithoutContextThrows() {
+    // the common ForkJoinPool has no Vert.x context
+    CompletableFuture<CS50Impl> cf = CompletableFuture.supplyAsync(() -> new CS50Impl(provider));
+    assertThatThrownBy(cf::join)
+        .hasCauseInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Vert.x context");
   }
 
   @Test

@@ -46,6 +46,14 @@ public class CS51Impl implements ServiceEndpoint {
   private final ExtendedCounter51Client client;
   private final ObjectMapper objectMapper = Counter51Utils.getDefaultObjectMapper();
 
+  /**
+   * Creates a COUNTER 5.1 service endpoint. Must be called on a Vert.x context (e.g. in {@code
+   * Verticle.start()}); the endpoint uses that context's Vert.x instance.
+   *
+   * @param provider the usage data provider to harvest
+   * @throws InvalidServiceURLException if the provider's service URL is invalid
+   * @throws IllegalStateException if called outside a Vert.x context
+   */
   public CS51Impl(UsageDataProvider provider) {
     requireNonNull(provider);
     SushiCredentials sushiCredentials = requireNonNull(provider.getSushiCredentials());
@@ -67,7 +75,11 @@ public class CS51Impl implements ServiceEndpoint {
     this.providerId = requireNonNull(provider.getId());
 
     Context context = Vertx.currentContext();
-    this.vertx = context == null ? Vertx.vertx() : context.owner();
+    if (context == null) {
+      throw new IllegalStateException(
+          "CS51Impl must be created on a Vert.x context (e.g. in Verticle.start())");
+    }
+    this.vertx = context.owner();
 
     Counter51Auth auth = new Counter51Auth(apiKey, requestorId);
     WebClientOptions webClientOptions = new WebClientOptions().setIdleTimeout(60);

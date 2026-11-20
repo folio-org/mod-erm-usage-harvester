@@ -2,18 +2,26 @@ package org.olf.erm.usage.harvester.bundle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.vertx.junit5.RunTestOnContext;
+import io.vertx.junit5.VertxExtension;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpointProvider;
 
 /** Verifies which {@link ServiceEndpointProvider} implementations are shipped with the bundle. */
+@ExtendWith(VertxExtension.class)
 class ServiceEndpointProviderTest {
+
+  // service endpoints must be created on a Vert.x context
+  @RegisterExtension RunTestOnContext runTestOnContext = new RunTestOnContext();
 
   private static UsageDataProvider providerWithServiceType(String serviceType) {
     return new UsageDataProvider()
