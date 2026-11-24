@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
+import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.TENANT_JOB_KEY;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.Context;
@@ -20,6 +21,7 @@ import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.sql.Date;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval;
 import org.junit.AfterClass;
@@ -140,6 +142,37 @@ public class HarvestTenantPeriodicJobIT {
                 }),
             KeyMatcher.keyEquals(jobKey));
     scheduler.triggerJob(jobKey);
+  }
+
+  @Test
+  public void testStartFailedUpdatesLastTriggeredAt(TestContext context) throws SchedulerException {
+    Async async = context.async();
+    scheduler.addJob(tenantJobInProgress(), false);
+    Instant triggeredAfter = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    scheduler
+        .getListenerManager()
+        .addJobListener(
+            new JobWasExecutedListener(
+                je -> {
+                  context.verify(v -> assertThat(je.getMessage()).contains("already in progress"));
+                  PeriodicConfigPgUtil.get(vertxContext, TENANT)
+                      .onComplete(
+                          context.asyncAssertSuccess(
+                              pc -> {
+                                assertThat(pc.getLastTriggeredAt())
+                                    .isAfterOrEqualTo(triggeredAfter);
+                                async.complete();
+                              }));
+                }),
+            KeyMatcher.keyEquals(jobKey));
+    scheduler.triggerJob(jobKey);
+  }
+
+  private static JobDetail tenantJobInProgress() {
+    return JobBuilder.newJob(HarvestTenantJob.class)
+        .withIdentity(TENANT_JOB_KEY, TENANT)
+        .storeDurably(true)
+        .build();
   }
 
   private static class JobWasExecutedListener extends JobListenerSupport {

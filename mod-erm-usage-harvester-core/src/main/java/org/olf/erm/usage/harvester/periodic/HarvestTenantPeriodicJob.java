@@ -42,13 +42,6 @@ public class HarvestTenantPeriodicJob extends AbstractHarvestJob {
     }
 
     try {
-      SchedulingUtil.scheduleTenantJob(context.getScheduler(), getTenantId());
-    } catch (SchedulerException e) {
-      throw new JobExecutionException(
-          String.format("Tenant: %s, error starting harvester: %s", getTenantId(), e.getMessage()));
-    }
-
-    try {
       updateLastTriggeredAt(vertxContext, context.getFireTime())
           .onFailure(
               t ->
@@ -67,6 +60,13 @@ public class HarvestTenantPeriodicJob extends AbstractHarvestJob {
       throw new JobExecutionException(
           String.format(
               "Tenant: %s, error updating lastTriggeredAt: %s", getTenantId(), e.getMessage()));
+    }
+
+    try {
+      SchedulingUtil.scheduleTenantJob(context.getScheduler(), getTenantId());
+    } catch (SchedulerException e) {
+      throw new JobExecutionException(
+          String.format("Tenant: %s, error starting harvester: %s", getTenantId(), e.getMessage()));
     }
   }
 }
