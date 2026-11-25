@@ -57,10 +57,13 @@ interface WorkerController {
   boolean isAborted();
 
   /**
-   * Ends the run: completes it unless it already failed, clears the queue and undeploys the {@link
-   * WorkerVerticle} this controller belongs to.
+   * Ends the run: clears the queue and undeploys the {@link WorkerVerticle} this controller belongs
+   * to. Once undeploying has finished, the run is completed unless it was aborted.
+   *
+   * @return a future that completes once undeploying has finished; it never fails, an undeploy
+   *     failure is only logged
    */
-  void undeploy();
+  Future<Void> undeploy();
 
   final class DefaultWorkerController implements WorkerController {
 
@@ -137,10 +140,10 @@ interface WorkerController {
     }
 
     private void startNextWith(final Function<QueueItem, Future<Void>> callback) {
-      // also covers items the error handler re-enqueues after an abort cleared the queue
       if (aborted.get()) {
         return;
       }
+
       if (currentTasks.get() < maxConcurrency) {
         final var queueItem = queue.poll();
         if (queueItem != null) {
@@ -159,18 +162,15 @@ interface WorkerController {
     /** {@inheritDoc} */
     @Override
     public void abort(Throwable cause) {
-      // set before undeploy(), which closes the endpoint and so cuts off running fetches
       aborted.set(true);
-      finished.tryFail(cause);
-      undeploy();
+      undeploy().onComplete(ar -> finished.tryFail(cause));
     }
 
     /** {@inheritDoc} */
     @Override
     public void abort(String message) {
       aborted.set(true);
-      finished.tryFail(message);
-      undeploy();
+      undeploy().onComplete(ar -> finished.tryFail(message));
     }
 
     /** {@inheritDoc} */
@@ -181,21 +181,31 @@ interface WorkerController {
 
     /** {@inheritDoc} */
     @Override
-    public void undeploy() {
-      finished.tryComplete();
+    public Future<Void> undeploy() {
       queue.clear();
+      final var undeployed = undeployVerticleIfDeployed();
 
+      // Wait for 'undeploy(...)' to complete before completing 'finished'
+      return undeployed.onComplete(
+          ar -> {
+            if (!isAborted()) {
+              finished.tryComplete();
+            }
+          });
+    }
+
+    private Future<Void> undeployVerticleIfDeployed() {
       if (!vertx.deploymentIDs().contains(context.deploymentID())) {
-        return;
+        return Future.succeededFuture();
       }
 
-      vertx
+      return vertx
           .undeploy(context.deploymentID())
           .onSuccess(v -> LOGGER.info(logCtx.createMsg("Undeployed WorkerVerticle")))
           .onFailure(
               t ->
-                  LOGGER.error(
-                      logCtx.createMsg("Error during undeploying: {}", t.getMessage()), t));
+                  LOGGER.error(logCtx.createMsg("Error during undeploying: {}", t.getMessage()), t))
+          .recover(t -> Future.succeededFuture());
     }
 
     /**

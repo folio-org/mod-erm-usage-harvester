@@ -146,7 +146,8 @@ class WorkerControllerTest {
     controller.enqueue(QUEUE_ITEMS);
     assertThat(controller.getQueue()).as("Check queue size").hasSameSizeAs(QUEUE_ITEMS);
 
-    controller.undeploy();
+    assertThat(controller.undeploy().succeeded()).as("Check undeploy succeeded").isTrue();
     assertThat(controller.getQueue()).as("Check queue size").isEmpty();
+    assertThat(controller.getFinished().future().succeeded()).as("Check run completed").isTrue();
   }
 }

@@ -247,8 +247,9 @@ class OrchestratorTest {
     }
 
     @Override
-    public void undeploy() {
+    public Future<Void> undeploy() {
       this.undeployWasCalled = true;
+      return Future.succeededFuture();
     }
   }
 }

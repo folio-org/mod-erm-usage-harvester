@@ -14,7 +14,6 @@ import io.vertx.ext.web.client.HttpResponse;
 import java.time.YearMonth;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.ErrorHandling;
@@ -71,7 +70,7 @@ class WorkerVerticleTest {
     final var counterReportsClient =
         new CounterReportsClientStub(Future.succeededFuture(List.of()));
     final var workerVerticle =
-        new ObservedWorkerVerticle(
+        new WorkerVerticle(
             counterReportsClient,
             usageDataProvidersClient,
             "tenant",
@@ -83,9 +82,9 @@ class WorkerVerticleTest {
 
     final String deploymentId = deploy(workerVerticle).await();
     workerVerticle.getFinished().await();
-
-    // the empty fetch list makes the verticle undeploy itself, and Vert.x then calls stop()
-    awaitStopped(workerVerticle);
+    assertThat(vertx.deploymentIDs())
+        .as("... the run only finishes once the verticle is undeployed")
+        .doesNotContain(deploymentId);
 
     assertThat(usageDataProvidersClient.harvestingDateUpdates.get()).isEqualTo(1);
     assertThat(counterReportsClient.requestedMaxFailedAttempts.get())
@@ -100,7 +99,7 @@ class WorkerVerticleTest {
   @Test
   void testEndpointClosedWhenFetchListFails() throws Exception {
     final var workerVerticle =
-        new ObservedWorkerVerticle(
+        new WorkerVerticle(
             new CounterReportsClientStub(
                 Future.failedFuture(new IllegalStateException(FETCH_LIST_FAILURE))),
             new UsageDataProvidersClientStub(false),
@@ -111,7 +110,6 @@ class WorkerVerticleTest {
 
     deploy(workerVerticle).await();
     assertThatThrownBy(workerVerticle.getFinished()::await).hasMessage(FETCH_LIST_FAILURE);
-    awaitStopped(workerVerticle);
 
     assertThat(WorkerVerticleITProviderLifecycle.CREATED.get()).isEqualTo(1);
     assertThat(WorkerVerticleITProviderLifecycle.CLOSED.get()).isEqualTo(1);
@@ -122,7 +120,7 @@ class WorkerVerticleTest {
     final var counterReportsClient =
         new CounterReportsClientStub(Future.succeededFuture(List.of()));
     final var workerVerticle =
-        new ObservedWorkerVerticle(
+        new WorkerVerticle(
             counterReportsClient,
             new UsageDataProvidersClientStub(false),
             "tenant",
@@ -132,8 +130,8 @@ class WorkerVerticleTest {
                 Future.failedFuture(new IllegalStateException(ERROR_HANDLING_FAILURE))));
 
     deploy(workerVerticle).await();
+
     assertThatThrownBy(workerVerticle.getFinished()::await).hasMessage(ERROR_HANDLING_FAILURE);
-    awaitStopped(workerVerticle);
 
     assertThat(counterReportsClient.fetchListRequests.get()).isZero();
     assertThat(WorkerVerticleITProviderLifecycle.CLOSED.get()).isEqualTo(1);
@@ -144,7 +142,7 @@ class WorkerVerticleTest {
     final var counterReportsClient =
         new CounterReportsClientStub(Future.succeededFuture(List.of()));
     final var workerVerticle =
-        new ObservedWorkerVerticle(
+        new WorkerVerticle(
             counterReportsClient,
             new UsageDataProvidersClientStub(false),
             "tenant",
@@ -154,7 +152,6 @@ class WorkerVerticleTest {
 
     deploy(workerVerticle).await();
     workerVerticle.getFinished().await();
-    awaitStopped(workerVerticle);
 
     assertThat(counterReportsClient.requestedMaxFailedAttempts.get())
         .isEqualTo(ErrorHandlingDefaults.MAX_FAILED_ATTEMPTS);
@@ -174,7 +171,7 @@ class WorkerVerticleTest {
                     new FetchItem("TR", WorkerVerticleITProviderAbort.PENDING_BEGIN, "2025-01-31"),
                     new FetchItem("TR", "2025-02-01", "2025-02-28"))));
     final var workerVerticle =
-        new ObservedWorkerVerticle(
+        new WorkerVerticle(
             counterReportsClient,
             new UsageDataProvidersClientStub(false),
             "tenant",
@@ -182,10 +179,12 @@ class WorkerVerticleTest {
             2,
             loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
 
-    deploy(workerVerticle).await();
+    final String deploymentId = deploy(workerVerticle).await();
     assertThatThrownBy(workerVerticle.getFinished()::await)
         .hasMessage("Stopping after 5 failed uploads in a row");
-    awaitStopped(workerVerticle);
+    assertThat(vertx.deploymentIDs())
+        .as("... an aborted run only finishes once the verticle is undeployed")
+        .doesNotContain(deploymentId);
 
     assertThat(WorkerVerticleITProviderAbort.CLOSED.get()).isEqualTo(1);
     assertThat(counterReportsClient.uploads.get())
@@ -272,46 +271,8 @@ class WorkerVerticleTest {
     };
   }
 
-  /** The verticle undeploys itself when a run is over, and Vert.x then calls its stop(). */
-  private static void awaitStopped(final ObservedWorkerVerticle workerVerticle) throws Exception {
-    workerVerticle
-        .stopped
-        .future()
-        .toCompletionStage()
-        .toCompletableFuture()
-        .get(STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-  }
-
   private Future<String> deploy(final WorkerVerticle workerVerticle) {
     return vertx.deployVerticle(workerVerticle, new DeploymentOptions().setThreadingModel(WORKER));
-  }
-
-  /** Completes {@code stopped} once Vert.x has called stop(), i.e. the verticle is undeployed. */
-  private static class ObservedWorkerVerticle extends WorkerVerticle {
-
-    private final Promise<Void> stopped = Promise.promise();
-
-    ObservedWorkerVerticle(
-        final ExtCounterReportsClient counterReportsClient,
-        final ExtUsageDataProvidersClient usageDataProvidersClient,
-        final String tenantId,
-        final UsageDataProvider usageDataProvider,
-        final int initialConcurrency,
-        final ErrorHandlingLoader errorHandlingLoader) {
-      super(
-          counterReportsClient,
-          usageDataProvidersClient,
-          tenantId,
-          usageDataProvider,
-          initialConcurrency,
-          errorHandlingLoader);
-    }
-
-    @Override
-    public void stop() {
-      super.stop();
-      stopped.complete();
-    }
   }
 
   /**
