@@ -3,6 +3,7 @@ package org.olf.erm.usage.harvester.endpoints;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.net.ProxyOptions;
 import io.vertx.core.net.ProxyType;
@@ -27,7 +28,7 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public interface ServiceEndpoint {
+public interface ServiceEndpoint extends AutoCloseable {
 
   Logger LOG = LoggerFactory.getLogger(ServiceEndpoint.class);
 
@@ -53,6 +54,13 @@ public interface ServiceEndpoint {
    * @throws UnsupportedReportTypeException if the requested report type is not supported
    */
   Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate);
+
+  /**
+   * Releases the resources this endpoint owns (e.g. HTTP clients). Unlike {@link
+   * AutoCloseable#close()}, it throws no checked exception.
+   */
+  @Override
+  void close();
 
   static CounterReport createCounterReport(
       String reportData, String reportName, UsageDataProvider provider, YearMonth yearMonth) {
@@ -93,7 +101,8 @@ public interface ServiceEndpoint {
     return Lists.newArrayList(loader.iterator());
   }
 
-  static ServiceEndpoint create(UsageDataProvider provider) {
+  static ServiceEndpoint create(Vertx vertx, UsageDataProvider provider) {
+    Objects.requireNonNull(vertx);
     Objects.requireNonNull(provider);
 
     String serviceType =
@@ -111,7 +120,7 @@ public interface ServiceEndpoint {
         ServiceLoader.load(ServiceEndpointProvider.class);
     for (ServiceEndpointProvider p : loader) {
       if (p.getServiceType().equals(serviceType)) {
-        return p.create(provider);
+        return p.create(vertx, provider);
       }
     }
 

@@ -4,16 +4,18 @@ import static org.olf.erm.usage.harvester.ExceptionUtil.getMessageOrToString;
 import static org.olf.erm.usage.harvester.worker.WorkerController.DefaultWorkerController;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Context;
 import io.vertx.core.Future;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Objects;
+import org.folio.rest.jaxrs.model.ErrorHandling;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
+import org.olf.erm.usage.harvester.client.ServiceEndpointFactory;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingDefaults;
-import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingPgUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,17 +32,17 @@ public class WorkerVerticle extends AbstractVerticle {
 
   private final ExtUsageDataProvidersClient usageDataProvidersClient;
 
-  private final String tenantId;
-
   private final UsageDataProvider usageDataProvider;
 
-  private final ServiceEndpoint serviceEndpoint;
-
   private final int initialConcurrency;
+
+  private final ErrorHandlingLoader errorHandlingLoader;
 
   private final LoggerContext logCtx;
 
   private DefaultWorkerController controller;
+
+  private ServiceEndpoint serviceEndpoint;
 
   /**
    * Creates a new instance of WorkerVerticle with the specified dependencies.
@@ -50,23 +52,22 @@ public class WorkerVerticle extends AbstractVerticle {
    * @param tenantId the tenants ID
    * @param usageDataProvider the usage data provider itself, needed by the counter reports client
    *     to create a fetch list
-   * @param serviceEndpoint the service endpoint needed to fetch a reports from
    * @param initialConcurrency the initial maximum number of tasks that are allowed to run in
    *     parallel
+   * @param errorHandlingLoader loads the tenant's error handling settings
    */
   public WorkerVerticle(
       final ExtCounterReportsClient counterReportsClient,
       final ExtUsageDataProvidersClient usageDataProvidersClient,
       final String tenantId,
       final UsageDataProvider usageDataProvider,
-      final ServiceEndpoint serviceEndpoint,
-      final int initialConcurrency) {
+      final int initialConcurrency,
+      final ErrorHandlingLoader errorHandlingLoader) {
     this.counterReportsClient = counterReportsClient;
     this.usageDataProvidersClient = usageDataProvidersClient;
-    this.tenantId = tenantId;
     this.usageDataProvider = usageDataProvider;
-    this.serviceEndpoint = serviceEndpoint;
     this.initialConcurrency = initialConcurrency;
+    this.errorHandlingLoader = errorHandlingLoader;
 
     this.logCtx = new LoggerContext(tenantId, usageDataProvider.getLabel());
   }
@@ -74,16 +75,35 @@ public class WorkerVerticle extends AbstractVerticle {
   @Override
   public void start() {
     LOGGER.info(logCtx.createMsg("Deploying WorkerVerticle"));
-    updateUDPLastHarvestingDate();
+    serviceEndpoint = ServiceEndpointFactory.createServiceEndpoint(vertx, usageDataProvider);
 
-    controller = new DefaultWorkerController(vertx, context, initialConcurrency, logCtx);
+    try {
+      updateUDPLastHarvestingDate();
 
-    final var fetcher = configureFetcher(controller);
-    final var uploader = new Uploader(counterReportsClient, controller, logCtx);
-    final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
+      controller = new DefaultWorkerController(vertx, context, initialConcurrency, logCtx);
 
-    final var maxFailedAttempts = getMaxFailedAttempts();
-    orchestrator.startWith(maxFailedAttempts);
+      final var fetcher = configureFetcher(controller);
+      final var uploader = new Uploader(counterReportsClient, controller, logCtx);
+      final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
+
+      final var maxFailedAttempts = getMaxFailedAttempts();
+      orchestrator.startWith(maxFailedAttempts);
+    } catch (RuntimeException e) {
+      // Vert.x does not call stop() when start() fails
+      closeServiceEndpoint();
+      throw e;
+    }
+  }
+
+  @Override
+  public void stop() {
+    closeServiceEndpoint();
+  }
+
+  private void closeServiceEndpoint() {
+    if (serviceEndpoint != null) {
+      serviceEndpoint.close();
+    }
   }
 
   private Fetcher configureFetcher(final WorkerController controller) {
@@ -97,6 +117,11 @@ public class WorkerVerticle extends AbstractVerticle {
    * @return a future that completes when the processing of all queue items is finished
    */
   public Future<Void> getFinished() {
+    if (controller == null) {
+      return Future.failedFuture(
+          "Called 'getFinished()' after instantiation error. This should not happen");
+    }
+
     return controller
         .getFinished()
         .future()
@@ -106,7 +131,8 @@ public class WorkerVerticle extends AbstractVerticle {
   }
 
   private Future<Integer> getMaxFailedAttempts() {
-    return ErrorHandlingPgUtil.get(context, tenantId)
+    return errorHandlingLoader
+        .load(context)
         .map(
             errorHandling ->
                 Objects.requireNonNullElse(
@@ -125,5 +151,11 @@ public class WorkerVerticle extends AbstractVerticle {
         .updateUDPLastHarvestingDate(usageDataProvider, Date.from(Instant.now()))
         .onSuccess(v -> LOGGER.info(logCtx.createMsg("Updated harvestingDate")))
         .onFailure(t -> LOGGER.error(logCtx.createMsg(t.getMessage()), t));
+  }
+
+  /** Loads the tenant's error handling settings. */
+  @FunctionalInterface
+  public interface ErrorHandlingLoader {
+    Future<ErrorHandling> load(Context context);
   }
 }

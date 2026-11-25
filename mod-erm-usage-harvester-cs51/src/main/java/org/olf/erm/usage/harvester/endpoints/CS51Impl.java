@@ -9,7 +9,6 @@ import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createReport
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.ext.web.client.WebClientOptions;
@@ -46,7 +45,7 @@ public class CS51Impl implements ServiceEndpoint {
   private final ExtendedCounter51Client client;
   private final ObjectMapper objectMapper = Counter51Utils.getDefaultObjectMapper();
 
-  public CS51Impl(UsageDataProvider provider) {
+  public CS51Impl(Vertx vertx, UsageDataProvider provider) {
     requireNonNull(provider);
     SushiCredentials sushiCredentials = requireNonNull(provider.getSushiCredentials());
     HarvestingConfig harvestingConfig = requireNonNull(provider.getHarvestingConfig());
@@ -59,15 +58,13 @@ public class CS51Impl implements ServiceEndpoint {
       throw new InvalidServiceURLException(serviceUrlStr);
     }
 
+    this.vertx = requireNonNull(vertx);
     this.customerId = requireNonNull(sushiCredentials.getCustomerId());
     String requestorId = sushiCredentials.getRequestorId();
     String apiKey = sushiCredentials.getApiKey();
     this.platform = sushiCredentials.getPlatform();
     this.reportRelease = requireNonNull(harvestingConfig.getReportRelease());
     this.providerId = requireNonNull(provider.getId());
-
-    Context context = Vertx.currentContext();
-    this.vertx = context == null ? Vertx.vertx() : context.owner();
 
     Counter51Auth auth = new Counter51Auth(apiKey, requestorId);
     WebClientOptions webClientOptions = new WebClientOptions().setIdleTimeout(60);
@@ -108,6 +105,11 @@ public class CS51Impl implements ServiceEndpoint {
     return callClientMethod(uppercaseReport, beginDate, endDate)
         .map(this::throwIfReportContainsExceptions)
         .compose(on -> splitReport(on, uppercaseReport));
+  }
+
+  @Override
+  public void close() {
+    client.close();
   }
 
   private ObjectNode throwIfReportContainsExceptions(ObjectNode objectNode) {

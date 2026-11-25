@@ -55,6 +55,8 @@ public class PostDeployImplIT {
 
   @BeforeClass
   public static void beforeClass(TestContext context) throws SchedulerException {
+    // start from a fresh default scheduler, whatever earlier ITs left behind
+    shutdownSchedulers();
     scheduler = StdSchedulerFactory.getDefaultScheduler();
 
     int port = NetworkUtils.nextFreePort();

@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.TestUtil.shutdownSchedulers;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 
 import io.restassured.RestAssured;
@@ -69,6 +70,8 @@ public class TenantAPIImplIT {
 
   @BeforeClass
   public static void beforeClass(TestContext context) throws SchedulerException {
+    // start from a fresh default scheduler, whatever earlier ITs left behind
+    shutdownSchedulers();
     scheduler = StdSchedulerFactory.getDefaultScheduler();
     scheduler.start();
     port = NetworkUtils.nextFreePort();

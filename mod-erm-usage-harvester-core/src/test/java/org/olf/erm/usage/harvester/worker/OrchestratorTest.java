@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
+import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 
 /** Test class for {@link Orchestrator} */
 class OrchestratorTest {
@@ -126,6 +127,43 @@ class OrchestratorTest {
     assertThat(controller.abortThrowable).as("... the whole thing was aborted").isNotNull();
   }
 
+  @Test
+  void testReportsOfFetchCompletingAfterAbortAreNotUploaded() {
+    final var counterReportsClient = new TestCounterReportsClient(FETCH_LIST);
+    final var fetcher =
+        new Fetcher(
+            counterReportsClient,
+            usageDataProvider,
+            new SingleReportServiceEndpoint(),
+            logCtx,
+            (t, qi) -> Collections.emptyList());
+    final var uploader = new Uploader(counterReportsClient, controller, logCtx);
+    final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
+    orchestrator.startWith(Future.succeededFuture(1));
+
+    controller.abort("aborted while the fetch was running");
+    final var dispatched = controller.queueCallback.apply(controller.queueItems.getFirst());
+
+    assertThat(dispatched.succeeded())
+        .as("... the fetched report was discarded instead of uploaded")
+        .isTrue();
+  }
+
+  private static class SingleReportServiceEndpoint implements ServiceEndpoint {
+
+    @Override
+    public Future<List<CounterReport>> fetchReport(
+        String report, String beginDate, String endDate) {
+      return Future.succeededFuture(
+          List.of(new CounterReport().withReportName(report).withYearMonth("2026-02")));
+    }
+
+    @Override
+    public void close() {
+      // nothing to release
+    }
+  }
+
   private record TestCounterReportsClient(List<FetchItem> fetchItems)
       implements ExtCounterReportsClient {
 
@@ -137,8 +175,7 @@ class OrchestratorTest {
 
     @Override
     public Future<HttpResponse<Buffer>> upsertReport(CounterReport report) {
-      // No-op, since we don't need it
-      return null;
+      throw new AssertionError("No upload expected");
     }
 
     @Override
@@ -170,6 +207,8 @@ class OrchestratorTest {
 
     boolean startQueueWithWasCalled = false;
 
+    Function<QueueItem, Future<Void>> queueCallback;
+
     boolean undeployWasCalled = false;
 
     String abortMessage = "";
@@ -189,6 +228,7 @@ class OrchestratorTest {
     @Override
     public void startQueueWith(Function<QueueItem, Future<Void>> callback) {
       this.startQueueWithWasCalled = true;
+      this.queueCallback = callback;
     }
 
     @Override
@@ -199,6 +239,11 @@ class OrchestratorTest {
     @Override
     public void abort(String message) {
       this.abortMessage = message;
+    }
+
+    @Override
+    public boolean isAborted() {
+      return abortThrowable != null || !abortMessage.isEmpty();
     }
 
     @Override

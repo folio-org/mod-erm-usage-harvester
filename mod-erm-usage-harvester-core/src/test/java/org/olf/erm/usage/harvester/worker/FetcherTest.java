@@ -264,5 +264,10 @@ class FetcherTest {
           ? Future.failedFuture(exceptionToThrow)
           : Future.succeededFuture(counterReports);
     }
+
+    @Override
+    public void close() {
+      // nothing to release
+    }
   }
 }

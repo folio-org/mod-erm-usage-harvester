@@ -6,6 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.TestUtil.shutdownSchedulers;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
@@ -74,7 +75,11 @@ public class HarvestTenantPeriodicJobIT {
   @Rule public Timeout timeout = Timeout.seconds(5);
 
   @BeforeClass
-  public static void beforeClass(TestContext context) {
+  public static void beforeClass(TestContext context) throws SchedulerException {
+    // start from a fresh default scheduler, whatever earlier ITs left behind
+    shutdownSchedulers();
+    scheduler = StdSchedulerFactory.getDefaultScheduler();
+
     vertxContext = vertx.getOrCreateContext();
     vertxContext.config().put("okapiUrl", wireMockRule.baseUrl());
 
@@ -96,7 +101,6 @@ public class HarvestTenantPeriodicJobIT {
                     .withStatus(200)
                     .withHeader("Content-Type", "application/json")
                     .withBody("{\"usageDataProviders\":[],\"totalRecords\":0}")));
-    scheduler = StdSchedulerFactory.getDefaultScheduler();
     scheduler.clear();
     scheduler.getContext().put("vertxContext", vertxContext);
     scheduler.addJob(job, true);

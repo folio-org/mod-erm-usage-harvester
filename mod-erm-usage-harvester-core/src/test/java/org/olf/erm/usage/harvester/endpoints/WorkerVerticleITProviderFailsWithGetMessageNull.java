@@ -1,6 +1,7 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import java.util.List;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -25,7 +26,7 @@ public class WorkerVerticleITProviderFailsWithGetMessageNull implements ServiceE
   }
 
   @Override
-  public ServiceEndpoint create(UsageDataProvider provider) {
+  public ServiceEndpoint create(Vertx vertx, UsageDataProvider provider) {
 
     return new ServiceEndpoint() {
       private final Logger log =
@@ -37,6 +38,11 @@ public class WorkerVerticleITProviderFailsWithGetMessageNull implements ServiceE
         log.info("Fetching report {} {} {}", report, beginDate, endDate);
 
         return Future.failedFuture(new Exception());
+      }
+
+      @Override
+      public void close() {
+        // nothing to release
       }
     };
   }

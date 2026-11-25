@@ -3,13 +3,11 @@ package org.olf.erm.usage.harvester.endpoints;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.ext.web.client.WebClient;
+import java.util.List;
+import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
-import org.folio.rest.tools.utils.VertxUtils;
 
 public class WorkerVerticleITProviderFailsTooManyRequests implements ServiceEndpointProvider {
-
-  Vertx vertx = VertxUtils.getVertxFromContextOrNew();
-  WebClient client = WebClient.create(vertx);
 
   @Override
   public String getServiceType() {
@@ -27,14 +25,25 @@ public class WorkerVerticleITProviderFailsTooManyRequests implements ServiceEndp
   }
 
   @Override
-  public ServiceEndpoint create(UsageDataProvider provider) {
-    return (report, beginDate, endDate) ->
-        client
+  public ServiceEndpoint create(Vertx vertx, UsageDataProvider provider) {
+    final WebClient client = WebClient.create(vertx);
+    return new ServiceEndpoint() {
+      @Override
+      public Future<List<CounterReport>> fetchReport(
+          String report, String beginDate, String endDate) {
+        return client
             .getAbs(provider.getHarvestingConfig().getSushiConfig().getServiceUrl().concat("/"))
             .addQueryParam("report", report)
             .addQueryParam("begin", beginDate)
             .addQueryParam("end", endDate)
             .send()
             .transform(ar -> Future.failedFuture(new TooManyRequestsException()));
+      }
+
+      @Override
+      public void close() {
+        client.close();
+      }
+    };
   }
 }

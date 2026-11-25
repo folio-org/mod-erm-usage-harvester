@@ -82,8 +82,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
+import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderLifecycle;
 import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingPgUtil;
+import org.quartz.JobKey;
 import org.quartz.SchedulerException;
+import org.quartz.impl.StdSchedulerFactory;
 
 @RunWith(VertxUnitRunner.class)
 public class HarvestingIT {
@@ -171,7 +174,9 @@ public class HarvestingIT {
   }
 
   @BeforeClass
-  public static void beforeClass(TestContext context) {
+  public static void beforeClass(TestContext context) throws SchedulerException {
+    // start from a fresh default scheduler, whatever earlier ITs left behind
+    shutdownSchedulers();
     okapiUrl = baseRule.baseUrl();
     int httpPort = NetworkUtils.nextFreePort();
 
@@ -914,6 +919,57 @@ public class HarvestingIT {
 
     baseRule.verify(0, getRequestedFor(urlPathEqualTo(reportsPath)));
     serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
+  }
+
+  @Test
+  public void testRepeatedRunsDoNotCreateVertxInstances(TestContext context) {
+    long vertxInstancesBefore = countVertxInstances();
+
+    for (int i = 1; i <= 3; i++) {
+      harvestWithLifecycleProvider(context);
+    }
+
+    assertThat(countVertxInstances()).isEqualTo(vertxInstancesBefore);
+  }
+
+  /** Each Vertx instance runs exactly one blocked-thread-checker thread. */
+  private static long countVertxInstances() {
+    return Thread.getAllStackTraces().keySet().stream()
+        .filter(Thread::isAlive)
+        .filter(t -> t.getName().startsWith("vertx-blocked-thread-checker"))
+        .count();
+  }
+
+  /** Harvests provider A with {@link WorkerVerticleITProviderLifecycle} and waits for the end. */
+  private void harvestWithLifecycleProvider(TestContext context) {
+    WorkerVerticleITProviderLifecycle.reset();
+    var usageDataProvider = tenantUDPMap.get(TENANTA).get(0);
+    var providerId = usageDataProvider.getId();
+    usageDataProvider
+        .getHarvestingConfig()
+        .getSushiConfig()
+        .setServiceType(WorkerVerticleITProviderLifecycle.SERVICE_TYPE);
+
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
+        .then()
+        .statusCode(200);
+
+    waitUntil(
+        context,
+        () ->
+            WorkerVerticleITProviderLifecycle.CLOSED.get() > 0
+                && vertx.deploymentIDs().size() <= 1
+                && !isJobScheduled(new JobKey(providerId, TENANTA)));
+  }
+
+  private static boolean isJobScheduled(JobKey jobKey) {
+    try {
+      return StdSchedulerFactory.getDefaultScheduler().checkExists(jobKey);
+    } catch (SchedulerException e) {
+      return false;
+    }
   }
 
   private static void verifyReportsQueriedWithMaxFailedAttempts(int expected) {

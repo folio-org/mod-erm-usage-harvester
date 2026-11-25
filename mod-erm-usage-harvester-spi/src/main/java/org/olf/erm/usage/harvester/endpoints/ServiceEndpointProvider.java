@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import io.vertx.core.Vertx;
 import java.util.Collections;
 import java.util.List;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -22,7 +23,7 @@ public interface ServiceEndpointProvider {
     return null;
   }
 
-  ServiceEndpoint create(UsageDataProvider provider);
+  ServiceEndpoint create(Vertx vertx, UsageDataProvider provider);
 
   default String getReportRelease() {
     return null;

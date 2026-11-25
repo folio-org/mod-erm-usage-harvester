@@ -296,6 +296,7 @@ public class ErmUsageHarvesterAPI implements ErmUsageHarvester {
                       .map(
                           ji ->
                               upsertJobInfo(
+                                  vertxContext.owner(),
                                   ji.withFinishedAt(
                                           Date.from(Instant.now(ClockProvider.getClock())))
                                       .withResult(Result.FAILURE)

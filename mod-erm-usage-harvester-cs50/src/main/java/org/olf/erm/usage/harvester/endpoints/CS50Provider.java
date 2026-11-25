@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester.endpoints;
 
+import io.vertx.core.Vertx;
 import java.util.List;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 
@@ -31,7 +32,7 @@ public class CS50Provider implements ServiceEndpointProvider {
   }
 
   @Override
-  public ServiceEndpoint create(UsageDataProvider provider) {
-    return new CS50Impl(provider);
+  public ServiceEndpoint create(Vertx vertx, UsageDataProvider provider) {
+    return new CS50Impl(vertx, provider);
   }
 }

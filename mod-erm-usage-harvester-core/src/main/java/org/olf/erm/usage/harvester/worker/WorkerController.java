@@ -6,6 +6,7 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.olf.erm.usage.harvester.FetchItem;
@@ -46,6 +47,11 @@ interface WorkerController {
    */
   void abort(String message);
 
+  /**
+   * @return true once the run was aborted; results of fetches completing afterwards are discarded
+   */
+  boolean isAborted();
+
   /** Undeploy all the "Verticles" */
   void undeploy();
 
@@ -67,6 +73,8 @@ interface WorkerController {
 
     private final Promise<Void> finished;
 
+    private final AtomicBoolean aborted;
+
     /**
      * @param vertx the entry point to the Vert.x core
      * @param context the Vert.x context
@@ -86,6 +94,7 @@ interface WorkerController {
       this.currentTasks = new AtomicInteger(0);
       this.queue = new LinkedBlockingQueue<>();
       this.finished = Promise.promise();
+      this.aborted = new AtomicBoolean(false);
     }
 
     /** {@inheritDoc} */
@@ -121,6 +130,10 @@ interface WorkerController {
     }
 
     private void startNextWith(final Function<QueueItem, Future<Void>> callback) {
+      // also covers items the error handler re-enqueues after an abort cleared the queue
+      if (aborted.get()) {
+        return;
+      }
       if (currentTasks.get() < maxConcurrency) {
         final var queueItem = queue.poll();
         if (queueItem != null) {
@@ -139,15 +152,24 @@ interface WorkerController {
     /** {@inheritDoc} */
     @Override
     public void abort(Throwable cause) {
-      finished.fail(cause);
+      // set before undeploy(), which closes the endpoint and so cuts off running fetches
+      aborted.set(true);
+      finished.tryFail(cause);
       undeploy();
     }
 
     /** {@inheritDoc} */
     @Override
     public void abort(String message) {
+      aborted.set(true);
       finished.tryFail(message);
       undeploy();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isAborted() {
+      return aborted.get();
     }
 
     /** {@inheritDoc} */

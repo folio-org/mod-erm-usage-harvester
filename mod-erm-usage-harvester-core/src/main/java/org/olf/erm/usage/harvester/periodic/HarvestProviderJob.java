@@ -13,8 +13,7 @@ import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
-import org.olf.erm.usage.harvester.client.ServiceEndpointFactory;
-import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
+import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingPgUtil;
 import org.olf.erm.usage.harvester.worker.WorkerVerticle;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -53,17 +52,14 @@ public class HarvestProviderJob extends AbstractHarvestJob {
               .toCompletableFuture()
               .get();
 
-      ServiceEndpoint serviceEndpoint =
-          ServiceEndpointFactory.createServiceEndpoint(usageDataProvider);
-
       WorkerVerticle workerVerticle =
           new WorkerVerticle(
               counterReportsClient,
               usageDataProvidersClient,
               tenantId,
               usageDataProvider,
-              serviceEndpoint,
-              initialConcurrency);
+              initialConcurrency,
+              ctx -> ErrorHandlingPgUtil.get(ctx, tenantId));
       CompletableFuture<String> cfDeploy =
           vertxContext
               .owner()

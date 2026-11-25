@@ -4,13 +4,13 @@ import static org.folio.rest.impl.ErmUsageHarvesterAPI.TABLE_NAME_JOBS;
 import static org.folio.rest.jaxrs.model.JobInfo.Type.PERIODIC;
 import static org.folio.rest.jaxrs.model.JobInfo.Type.PROVIDER;
 import static org.folio.rest.jaxrs.model.JobInfo.Type.TENANT;
-import static org.folio.rest.tools.utils.VertxUtils.getVertxFromContextOrNew;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_JOB_ID;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.TENANT_JOB_KEY;
 
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import java.util.List;
@@ -39,18 +39,17 @@ public class JobInfoUtil {
     return jobInfo;
   }
 
-  public static Future<String> upsertJobInfo(JobInfo jobInfo, String tenantId) {
-    return PostgresClient.getInstance(getVertxFromContextOrNew(), tenantId)
+  public static Future<String> upsertJobInfo(Vertx vertx, JobInfo jobInfo, String tenantId) {
+    return PostgresClient.getInstance(vertx, tenantId)
         .upsert(TABLE_NAME_JOBS, jobInfo.getId(), jobInfo);
   }
 
-  public static Future<RowSet<Row>> deletePeriodicJobInfo(String tenantId) {
+  public static Future<RowSet<Row>> deletePeriodicJobInfo(Vertx vertx, String tenantId) {
     Criterion deleteCriterion =
         new Criterion()
             .addCriterion(
                 new Criteria().addField("'type'").setOperation("=").setVal(PERIODIC.value()))
             .addCriterion(new Criteria().addField("'nextStart'").setOperation("!=").setVal("null"));
-    return PostgresClient.getInstance(getVertxFromContextOrNew(), tenantId)
-        .delete(TABLE_NAME_JOBS, deleteCriterion);
+    return PostgresClient.getInstance(vertx, tenantId).delete(TABLE_NAME_JOBS, deleteCriterion);
   }
 }
