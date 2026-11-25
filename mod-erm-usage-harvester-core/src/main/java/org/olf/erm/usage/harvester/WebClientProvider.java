@@ -3,10 +3,9 @@ package org.olf.erm.usage.harvester;
 import io.vertx.core.Vertx;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
-import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Provides cached WebClient instances per Vertx instance for internal Okapi communication.
@@ -14,9 +13,11 @@ import java.util.WeakHashMap;
  * <p>WebClient is thread-safe and should be reused. This class ensures exactly one instance exists
  * per Vertx instance.
  *
- * <p><strong>Lifecycle Management:</strong> This class uses weak references to Vertx instances.
- * When a Vertx instance is closed and garbage collected, the associated WebClient becomes eligible
- * for garbage collection automatically.
+ * <p><strong>Lifecycle:</strong> Cached clients are never evicted or closed; each one lives for the
+ * lifetime of the JVM, even after its Vertx instance is closed. This suits the module's single
+ * launcher-created Vertx instance. Code that repeatedly creates and closes Vertx instances in one
+ * JVM, such as tests, accumulates one cached client per instance, each keeping its closed Vertx
+ * instance reachable.
  *
  * <p><strong>Thread Safety:</strong> All methods are thread-safe and can be called from any thread.
  */
@@ -26,8 +27,7 @@ public final class WebClientProvider {
   // stall indefinitely on an unresponsive service
   static final int IDLE_TIMEOUT_SECONDS = 60;
 
-  private static final Map<Vertx, WebClient> CLIENTS =
-      Collections.synchronizedMap(new WeakHashMap<>());
+  private static final Map<Vertx, WebClient> CLIENTS = new ConcurrentHashMap<>();
 
   private WebClientProvider() {}
 
