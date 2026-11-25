@@ -11,6 +11,9 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.ext.web.client.HttpResponse;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntUnaryOperator;
+import java.util.stream.IntStream;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,6 +62,79 @@ class UploaderTest {
     uploader.uploadReports(COUNTER_REPORTS);
 
     assertThat(controller.abortMessage).isEqualTo("Stopping after 5 failed uploads in a row");
+  }
+
+  @Test
+  void testNonSuccessStatusCountsAsFailedUpload() {
+    final var uploader =
+        new Uploader(new StatusCodeCounterReportsClient(call -> 500), controller, LOG_CTX);
+
+    final var receivedFuture = uploader.uploadReports(createCounterReports(5));
+
+    assertThat(receivedFuture.failed()).as("... the upload stopped").isTrue();
+    assertThat(controller.abortMessage).isEqualTo("Stopping after 5 failed uploads in a row");
+  }
+
+  @Test
+  void testSuccessfulUploadResetsFailedUploadCount() {
+    // every third upload fails: 5 failed uploads in total, but never 5 in a row
+    final var counterReportsClient =
+        new StatusCodeCounterReportsClient(call -> call % 3 == 2 ? 500 : 201);
+    final var uploader = new Uploader(counterReportsClient, controller, LOG_CTX);
+
+    final var receivedFuture = uploader.uploadReports(createCounterReports(15));
+
+    assertThat(receivedFuture.succeeded()).as("... the future succeeded").isTrue();
+    assertThat(controller.abortMessage).isEmpty();
+    assertThat(counterReportsClient.calls().get())
+        .as("... all reports were uploaded")
+        .isEqualTo(15);
+  }
+
+  private static List<CounterReport> createCounterReports(final int count) {
+    return IntStream.rangeClosed(1, count)
+        .mapToObj(
+            i ->
+                new CounterReport()
+                    .withReportName("TR")
+                    .withYearMonth(YearMonth.of(2025, 1).plusMonths(i - 1).toString()))
+        .toList();
+  }
+
+  /** Answers every upsert with the status code {@code statusForCall} returns for the call index. */
+  private record StatusCodeCounterReportsClient(IntUnaryOperator statusForCall, AtomicInteger calls)
+      implements ExtCounterReportsClient {
+
+    StatusCodeCounterReportsClient(final IntUnaryOperator statusForCall) {
+      this(statusForCall, new AtomicInteger());
+    }
+
+    @Override
+    public Future<HttpResponse<Buffer>> upsertReport(CounterReport report) {
+      final int statusCode = statusForCall.applyAsInt(calls.getAndIncrement());
+      return Future.succeededFuture(new TestResponse(statusCode, "Status " + statusCode));
+    }
+
+    @Override
+    public Future<CounterReport> getReport(CounterReport report, boolean tiny) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Future<List<FetchItem>> getFetchList(UsageDataProvider provider, int maxFailedAttempts) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Future<List<YearMonth>> getValidMonths(
+        String providerId,
+        String reportName,
+        String reportRelease,
+        YearMonth start,
+        YearMonth end,
+        int maxFailedAttempts) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   private record TestCounterReportsClient(Throwable throwable) implements ExtCounterReportsClient {

@@ -153,6 +153,26 @@ class FetcherErrorHandlerTest {
   }
 
   @Test
+  void testTooManyRequestsWithoutMessageUsesToStringAsFailedReason() {
+    final var exception = new TooManyRequestsException();
+    final var result = handler.handleException(exception, QueueItem.of(FETCH_ITEM_TR, 2));
+
+    assertThat(result)
+        .singleElement()
+        .satisfies(cr -> assertThat(cr.getFailedReason()).isEqualTo(exception.toString()));
+  }
+
+  @Test
+  void testDefaultFetcherErrorHandlerUsesToStringIfMessageIsNull() {
+    final var result = handler.handleException(new Exception(), QueueItem.of(FETCH_ITEM_DR, 0));
+
+    assertThat(result)
+        .as("... the failed reason falls back to toString() for every month of the item")
+        .hasSize(3)
+        .allSatisfy(cr -> assertThat(cr.getFailedReason()).isEqualTo("java.lang.Exception"));
+  }
+
+  @Test
   void testDefaultFetcherErrorHandlerReturnsFailedReportPerMonth() {
     final var result =
         handler.handleException(

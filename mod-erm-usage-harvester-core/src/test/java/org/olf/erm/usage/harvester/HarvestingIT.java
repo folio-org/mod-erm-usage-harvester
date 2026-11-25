@@ -7,7 +7,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.lessThanOrExactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.moreThanOrExactly;
@@ -69,7 +68,6 @@ import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.SushiCredentials;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.folio.rest.jaxrs.model.UsageDataProviders;
-import org.folio.rest.jaxrs.model.WaitOption;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -115,10 +113,7 @@ public class HarvestingIT {
 
   @ClassRule
   public static WireMockRule baseRule =
-      new WireMockRule(
-          wireMockConfig()
-              .extensions(new UDPResponseTransformer(), new UploadResponseTransformer())
-              .dynamicPort());
+      new WireMockRule(wireMockConfig().extensions(new UDPResponseTransformer()).dynamicPort());
 
   @ClassRule
   public static WireMockRule serviceProviderARule =
@@ -431,117 +426,6 @@ public class HarvestingIT {
   }
 
   @Test
-  public void testHarvestingNotActive(TestContext context) {
-    tenantUDPMap
-        .get(TENANTA)
-        .get(0)
-        .getHarvestingConfig()
-        .setHarvestingStatus(HarvestingStatus.INACTIVE);
-
-    Async async = context.async();
-    given()
-        .headers(OKAPI_HEADERS)
-        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-        .then()
-        .statusCode(200);
-
-    vertx.setPeriodic(
-        1000,
-        id -> {
-          if (vertx.deploymentIDs().size() <= 1) {
-            context.verify(
-                v -> {
-                  assertThat(
-                          listAppender.getEvents().stream()
-                              .map(LogEvent::getMessage)
-                              .map(Message::getFormattedMessage))
-                      .anyMatch(msg -> msg.contains("HarvestingStatus not ACTIVE"));
-                  serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
-                  baseRule.verify(0, postRequestedFor(urlEqualTo(reportsPath)));
-                  baseRule.verify(0, putRequestedFor(urlMatching(providerPath + "/.*")));
-                });
-            vertx.cancelTimer(id);
-            async.complete();
-          }
-        });
-
-    async.await(10000);
-  }
-
-  @Test
-  public void testProviderNotFound(TestContext context) {
-    tenantUDPMap.clear();
-
-    Async async = context.async();
-    given()
-        .headers(OKAPI_HEADERS)
-        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-        .then()
-        .statusCode(200);
-
-    vertx.setPeriodic(
-        1000,
-        id -> {
-          if (vertx.deploymentIDs().size() <= 1) {
-            context.verify(
-                v -> {
-                  assertThat(
-                          listAppender.getEvents().stream()
-                              .map(LogEvent::getMessage)
-                              .map(Message::getFormattedMessage))
-                      .anyMatch(
-                          msg ->
-                              msg.contains("dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-                                  && msg.contains("404"));
-                  serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
-                  baseRule.verify(0, postRequestedFor(urlEqualTo(reportsPath)));
-                  baseRule.verify(0, putRequestedFor(urlMatching(providerPath + "/.*")));
-                });
-            vertx.cancelTimer(id);
-            async.complete();
-          }
-        });
-
-    async.await(10000);
-  }
-
-  @Test
-  public void testFetchListFails(TestContext context) {
-    baseRule.stubFor(get(urlPathEqualTo(reportsPath)).willReturn(aResponse().withStatus(404)));
-
-    Async async = context.async();
-    given()
-        .headers(OKAPI_HEADERS)
-        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-        .then()
-        .statusCode(200);
-
-    vertx.setPeriodic(
-        1000,
-        id -> {
-          if (vertx.deploymentIDs().size() <= 1) {
-            context.verify(
-                v -> {
-                  assertThat(
-                          listAppender.getEvents().stream()
-                              .map(LogEvent::getMessage)
-                              .map(Message::getFormattedMessage))
-                      .anyMatch(
-                          msg -> msg.contains("Error during processing") && msg.contains("404"));
-                  serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
-                  baseRule.verify(1, getRequestedFor(urlPathEqualTo(reportsPath)));
-                  baseRule.verify(0, postRequestedFor(urlEqualTo(reportsPath)));
-                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
-                });
-            vertx.cancelTimer(id);
-            async.complete();
-          }
-        });
-
-    async.await(10000);
-  }
-
-  @Test
   public void testFetchListEmpty(TestContext context) {
     UsageDataProvider usageDataProvider = tenantUDPMap.get(TENANTA).get(0);
     usageDataProvider.getHarvestingConfig().setHarvestingStart("2018-01");
@@ -602,196 +486,6 @@ public class HarvestingIT {
   }
 
   @Test
-  public void testRetryTooManyRequests(TestContext context) {
-    UsageDataProvider usageDataProvider = tenantUDPMap.get(TENANTA).get(0);
-    usageDataProvider.getHarvestingConfig().setHarvestingStart("2018-01");
-    usageDataProvider.getHarvestingConfig().setHarvestingEnd("2018-03");
-    usageDataProvider.getHarvestingConfig().getSushiConfig().setServiceType("wvitpftmr");
-
-    Async async = context.async();
-    given()
-        .headers(OKAPI_HEADERS)
-        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-        .then()
-        .statusCode(200);
-
-    vertx.setPeriodic(
-        1000,
-        id -> {
-          if (vertx.deploymentIDs().size() <= 1) {
-            context.verify(
-                v -> {
-                  assertThat(
-                          listAppender.getEvents().stream()
-                              .map(LogEvent::getMessage)
-                              .map(Message::getFormattedMessage))
-                      .anyMatch(msg -> msg.contains("Processing complete"));
-                  serviceProviderARule.verify(
-                      3,
-                      getRequestedFor(urlPathEqualTo("/"))
-                          .withQueryParam("begin", equalTo("2018-01-01"))
-                          .withQueryParam("end", equalTo("2018-03-31")));
-                  baseRule.verify(
-                      3,
-                      postRequestedFor(urlEqualTo(reportsPath))
-                          .withRequestBody(
-                              matchingJsonPath(
-                                  "$.failedReason", containing("TooManyRequestsException"))));
-                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
-                });
-            vertx.cancelTimer(id);
-            async.complete();
-          }
-        });
-
-    async.await(10000);
-  }
-
-  @Test
-  public void testFailedUploadsMax(TestContext context) {
-    UsageDataProvider usageDataProvider = tenantUDPMap.get(TENANTA).get(0);
-    usageDataProvider.getHarvestingConfig().setRequestedReports(List.of("TR"));
-    usageDataProvider.getHarvestingConfig().setReportRelease("5");
-    usageDataProvider.getHarvestingConfig().setHarvestingStart("2018-01");
-    usageDataProvider.getHarvestingConfig().setHarvestingEnd("2018-12");
-
-    baseRule.stubFor(
-        post(urlPathEqualTo(reportsPath))
-            .willReturn(aResponse().withStatus(500).withStatusMessage("Internal server error")));
-
-    Async async = context.async();
-    given()
-        .headers(OKAPI_HEADERS)
-        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-        .then()
-        .statusCode(200);
-
-    vertx.setPeriodic(
-        1000,
-        id -> {
-          if (vertx.deploymentIDs().size() <= 1) {
-            context.verify(
-                v -> {
-                  assertThat(
-                          listAppender.getEvents().stream()
-                              .map(LogEvent::getMessage)
-                              .map(Message::getFormattedMessage))
-                      .anyMatch(msg -> msg.contains("Error during processing"));
-                  serviceProviderARule.verify(
-                      1,
-                      getRequestedFor(urlPathEqualTo("/"))
-                          .withQueryParam("begin", equalTo("2018-01-01"))
-                          .withQueryParam("end", equalTo("2018-01-31")));
-                  serviceProviderARule.verify(
-                      moreThanOrExactly(5), getRequestedFor(urlPathEqualTo("/")));
-                  serviceProviderARule.verify(
-                      lessThanOrExactly(9), getRequestedFor(urlPathEqualTo("/")));
-                  baseRule.verify(moreThanOrExactly(5), postRequestedFor(urlEqualTo(reportsPath)));
-                  baseRule.verify(lessThanOrExactly(9), postRequestedFor(urlEqualTo(reportsPath)));
-                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
-                });
-            vertx.cancelTimer(id);
-            async.complete();
-          }
-        });
-
-    async.await(10000);
-  }
-
-  @Test
-  public void testFailedUploads(TestContext context) {
-    UsageDataProvider usageDataProvider = tenantUDPMap.get(TENANTA).get(0);
-    usageDataProvider.getHarvestingConfig().setHarvestingStart("2018-01");
-    usageDataProvider.getHarvestingConfig().setHarvestingEnd("2018-12");
-
-    baseRule.stubFor(
-        post(urlPathEqualTo(reportsPath))
-            .willReturn(aResponse().withTransformers("UploadResponseTransformer")));
-
-    Async async = context.async();
-    given()
-        .headers(OKAPI_HEADERS)
-        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-        .then()
-        .statusCode(200);
-
-    vertx.setPeriodic(
-        1000,
-        id -> {
-          if (vertx.deploymentIDs().size() <= 1) {
-            context.verify(
-                v -> {
-                  List<String> messages =
-                      listAppender.getEvents().stream()
-                          .map(LogEvent::getMessage)
-                          .map(Message::getFormattedMessage)
-                          .toList();
-                  assertThat(
-                      messages.stream().anyMatch(msg -> msg.contains("Processing complete")));
-                  assertThat(
-                          messages.stream()
-                              .filter(msg -> msg.contains("Upload") && msg.contains("500")))
-                      .hasSize(4);
-                  serviceProviderARule.verify(
-                      1,
-                      getRequestedFor(urlPathEqualTo("/"))
-                          .withQueryParam("begin", equalTo("2018-01-01"))
-                          .withQueryParam("end", equalTo("2018-12-31")));
-                  baseRule.verify(12, postRequestedFor(urlEqualTo(reportsPath)));
-                  baseRule.verify(1, putRequestedFor(urlMatching(providerPath + "/.*")));
-                });
-            vertx.cancelTimer(id);
-            async.complete();
-          }
-        });
-
-    async.await(10000);
-  }
-
-  @Test
-  public void testProviderFailsInitialization(TestContext context) {
-    Async async = context.async();
-
-    UsageDataProvider udp = tenantUDPMap.get(TENANTA).get(0);
-    HarvestingConfig harvestingConfig = udp.getHarvestingConfig();
-    harvestingConfig.getSushiConfig().setServiceType("wvitpfailinit");
-    harvestingConfig
-        .withRequestedReports(List.of("TR"))
-        .withReportRelease("5")
-        .withHarvestingStart("2021-01")
-        .withHarvestingEnd("2021-03");
-
-    given()
-        .headers(OKAPI_HEADERS)
-        .get(okapiUrl + HARVESTER_START_PATH + "/" + udp.getId())
-        .then()
-        .statusCode(200);
-
-    vertx.setPeriodic(
-        1000,
-        id -> {
-          if (vertx.deploymentIDs().size() <= 1) {
-            context.verify(
-                v -> {
-                  assertThat(
-                          listAppender.getEvents().stream()
-                              .map(LogEvent::getMessage)
-                              .map(Message::getFormattedMessage))
-                      .anyMatch(s -> s.contains("Initialization error"));
-                  serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
-                  serviceProviderBRule.verify(0, getRequestedFor(urlPathEqualTo("/")));
-                  baseRule.verify(0, postRequestedFor(urlEqualTo(reportsPath)));
-                  baseRule.verify(0, putRequestedFor(urlMatching(providerPath + "/.*")));
-                });
-            vertx.cancelTimer(id);
-            async.complete();
-          }
-        });
-
-    async.await(10000);
-  }
-
-  @Test
   public void testNumberOfRequestsMadeForProvider(TestContext context) {
     Async async = context.async();
 
@@ -831,58 +525,7 @@ public class HarvestingIT {
   }
 
   @Test
-  public void testFailedReasonIsExceptionToStringIfGetMessageIsNull(TestContext context) {
-    tenantUDPMap
-        .get(TENANTA)
-        .forEach(
-            udp -> {
-              HarvestingConfig harvestingConfig = udp.getHarvestingConfig();
-              harvestingConfig.getSushiConfig().setServiceType("wvitpfail");
-              harvestingConfig
-                  .withRequestedReports(List.of("TR"))
-                  .withReportRelease("5")
-                  .withHarvestingStart("2021-01")
-                  .withHarvestingEnd("2021-01");
-            });
-
-    given()
-        .headers(OKAPI_HEADERS)
-        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-        .then()
-        .statusCode(200);
-
-    Async async = context.async();
-    vertx.setPeriodic(
-        1000,
-        id -> {
-          if (vertx.deploymentIDs().size() <= 1) {
-            context.verify(
-                v ->
-                    baseRule.verify(
-                        1,
-                        postRequestedFor(urlEqualTo(reportsPath))
-                            .withRequestBody(matchingJsonPath("$.report", absent()))
-                            .withRequestBody(matchingJsonPath("$.yearMonth", equalTo("2021-01")))
-                            .withRequestBody(
-                                matchingJsonPath(
-                                    "$.failedReason", equalTo(new Exception().toString())))));
-            vertx.cancelTimer(id);
-            async.complete();
-          }
-        });
-  }
-
-  @Test
   public void testMaxFailedAttemptsDefaultIfNothingIsStored(TestContext context) {
-    harvestExistingMonth(context);
-
-    verifyReportsQueriedWithMaxFailedAttempts(5);
-  }
-
-  @Test
-  public void testMaxFailedAttemptsDefaultIfOptionIsNotSet(TestContext context) {
-    saveErrorHandling(new ErrorHandling().withCode1000(new WaitOption().withWaitMinutes(10)));
-
     harvestExistingMonth(context);
 
     verifyReportsQueriedWithMaxFailedAttempts(5);
@@ -895,30 +538,6 @@ public class HarvestingIT {
     harvestExistingMonth(context);
 
     verifyReportsQueriedWithMaxFailedAttempts(7);
-  }
-
-  @Test
-  public void testHarvestAbortedIfErrorHandlingCannotBeRead(TestContext context) {
-    saveErrorHandling(new ErrorHandling().withMaxFailedAttempts(7));
-    storeInvalidErrorHandling();
-
-    given()
-        .headers(OKAPI_HEADERS)
-        .get(okapiUrl + HARVESTER_START_PATH + "/dcb0eec3-f63c-440b-adcd-acca2ec44f39")
-        .then()
-        .statusCode(200);
-
-    waitUntil(
-        context,
-        () ->
-            listAppender.getEvents().stream()
-                    .map(LogEvent::getMessage)
-                    .map(Message::getFormattedMessage)
-                    .anyMatch(msg -> msg.contains("Failed getting maxFailedAttempts"))
-                && vertx.deploymentIDs().size() <= 1);
-
-    baseRule.verify(0, getRequestedFor(urlPathEqualTo(reportsPath)));
-    serviceProviderARule.verify(0, getRequestedFor(urlPathEqualTo("/")));
   }
 
   @Test
@@ -1035,58 +654,12 @@ public class HarvestingIT {
         .join();
   }
 
-  /** Overwrites the stored record with a value that cannot be mapped, so reading it fails. */
-  private static void storeInvalidErrorHandling() {
-    PostgresClient.getInstance(vertx, TENANTA)
-        .execute(
-            "UPDATE "
-                + PostgresClient.convertToPsqlStandard(TENANTA)
-                + "."
-                + ERROR_HANDLING_TABLE
-                + " SET jsonb = jsonb_set(jsonb, '{maxFailedAttempts}', '\"abc\"')")
-        .toCompletionStage()
-        .toCompletableFuture()
-        .join();
-  }
-
   private static void deleteErrorHandling() {
     PostgresClient.getInstance(vertx, TENANTA)
         .delete(ERROR_HANDLING_TABLE, new Criterion(new Criteria()))
         .toCompletionStage()
         .toCompletableFuture()
         .join();
-  }
-
-  static class UploadResponseTransformer extends ResponseDefinitionTransformer {
-    private int count = 0;
-
-    @Override
-    public ResponseDefinition transform(
-        Request request,
-        ResponseDefinition responseDefinition,
-        FileSource files,
-        Parameters parameters) {
-      count++;
-      ResponseDefinitionBuilder responseDefinitionBuilder = new ResponseDefinitionBuilder();
-      if (count % 3 == 0) {
-        return responseDefinitionBuilder
-            .withStatus(500)
-            .withStatusMessage("Internal server error")
-            .build();
-      } else {
-        return responseDefinitionBuilder.withStatus(201).build();
-      }
-    }
-
-    @Override
-    public boolean applyGlobally() {
-      return false;
-    }
-
-    @Override
-    public String getName() {
-      return "UploadResponseTransformer";
-    }
   }
 
   static class UDPResponseTransformer extends ResponseDefinitionTransformer {

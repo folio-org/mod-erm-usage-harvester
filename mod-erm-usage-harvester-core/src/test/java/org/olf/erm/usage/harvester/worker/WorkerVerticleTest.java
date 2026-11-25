@@ -30,12 +30,14 @@ import org.olf.erm.usage.harvester.client.ExtCounterReportsClient;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
 import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderAbort;
 import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderLifecycle;
+import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingDefaults;
 
 /** Test class for {@link WorkerVerticle} */
 class WorkerVerticleTest {
 
   private static final String START_FAILURE = "start failed after endpoint creation";
   private static final String FETCH_LIST_FAILURE = "fetch list failed";
+  private static final String ERROR_HANDLING_FAILURE = "error handling failed";
   private static final int MAX_FAILED_ATTEMPTS = 7;
   private static final long STOP_TIMEOUT_SECONDS = 5;
 
@@ -116,6 +118,49 @@ class WorkerVerticleTest {
   }
 
   @Test
+  void testRunAbortedIfErrorHandlingCannotBeLoaded() throws Exception {
+    final var counterReportsClient =
+        new CounterReportsClientStub(Future.succeededFuture(List.of()));
+    final var workerVerticle =
+        new ObservedWorkerVerticle(
+            counterReportsClient,
+            new UsageDataProvidersClientStub(false),
+            "tenant",
+            usageDataProvider,
+            1,
+            loadErrorHandlingAsync(
+                Future.failedFuture(new IllegalStateException(ERROR_HANDLING_FAILURE))));
+
+    deploy(workerVerticle).await();
+    assertThatThrownBy(workerVerticle.getFinished()::await).hasMessage(ERROR_HANDLING_FAILURE);
+    awaitStopped(workerVerticle);
+
+    assertThat(counterReportsClient.fetchListRequests.get()).isZero();
+    assertThat(WorkerVerticleITProviderLifecycle.CLOSED.get()).isEqualTo(1);
+  }
+
+  @Test
+  void testMaxFailedAttemptsDefaultIfOptionIsNotSet() throws Exception {
+    final var counterReportsClient =
+        new CounterReportsClientStub(Future.succeededFuture(List.of()));
+    final var workerVerticle =
+        new ObservedWorkerVerticle(
+            counterReportsClient,
+            new UsageDataProvidersClientStub(false),
+            "tenant",
+            usageDataProvider,
+            1,
+            loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
+
+    deploy(workerVerticle).await();
+    workerVerticle.getFinished().await();
+    awaitStopped(workerVerticle);
+
+    assertThat(counterReportsClient.requestedMaxFailedAttempts.get())
+        .isEqualTo(ErrorHandlingDefaults.MAX_FAILED_ATTEMPTS);
+  }
+
+  @Test
   void testFetchesCutOffByAbortAreNotUploaded() throws Exception {
     usageDataProvider
         .getHarvestingConfig()
@@ -164,6 +209,44 @@ class WorkerVerticleTest {
     assertThatThrownBy(deploy(workerVerticle)::await).hasMessage(START_FAILURE);
     assertThat(WorkerVerticleITProviderLifecycle.CREATED.get()).isEqualTo(1);
     assertThat(WorkerVerticleITProviderLifecycle.CLOSED.get()).isEqualTo(1);
+  }
+
+  @Test
+  void testDeploymentFailsIfEndpointProviderThrows() {
+    // WorkerVerticleITProviderFailsInitialization throws in create()
+    assertDeploymentFailsBeforeAnySideEffect("wvitpfailinit", "Initialization error");
+  }
+
+  @Test
+  void testDeploymentFailsIfNoEndpointImplementationIsAvailable() {
+    assertDeploymentFailsBeforeAnySideEffect(
+        "unknownServiceType", "No service implementation available");
+  }
+
+  /**
+   * Endpoint creation is the first step of {@link WorkerVerticle#start()}: if it fails, the
+   * deployment fails and neither the harvesting date is updated nor the fetch list requested.
+   */
+  private void assertDeploymentFailsBeforeAnySideEffect(
+      final String serviceType, final String expectedMessage) {
+    usageDataProvider.getHarvestingConfig().getSushiConfig().setServiceType(serviceType);
+    final var usageDataProvidersClient = new UsageDataProvidersClientStub(false);
+    final var counterReportsClient =
+        new CounterReportsClientStub(Future.succeededFuture(List.of()));
+    final var workerVerticle =
+        new WorkerVerticle(
+            counterReportsClient,
+            usageDataProvidersClient,
+            "tenant",
+            usageDataProvider,
+            1,
+            loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
+
+    assertThatThrownBy(deploy(workerVerticle)::await).hasMessageContaining(expectedMessage);
+    assertThat(vertx.deploymentIDs()).isEmpty();
+    assertThat(usageDataProvidersClient.harvestingDateUpdates.get()).isZero();
+    assertThat(counterReportsClient.fetchListRequests.get()).isZero();
+    assertThat(WorkerVerticleITProviderLifecycle.CREATED.get()).isZero();
   }
 
   /**
