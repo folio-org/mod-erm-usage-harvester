@@ -16,6 +16,7 @@
 * [MODEUSHARV-174](https://folio-org.atlassian.net/browse/MODEUSHARV-174) Add `DeployConfig.json` (ADR-0013 Configuration Management)
 * [MODEUSHARV-194](https://folio-org.atlassian.net/browse/MODEUSHARV-194) The harvester uses `maxFailedAttempts` of the error-handling settings instead of `max_failed_attempts` in mod-settings (value not migrated)
 * [MODEUSHARV-190](https://folio-org.atlassian.net/browse/MODEUSHARV-190) *BREAKING* Add new `apiExceptions` field to failed counter reports preserving counter error codes received from data providers
+* [MODEUSHARV-88](https://folio-org.atlassian.net/browse/MODEUSHARV-88) Update `lastTriggeredAt` of the periodic harvesting config also when the periodic job fails to start harvesting
 * [MODEUSHARV-175](https://folio-org.atlassian.net/browse/MODEUSHARV-175) `WebClientProvider` no longer promises automatic eviction of cached clients and documents that they live for the JVM lifetime
 
 # 5.2.0
