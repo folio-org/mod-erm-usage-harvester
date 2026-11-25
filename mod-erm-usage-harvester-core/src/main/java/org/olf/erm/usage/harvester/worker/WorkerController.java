@@ -13,7 +13,10 @@ import org.olf.erm.usage.harvester.FetchItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Manages the queue, manages the concurrency and manages deploying and undeploying "Verticles" */
+/**
+ * Manages a harvest run of a {@link WorkerVerticle}: its queue, its concurrency and how it ends
+ * (completing, aborting, undeploying the Verticle).
+ */
 interface WorkerController {
 
   /**
@@ -34,16 +37,17 @@ interface WorkerController {
   void startQueueWith(Function<QueueItem, Future<Void>> callback);
 
   /**
-   * Abort a task because of the exception thrown
+   * Aborts the run: it fails with {@code cause}, no new fetches are started and results of fetches
+   * still running are discarded.
    *
    * @param cause the exception thrown
    */
   void abort(Throwable cause);
 
   /**
-   * Abort a task, the message contains the reason
+   * Aborts the run like {@link #abort(Throwable)}, the message contains the reason
    *
-   * @param message The message explaining why the task was dropped
+   * @param message The message explaining why the run was aborted
    */
   void abort(String message);
 
@@ -52,7 +56,10 @@ interface WorkerController {
    */
   boolean isAborted();
 
-  /** Undeploy all the "Verticles" */
+  /**
+   * Ends the run: completes it unless it already failed, clears the queue and undeploys the {@link
+   * WorkerVerticle} this controller belongs to.
+   */
   void undeploy();
 
   final class DefaultWorkerController implements WorkerController {

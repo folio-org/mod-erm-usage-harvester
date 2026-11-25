@@ -20,7 +20,6 @@ import static org.olf.erm.usage.harvester.endpoints.UnsupportedReportTypeExcepti
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
-import io.vertx.core.Vertx;
 import io.vertx.junit5.RunTestOnContext;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
@@ -56,11 +55,11 @@ import org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptio
 class CS51ImplTest {
 
   @RegisterExtension
-  private static final WireMockExtension serviceMock =
+  private static final WireMockExtension SERVICE_MOCK =
       WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
 
   @RegisterExtension
-  private static final WireMockExtension proxyMock =
+  private static final WireMockExtension PROXY_MOCK =
       WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
 
   @RegisterExtension
@@ -99,7 +98,7 @@ class CS51ImplTest {
                     .withReportRelease(REPORT_RELEASE)
                     .withSushiConfig(
                         new SushiConfig()
-                            .withServiceUrl(serviceMock.getRuntimeInfo().getHttpBaseUrl())));
+                            .withServiceUrl(SERVICE_MOCK.getRuntimeInfo().getHttpBaseUrl())));
   }
 
   private static Stream<Entry<String, Map<String, String>>> testRequestParametersProvider() {
@@ -117,7 +116,7 @@ class CS51ImplTest {
   void testRequestParameters(
       Entry<String, Map<String, String>> params, VertxTestContext testContext) {
     String path = BASE_PATH + params.getKey().toLowerCase();
-    serviceMock.stubFor(get(urlPathEqualTo(path)).willReturn(aResponse().withStatus(404)));
+    SERVICE_MOCK.stubFor(get(urlPathEqualTo(path)).willReturn(aResponse().withStatus(404)));
 
     RequestPatternBuilder requestPatternBuilder =
         getRequestedFor(urlPathEqualTo(path))
@@ -134,7 +133,7 @@ class CS51ImplTest {
         .onComplete(
             ar ->
                 testContext
-                    .verify(() -> serviceMock.verify(1, requestPatternBuilder))
+                    .verify(() -> SERVICE_MOCK.verify(1, requestPatternBuilder))
                     .completeNow());
   }
 
@@ -142,7 +141,7 @@ class CS51ImplTest {
   void testUnsupportedReport(VertxTestContext testContext) {
     String reportName = "XY";
     String path = BASE_PATH + reportName.toLowerCase();
-    serviceMock.stubFor(get(urlPathEqualTo(path)).willReturn(aResponse().withStatus(404)));
+    SERVICE_MOCK.stubFor(get(urlPathEqualTo(path)).willReturn(aResponse().withStatus(404)));
 
     new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
         .fetchReport(reportName, BEGIN_DATE, END_DATE)
@@ -151,7 +150,7 @@ class CS51ImplTest {
                 testContext
                     .verify(
                         () -> {
-                          serviceMock.verify(0, getRequestedFor(urlPathEqualTo(path)));
+                          SERVICE_MOCK.verify(0, getRequestedFor(urlPathEqualTo(path)));
                           assertThat(ar.failed()).isTrue();
                           assertThat(ar.cause())
                               .isInstanceOf(UnsupportedReportTypeException.class)
@@ -162,14 +161,14 @@ class CS51ImplTest {
 
   @Test
   void testInvalidServiceUrl() {
-    String serviceUrlStr = "localhost";
-    UsageDataProvider invalidProvider =
+    var serviceUrlStr = "localhost";
+    var invalidProvider =
         new UsageDataProvider()
             .withSushiCredentials(new SushiCredentials())
             .withHarvestingConfig(
                 new HarvestingConfig()
                     .withSushiConfig(new SushiConfig().withServiceUrl(serviceUrlStr)));
-    Vertx vertx = RUN_TEST_ON_CONTEXT.vertx();
+    var vertx = RUN_TEST_ON_CONTEXT.vertx();
     assertThatThrownBy(() -> new CS51Impl(vertx, invalidProvider))
         .isInstanceOf(InvalidServiceURLException.class)
         .hasMessage(String.format(MSG_INVALID_SERVICE_URL, serviceUrlStr));
@@ -182,7 +181,7 @@ class CS51ImplTest {
 
   @Test
   void testCloseClosesWebClient() {
-    serviceMock.stubFor(get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404)));
+    SERVICE_MOCK.stubFor(get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404)));
 
     CS51Impl endpoint = new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider);
     endpoint.close();
@@ -191,7 +190,7 @@ class CS51ImplTest {
     assertThatThrownBy(() -> endpoint.fetchReport(REPORT_TR, BEGIN_DATE, END_DATE))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Client is closed");
-    serviceMock.verify(0, getRequestedFor(urlPathEqualTo(PATH_TR)));
+    SERVICE_MOCK.verify(0, getRequestedFor(urlPathEqualTo(PATH_TR)));
   }
 
   private static String readBodyFile(String name) throws IOException {
@@ -209,7 +208,7 @@ class CS51ImplTest {
       assertThat(body).contains(NEW_REGISTRY_DOMAIN);
       body = body.replace(NEW_REGISTRY_DOMAIN, OLD_REGISTRY_DOMAIN);
     }
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(200).withBody(body)));
 
     new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
@@ -245,7 +244,7 @@ class CS51ImplTest {
 
   @Test
   void testReceiveValidReportWithException(VertxTestContext testContext) {
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR))
             .willReturn(aResponse().withStatus(200).withBodyFile("TR_with_exception.json")));
 
@@ -266,7 +265,7 @@ class CS51ImplTest {
   @Test
   void testReceiveBareExceptionWithStatus200(VertxTestContext testContext) throws IOException {
     String body = readBodyFile("Exception_2010.json");
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(200).withBody(body)));
 
     new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
@@ -287,7 +286,7 @@ class CS51ImplTest {
   void testReceiveReportWithTooManyRequestsExceptionInHeader(VertxTestContext testContext)
       throws IOException {
     String body = readBodyFile("TR_with_exception.json").replace("3031", "1020");
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(200).withBody(body)));
 
     new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
@@ -309,7 +308,7 @@ class CS51ImplTest {
     String body =
         readBodyFile("TR_with_exception.json")
             .replace(MSG_USAGE_NOT_READY, "Custom provider message");
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(200).withBody(body)));
 
     new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
@@ -330,7 +329,7 @@ class CS51ImplTest {
   void testReceiveReportWithHeaderExceptionWithoutCode(VertxTestContext testContext)
       throws IOException {
     String body = readBodyFile("TR_with_exception.json").replace("\"Code\": 3031,", "");
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(200).withBody(body)));
 
     new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
@@ -350,7 +349,7 @@ class CS51ImplTest {
 
   @Test
   void testReceiveInvalidReport(VertxTestContext testContext) {
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR))
             .willReturn(aResponse().withStatus(200).withBodyFile("TR_invalid.json")));
 
@@ -371,7 +370,7 @@ class CS51ImplTest {
 
   @Test
   void testTooManyRequestsException(VertxTestContext testContext) {
-    serviceMock.stubFor(get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(429)));
+    SERVICE_MOCK.stubFor(get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(429)));
 
     new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
         .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
@@ -388,7 +387,7 @@ class CS51ImplTest {
 
   @Test
   void test403Response(VertxTestContext testContext) {
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR))
             .willReturn(aResponse().withStatus(403).withBodyFile("Exception_2010.json")));
 
@@ -413,7 +412,7 @@ class CS51ImplTest {
     String errorBody =
         "{\"Severity\":\"Error\",\"Code\":3030,\"Message\":\"No Usage Available for Requested"
             + " Dates\"}";
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404).withBody(errorBody)));
 
     new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
@@ -438,7 +437,7 @@ class CS51ImplTest {
 
   @Test
   void test404ResponseWithEmptyBody(VertxTestContext testContext) {
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404).withBody("")));
 
     new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
@@ -464,7 +463,7 @@ class CS51ImplTest {
   @Test
   void test500ResponseWithHtmlBody(VertxTestContext testContext) {
     String htmlBody = "<!DOCTYPE html><html><body>Internal Server Error</body></html>";
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(500).withBody(htmlBody)));
 
     new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
@@ -491,7 +490,7 @@ class CS51ImplTest {
   @Test
   void testResponseBodyAbbreviation(VertxTestContext testContext) {
     String longBody = "A".repeat(2500);
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404).withBody(longBody)));
 
     new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
@@ -519,7 +518,7 @@ class CS51ImplTest {
 
   @Test
   void testFetchReportWithAdditionalAttributes(VertxTestContext testContext) {
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR))
             .willReturn(
                 aResponse().withStatus(200).withBodyFile("TR_with_additional_attributes.json")));
@@ -548,7 +547,7 @@ class CS51ImplTest {
             @Override
             public List<Proxy> select(URI uri) {
               return Collections.singletonList(
-                  new Proxy(Type.HTTP, new InetSocketAddress("localhost", proxyMock.getPort())));
+                  new Proxy(Type.HTTP, new InetSocketAddress("localhost", PROXY_MOCK.getPort())));
             }
 
             @Override
@@ -557,7 +556,7 @@ class CS51ImplTest {
             }
           });
 
-      proxyMock.stubFor(get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404)));
+      PROXY_MOCK.stubFor(get(urlPathEqualTo(PATH_TR)).willReturn(aResponse().withStatus(404)));
 
       new CS51Impl(RUN_TEST_ON_CONTEXT.vertx(), provider)
           .fetchReport(REPORT_TR, BEGIN_DATE, END_DATE)
@@ -566,8 +565,8 @@ class CS51ImplTest {
                   testContext
                       .verify(
                           () -> {
-                            proxyMock.verify(1, getRequestedFor(urlPathEqualTo(PATH_TR)));
-                            serviceMock.verify(0, getRequestedFor(urlPathEqualTo(PATH_TR)));
+                            PROXY_MOCK.verify(1, getRequestedFor(urlPathEqualTo(PATH_TR)));
+                            SERVICE_MOCK.verify(0, getRequestedFor(urlPathEqualTo(PATH_TR)));
                           })
                       .completeNow());
     } finally {
@@ -578,12 +577,12 @@ class CS51ImplTest {
   @Test
   void testTrailingSlashRedirect(final VertxTestContext testContext) {
     // The redirect path
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR))
             .willReturn(aResponse().withStatus(301).withHeader("Location", PATH_TR + "/")));
 
     // The happy path
-    serviceMock.stubFor(
+    SERVICE_MOCK.stubFor(
         get(urlPathEqualTo(PATH_TR + "/"))
             .willReturn(aResponse().withStatus(200).withBodyFile("TR.json")));
 
@@ -596,9 +595,9 @@ class CS51ImplTest {
                       () -> {
                         assertThat(ar.succeeded()).isTrue();
                         // The URL we actually called
-                        serviceMock.verify(1, getRequestedFor(urlPathEqualTo(PATH_TR)));
+                        SERVICE_MOCK.verify(1, getRequestedFor(urlPathEqualTo(PATH_TR)));
                         // The URL we got redirected to
-                        serviceMock.verify(1, getRequestedFor(urlPathEqualTo(PATH_TR + "/")));
+                        SERVICE_MOCK.verify(1, getRequestedFor(urlPathEqualTo(PATH_TR + "/")));
                       })
                   .completeNow();
             });

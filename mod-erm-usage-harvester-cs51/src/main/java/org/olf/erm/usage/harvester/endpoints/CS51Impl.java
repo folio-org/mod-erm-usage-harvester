@@ -29,23 +29,23 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.counter51.Counter51Utils;
 import org.olf.erm.usage.counter51.client.Counter51Auth;
 
-public class CS51Impl implements ServiceEndpoint {
+class CS51Impl implements ServiceEndpoint {
 
-  public static final String ATTRIBUTES_TO_SHOW_DR = "Access_Method";
-  public static final String ATTRIBUTES_TO_SHOW_IR =
+  static final String ATTRIBUTES_TO_SHOW_DR = "Access_Method";
+  static final String ATTRIBUTES_TO_SHOW_IR =
       "Authors|Publication_Date|Article_Version|YOP|Access_Type|Access_Method";
-  public static final String ATTRIBUTES_TO_SHOW_PR = "Access_Method";
-  public static final String ATTRIBUTES_TO_SHOW_TR = "YOP|Access_Type|Access_Method";
+  static final String ATTRIBUTES_TO_SHOW_PR = "Access_Method";
+  static final String ATTRIBUTES_TO_SHOW_TR = "YOP|Access_Type|Access_Method";
 
+  private final Vertx vertx;
   private final String customerId;
   private final String reportRelease;
   private final String platform;
   private final String providerId;
-  private final Vertx vertx;
   private final ExtendedCounter51Client client;
   private final ObjectMapper objectMapper = Counter51Utils.getDefaultObjectMapper();
 
-  public CS51Impl(Vertx vertx, UsageDataProvider provider) {
+  CS51Impl(Vertx vertx, UsageDataProvider provider) {
     requireNonNull(provider);
     SushiCredentials sushiCredentials = requireNonNull(provider.getSushiCredentials());
     HarvestingConfig harvestingConfig = requireNonNull(provider.getHarvestingConfig());

@@ -50,7 +50,7 @@ public class HarvestTenantPeriodicJobIT {
   private static final Vertx vertx = Vertx.vertx();
   private static Context vertxContext;
   private static Scheduler scheduler;
-  private static final String TENANT = "tnanet";
+  private static final String TENANT = "harvest_tenant";
 
   private static final PeriodicConfig config =
       new PeriodicConfig()

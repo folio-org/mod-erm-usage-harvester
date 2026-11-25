@@ -23,6 +23,13 @@ public interface ServiceEndpointProvider {
     return null;
   }
 
+  /**
+   * Creates a service endpoint for the given provider.
+   *
+   * @param vertx the Vert.x instance the endpoint runs on
+   * @param provider the usage data provider to harvest
+   * @return the service endpoint
+   */
   ServiceEndpoint create(Vertx vertx, UsageDataProvider provider);
 
   default String getReportRelease() {

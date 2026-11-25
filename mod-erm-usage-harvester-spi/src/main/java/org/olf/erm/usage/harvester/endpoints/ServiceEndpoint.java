@@ -101,6 +101,17 @@ public interface ServiceEndpoint extends AutoCloseable {
     return Lists.newArrayList(loader.iterator());
   }
 
+  /**
+   * Creates the service endpoint for a usage data provider, using the {@link
+   * ServiceEndpointProvider} (found via {@link ServiceLoader}) whose service type matches the
+   * provider's {@code harvestingConfig.sushiConfig.serviceType}.
+   *
+   * @param vertx the Vert.x instance the endpoint runs on
+   * @param provider the usage data provider to harvest
+   * @return the service endpoint, or {@code null} if the provider has no service type or no
+   *     implementation for its service type is available
+   * @throws NullPointerException if {@code vertx} or {@code provider} is {@code null}
+   */
   static ServiceEndpoint create(Vertx vertx, UsageDataProvider provider) {
     Objects.requireNonNull(vertx);
     Objects.requireNonNull(provider);

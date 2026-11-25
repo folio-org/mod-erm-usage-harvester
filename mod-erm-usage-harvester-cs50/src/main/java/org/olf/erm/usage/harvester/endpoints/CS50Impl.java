@@ -22,14 +22,13 @@ import org.openapitools.counter50.model.COUNTERPlatformReport;
 import org.openapitools.counter50.model.COUNTERTitleReport;
 import org.openapitools.counter50.model.SUSHIReportHeader;
 
-public class CS50Impl implements ServiceEndpoint {
+class CS50Impl implements ServiceEndpoint {
 
+  private final Vertx vertx;
   private final UsageDataProvider provider;
   private final ExtendedCounter50Client client;
 
-  private final Vertx vertx;
-
-  public CS50Impl(Vertx vertx, UsageDataProvider provider) {
+  CS50Impl(Vertx vertx, UsageDataProvider provider) {
     this.vertx = requireNonNull(vertx);
     requireNonNull(provider.getSushiCredentials());
     requireNonNull(provider.getHarvestingConfig());

@@ -9,7 +9,11 @@ import org.olf.erm.usage.harvester.FetchItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Orchestrates fetching and uploading items */
+/**
+ * Drives a harvest run: determines which reports still need to be harvested, fetches them from the
+ * provider and uploads them to storage. Queueing and ending the run are left to the {@link
+ * WorkerController}.
+ */
 final class Orchestrator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Orchestrator.class);
