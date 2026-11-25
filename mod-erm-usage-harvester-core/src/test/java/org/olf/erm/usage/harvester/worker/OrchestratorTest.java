@@ -1,19 +1,15 @@
 package org.olf.erm.usage.harvester.worker;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 
 import com.google.common.io.Resources;
 import io.vertx.core.Future;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.Json;
-import io.vertx.ext.web.client.HttpResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.YearMonth;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Function;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.jupiter.api.BeforeAll;
@@ -70,11 +66,16 @@ class OrchestratorTest {
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
-    orchestrator.startWith(Future.succeededFuture(1));
+    final var initialItems = orchestrator.loadFetchList(Future.succeededFuture(1));
+    orchestrator.startWith(initialItems);
 
     assertThat(controller.queueItems)
         .as("... we got the correct number of items in the queue")
         .hasSameSizeAs(FETCH_LIST);
+    assertThat(controller.queueItems)
+        .as("... the items of a regular run start with a retry count of 0")
+        .extracting(QueueItem::retryCount)
+        .containsOnly(0);
     assertThat(controller.startQueueWithWasCalled).as("... the queue was started").isTrue();
     assertThat(controller.undeployWasCalled).as("... the queue was not undeployed").isFalse();
     assertThat(controller.abortThrowable).isNull();
@@ -87,7 +88,8 @@ class OrchestratorTest {
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
-    orchestrator.startWith(Future.succeededFuture(1));
+    final var initialItems = orchestrator.loadFetchList(Future.succeededFuture(1));
+    orchestrator.startWith(initialItems);
 
     assertThat(controller.queueItems)
         .as("... we got the correct number of items in the queue")
@@ -104,7 +106,8 @@ class OrchestratorTest {
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
-    orchestrator.startWith(Future.succeededFuture(1));
+    final var initialItems = orchestrator.loadFetchList(Future.succeededFuture(1));
+    orchestrator.startWith(initialItems);
 
     assertThat(controller.queueItems)
         .as("... we got the correct number of items in the queue")
@@ -120,7 +123,43 @@ class OrchestratorTest {
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
-    orchestrator.startWith(Future.failedFuture("max failed attempts not available"));
+    final var initialItems =
+        orchestrator.loadFetchList(Future.failedFuture("max failed attempts not available"));
+    orchestrator.startWith(initialItems);
+
+    assertThat(controller.queueItems).as("... nothing was added to the queue").isEmpty();
+    assertThat(controller.startQueueWithWasCalled).as("... the queue was not started").isFalse();
+    assertThat(controller.abortThrowable).as("... the whole thing was aborted").isNotNull();
+  }
+
+  @Test
+  void testStartWithInitialItemsKeepsRetryCount() {
+    final var counterReportsClient = new TestCounterReportsClient(FETCH_LIST);
+    final var fetcher = configureFetcher(counterReportsClient);
+    final var uploader = new Uploader(counterReportsClient, controller, logCtx);
+    final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
+    final var retryItems = List.of(new QueueItem(FETCH_LIST.getFirst(), 2));
+
+    orchestrator.startWith(Future.succeededFuture(retryItems));
+
+    assertThat(controller.queueItems)
+        .as("... the initial items are queued with their retry count")
+        .containsExactlyElementsOf(retryItems);
+    assertThat(controller.startQueueWithWasCalled).as("... the queue was started").isTrue();
+    assertThat(counterReportsClient.fetchListCalls())
+        .as("... the fetch list was not loaded")
+        .hasValue(0);
+    assertThat(controller.abortThrowable).isNull();
+  }
+
+  @Test
+  void testStartWithFailedInitialItems() {
+    final var counterReportsClient = new TestCounterReportsClient(FETCH_LIST);
+    final var fetcher = configureFetcher(counterReportsClient);
+    final var uploader = new Uploader(counterReportsClient, controller, logCtx);
+    final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
+
+    orchestrator.startWith(Future.failedFuture("initial items not available"));
 
     assertThat(controller.queueItems).as("... nothing was added to the queue").isEmpty();
     assertThat(controller.startQueueWithWasCalled).as("... the queue was not started").isFalse();
@@ -139,7 +178,8 @@ class OrchestratorTest {
             (t, qi) -> Collections.emptyList());
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
-    orchestrator.startWith(Future.succeededFuture(1));
+    final var initialItems = orchestrator.loadFetchList(Future.succeededFuture(1));
+    orchestrator.startWith(initialItems);
 
     controller.abort("aborted while the fetch was running");
     final var dispatched = controller.queueCallback.apply(controller.queueItems.getFirst());
@@ -161,95 +201,6 @@ class OrchestratorTest {
     @Override
     public void close() {
       // nothing to release
-    }
-  }
-
-  private record TestCounterReportsClient(List<FetchItem> fetchItems)
-      implements ExtCounterReportsClient {
-
-    @Override
-    public Future<CounterReport> getReport(CounterReport report, boolean tiny) {
-      // No-op, since we don't need it
-      return null;
-    }
-
-    @Override
-    public Future<HttpResponse<Buffer>> upsertReport(CounterReport report) {
-      throw new AssertionError("No upload expected");
-    }
-
-    @Override
-    public Future<List<FetchItem>> getFetchList(UsageDataProvider provider, int maxFailedAttempts) {
-      if (fetchItems == null) {
-        return Future.failedFuture(new NullPointerException());
-      }
-      return Future.succeededFuture(fetchItems);
-    }
-
-    @Override
-    public Future<List<YearMonth>> getValidMonths(
-        String providerId,
-        String reportName,
-        String reportRelease,
-        YearMonth start,
-        YearMonth end,
-        int maxFailedAttempts) {
-      // No-op, since we don't need it
-      return null;
-    }
-  }
-
-  static class TestWorkerController implements WorkerController {
-
-    final List<QueueItem> queueItems = new ArrayList<>();
-
-    boolean concurrencyWasDisabled = false;
-
-    boolean startQueueWithWasCalled = false;
-
-    Function<QueueItem, Future<Void>> queueCallback;
-
-    boolean undeployWasCalled = false;
-
-    String abortMessage = "";
-
-    Throwable abortThrowable;
-
-    @Override
-    public void enqueue(List<QueueItem> items) {
-      queueItems.addAll(items);
-    }
-
-    @Override
-    public void disableConcurrency() {
-      concurrencyWasDisabled = true;
-    }
-
-    @Override
-    public void startQueueWith(Function<QueueItem, Future<Void>> callback) {
-      this.startQueueWithWasCalled = true;
-      this.queueCallback = callback;
-    }
-
-    @Override
-    public void abort(Throwable cause) {
-      this.abortThrowable = cause;
-    }
-
-    @Override
-    public void abort(String message) {
-      this.abortMessage = message;
-    }
-
-    @Override
-    public boolean isAborted() {
-      return abortThrowable != null || !abortMessage.isEmpty();
-    }
-
-    @Override
-    public Future<Void> undeploy() {
-      this.undeployWasCalled = true;
-      return Future.succeededFuture();
     }
   }
 }

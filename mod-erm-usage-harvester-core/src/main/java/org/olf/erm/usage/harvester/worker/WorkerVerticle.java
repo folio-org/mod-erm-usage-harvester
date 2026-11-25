@@ -8,6 +8,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 import org.folio.rest.jaxrs.model.ErrorHandling;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
@@ -16,6 +17,7 @@ import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
 import org.olf.erm.usage.harvester.client.ServiceEndpointFactory;
 import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingDefaults;
+import org.olf.erm.usage.harvester.retry.ParkedItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +42,9 @@ public class WorkerVerticle extends AbstractVerticle {
 
   private final LoggerContext logCtx;
 
-  private DefaultWorkerController controller;
+  // Written in start() on the Vert.x context, read by getParked() and cancel() on the Quartz
+  // thread.
+  private volatile DefaultWorkerController controller;
 
   private ServiceEndpoint serviceEndpoint;
 
@@ -86,8 +90,8 @@ public class WorkerVerticle extends AbstractVerticle {
       final var uploader = new Uploader(counterReportsClient, controller, logCtx);
       final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
-      final var maxFailedAttempts = getMaxFailedAttempts();
-      orchestrator.startWith(maxFailedAttempts);
+      final var initialItems = orchestrator.loadFetchList(getMaxFailedAttempts());
+      orchestrator.startWith(initialItems);
     } catch (RuntimeException e) {
       // Vert.x does not call stop() when start() fails
       closeServiceEndpoint();
@@ -118,8 +122,7 @@ public class WorkerVerticle extends AbstractVerticle {
    */
   public Future<Void> getFinished() {
     if (controller == null) {
-      return Future.failedFuture(
-          "Called 'getFinished()' after instantiation error. This should not happen");
+      return Future.failedFuture("WorkerVerticle never started");
     }
 
     return controller
@@ -128,6 +131,35 @@ public class WorkerVerticle extends AbstractVerticle {
         .onSuccess(v -> LOGGER.info(logCtx.createMsg("Processing completed")))
         .onFailure(
             t -> LOGGER.error(logCtx.createMsg("Error during processing, {}", t.getMessage()), t));
+  }
+
+  /**
+   * Hands over the items parked during the run, to be retried in a separate retry run. This seals
+   * the parked items: items parked later are dropped (and logged). Call it once, after {@link
+   * #getFinished()} has completed or failed.
+   *
+   * @return an immutable snapshot of the parked items, or an empty list if the verticle was never
+   *     started (e.g. the deployment failed)
+   */
+  public List<ParkedItem> getParked() {
+    return controller == null ? List.of() : controller.sealParked();
+  }
+
+  /**
+   * Cancels the run: the controller aborts with the given reason, so {@link #getFinished()} fails
+   * with it. Can be called from any thread. Cancelling a run that has already finished has no
+   * effect.
+   *
+   * @param reason why the run is canceled
+   */
+  public void cancel(final String reason) {
+    if (controller == null) {
+      LOGGER.warn(logCtx.createMsg("Cannot cancel, the WorkerVerticle was never started"));
+      return;
+    }
+
+    LOGGER.info(logCtx.createMsg("Cancelling: {}", reason));
+    context.runOnContext(v -> controller.abort(reason));
   }
 
   private Future<Integer> getMaxFailedAttempts() {

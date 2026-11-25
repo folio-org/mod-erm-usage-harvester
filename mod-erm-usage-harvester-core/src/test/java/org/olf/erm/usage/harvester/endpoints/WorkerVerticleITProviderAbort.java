@@ -21,9 +21,18 @@ public class WorkerVerticleITProviderAbort implements ServiceEndpointProvider {
   public static final String PENDING_BEGIN = "2025-01-01";
   public static final int REPORTS_PER_FETCH = 5;
   public static final AtomicInteger CLOSED = new AtomicInteger();
+  private static volatile Promise<Void> pendingFetchStarted = Promise.promise();
 
   public static void reset() {
     CLOSED.set(0);
+    pendingFetchStarted = Promise.promise();
+  }
+
+  /**
+   * @return a future that completes once a fetch starting at {@link #PENDING_BEGIN} was requested
+   */
+  public static Future<Void> pendingFetchStarted() {
+    return pendingFetchStarted.future();
   }
 
   @Override
@@ -45,6 +54,7 @@ public class WorkerVerticleITProviderAbort implements ServiceEndpointProvider {
       public Future<List<CounterReport>> fetchReport(
           String report, String beginDate, String endDate) {
         if (PENDING_BEGIN.equals(beginDate)) {
+          pendingFetchStarted.tryComplete();
           return pendingFetch.future();
         }
         return Future.succeededFuture(

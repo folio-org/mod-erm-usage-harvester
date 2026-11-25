@@ -4,12 +4,15 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.retry.ParkedItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,12 +61,30 @@ interface WorkerController {
 
   /**
    * Ends the run: clears the queue and undeploys the {@link WorkerVerticle} this controller belongs
-   * to. Once undeploying has finished, the run is completed unless it was aborted.
+   * to. Once undeploying has finished, the run is completed unless it was aborted. Parked items are
+   * kept.
    *
    * @return a future that completes once undeploying has finished; it never fails, an undeploy
    *     failure is only logged
    */
   Future<Void> undeploy();
+
+  /**
+   * Parks items that are to be retried later, in a separate retry run.
+   *
+   * @param items the queue items to retry, with the retry count they get in the retry run
+   * @param dueAt the earliest point in time the items may be retried
+   * @param reason a short description of why the items are retried, for logs
+   */
+  void park(List<QueueItem> items, Instant dueAt, String reason);
+
+  /**
+   * Closes the list of parked items and returns it. Later calls to {@link #park(List, Instant,
+   * String)} don't add anything, and later calls to this method return the same items.
+   *
+   * @return an immutable snapshot of the parked items
+   */
+  List<ParkedItem> sealParked();
 
   final class DefaultWorkerController implements WorkerController {
 
@@ -85,6 +106,10 @@ interface WorkerController {
 
     private final AtomicBoolean aborted;
 
+    private final List<ParkedItem> parked;
+
+    private boolean sealed;
+
     /**
      * @param vertx the entry point to the Vert.x core
      * @param context the Vert.x context
@@ -105,6 +130,8 @@ interface WorkerController {
       this.queue = new LinkedBlockingQueue<>();
       this.finished = Promise.promise();
       this.aborted = new AtomicBoolean(false);
+      this.parked = new ArrayList<>();
+      this.sealed = false;
     }
 
     /** {@inheritDoc} */
@@ -206,6 +233,31 @@ interface WorkerController {
               t ->
                   LOGGER.error(logCtx.createMsg("Error during undeploying: {}", t.getMessage()), t))
           .recover(t -> Future.succeededFuture());
+    }
+
+    // park() runs on the Vert.x context and sealParked() on the Quartz thread: synchronized makes
+    // them thread-safe, and the sealed flag rejects late parks after the hand-off.
+
+    /** {@inheritDoc} */
+    @Override
+    public synchronized void park(List<QueueItem> items, Instant dueAt, String reason) {
+      if (sealed) {
+        LOGGER.warn(
+            logCtx.createMsg(
+                "Parked items already handed over, dropping {} (due at {}, reason: {})",
+                items,
+                dueAt,
+                reason));
+        return;
+      }
+      items.forEach(qi -> parked.add(new ParkedItem(qi.item(), qi.retryCount(), dueAt, reason)));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public synchronized List<ParkedItem> sealParked() {
+      sealed = true;
+      return List.copyOf(parked);
     }
 
     /**

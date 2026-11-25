@@ -1,7 +1,6 @@
 package org.olf.erm.usage.harvester.worker;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.olf.erm.usage.harvester.worker.OrchestratorTest.TestWorkerController;
 
 import io.vertx.core.Future;
 import io.vertx.core.MultiMap;

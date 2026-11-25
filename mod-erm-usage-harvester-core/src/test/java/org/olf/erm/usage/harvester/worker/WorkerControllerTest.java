@@ -1,6 +1,7 @@
 package org.olf.erm.usage.harvester.worker;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.olf.erm.usage.harvester.worker.WorkerController.DefaultWorkerController;
 import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 
@@ -9,6 +10,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.retry.ParkedItem;
 
 /** Tests for {@link WorkerController}. */
 @ExtendWith(VertxExtension.class)
@@ -37,6 +40,15 @@ class WorkerControllerTest {
           new FetchItem("DR", "2024-03-01", "2025-03-31"));
 
   private static final List<QueueItem> QUEUE_ITEMS = QueueItem.createQueueItemList(FETCH_ITEMS, 2);
+
+  private static final Instant DUE_AT = Instant.parse("2025-02-01T10:30:00Z");
+
+  private static final String REASON = "Report Queued for Processing";
+
+  private static final List<ParkedItem> PARKED_ITEMS =
+      List.of(
+          new ParkedItem(FETCH_ITEMS.getFirst(), 2, DUE_AT, REASON),
+          new ParkedItem(FETCH_ITEMS.get(1), 2, DUE_AT, REASON));
 
   private DefaultWorkerController controller;
 
@@ -149,5 +161,47 @@ class WorkerControllerTest {
     assertThat(controller.undeploy().succeeded()).as("Check undeploy succeeded").isTrue();
     assertThat(controller.getQueue()).as("Check queue size").isEmpty();
     assertThat(controller.getFinished().future().succeeded()).as("Check run completed").isTrue();
+  }
+
+  @Test
+  void testParkAndSealParked() {
+    controller.park(QUEUE_ITEMS, DUE_AT, REASON);
+
+    final var parked = controller.sealParked();
+    assertThat(parked)
+        .as("... the parked items are returned with their retry count, due time and reason")
+        .containsExactlyElementsOf(PARKED_ITEMS);
+    assertThat(controller.getQueue()).as("... parked items are not queued").isEmpty();
+    assertThatThrownBy(parked::clear)
+        .as("... the snapshot is immutable")
+        .isInstanceOf(UnsupportedOperationException.class);
+  }
+
+  @Test
+  void testParkAfterSealIsIgnored() {
+    controller.park(QUEUE_ITEMS.subList(0, 1), DUE_AT, REASON);
+    final var first = controller.sealParked();
+
+    controller.park(QUEUE_ITEMS.subList(1, 2), DUE_AT, REASON);
+
+    assertThat(controller.sealParked())
+        .as("... a later park adds nothing, and sealing again returns the same items")
+        .isEqualTo(first)
+        .containsExactly(PARKED_ITEMS.getFirst());
+  }
+
+  @Test
+  void testParkedItemsSurviveUndeployAndAbort() {
+    controller.park(QUEUE_ITEMS, DUE_AT, REASON);
+
+    controller.undeploy();
+    controller.abort("Something went wrong");
+
+    assertThat(controller.getFinished().future().isComplete())
+        .as("... parked items don't keep the controller from finishing")
+        .isTrue();
+    assertThat(controller.sealParked())
+        .as("... parked items are kept")
+        .containsExactlyElementsOf(PARKED_ITEMS);
   }
 }

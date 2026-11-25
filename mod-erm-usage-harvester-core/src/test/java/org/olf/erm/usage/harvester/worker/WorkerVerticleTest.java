@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.worker;
 
 import static io.vertx.core.ThreadingModel.WORKER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.olf.erm.usage.harvester.worker.WorkerVerticle.ErrorHandlingLoader;
 
@@ -94,6 +95,10 @@ class WorkerVerticleTest {
         .containsExactly(deploymentId);
     assertThat(WorkerVerticleITProviderLifecycle.CREATED_WITH_VERTX).containsExactly(vertx);
     assertThat(WorkerVerticleITProviderLifecycle.CLOSED.get()).isEqualTo(1);
+    assertThat(counterReportsClient.fetchListRequests.get())
+        .as("... the fetch list was loaded once")
+        .isEqualTo(1);
+    assertThat(workerVerticle.getParked()).as("... nothing was parked").isEmpty();
   }
 
   @Test
@@ -192,6 +197,79 @@ class WorkerVerticleTest {
             "... only the reports that caused the abort were uploaded, nothing of the cut-off"
                 + " fetch")
         .isEqualTo(WorkerVerticleITProviderAbort.REPORTS_PER_FETCH);
+  }
+
+  @Test
+  void testCancelWhileRunning() throws Exception {
+    usageDataProvider
+        .getHarvestingConfig()
+        .getSushiConfig()
+        .setServiceType(WorkerVerticleITProviderAbort.SERVICE_TYPE);
+    // the only fetch hangs until the endpoint is closed
+    final var counterReportsClient =
+        new CounterReportsClientStub(
+            Future.succeededFuture(
+                List.of(
+                    new FetchItem(
+                        "TR", WorkerVerticleITProviderAbort.PENDING_BEGIN, "2025-01-31"))));
+    final var workerVerticle =
+        new WorkerVerticle(
+            counterReportsClient,
+            new UsageDataProvidersClientStub(false),
+            "tenant",
+            usageDataProvider,
+            1,
+            loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
+
+    final String deploymentId = deploy(workerVerticle).await();
+    WorkerVerticleITProviderAbort.pendingFetchStarted().await();
+    workerVerticle.cancel("reason");
+
+    assertThatThrownBy(workerVerticle.getFinished()::await)
+        .as("... the run fails with the reason of the cancellation")
+        .hasMessage("reason");
+    assertThat(vertx.deploymentIDs())
+        .as("... a canceled run only finishes once the verticle is undeployed")
+        .doesNotContain(deploymentId);
+    assertThat(WorkerVerticleITProviderAbort.CLOSED.get()).isEqualTo(1);
+    assertThat(counterReportsClient.uploads.get()).as("... nothing was uploaded").isZero();
+  }
+
+  @Test
+  void testGetParkedWhenNeverStarted() {
+    final var workerVerticle = createNeverStartedVerticle();
+
+    assertThat(workerVerticle.getParked())
+        .as("... a verticle that was never started has no parked items")
+        .isEmpty();
+  }
+
+  @Test
+  void testCancelWhenNeverStarted() {
+    final var workerVerticle = createNeverStartedVerticle();
+
+    assertThatCode(() -> workerVerticle.cancel("reason"))
+        .as("... cancelling a verticle that was never started does nothing")
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void testGetFinishedWhenNeverStarted() {
+    final var workerVerticle = createNeverStartedVerticle();
+
+    assertThat(workerVerticle.getFinished().failed())
+        .as("... a verticle that was never started can't finish")
+        .isTrue();
+  }
+
+  private WorkerVerticle createNeverStartedVerticle() {
+    return new WorkerVerticle(
+        new CounterReportsClientStub(Future.succeededFuture(List.of())),
+        new UsageDataProvidersClientStub(false),
+        "tenant",
+        usageDataProvider,
+        1,
+        loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
   }
 
   @Test

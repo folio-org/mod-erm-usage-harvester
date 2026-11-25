@@ -5,7 +5,6 @@ import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 import io.vertx.core.Future;
 import java.util.List;
 import org.folio.rest.jaxrs.model.CounterReport;
-import org.olf.erm.usage.harvester.FetchItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,27 +43,37 @@ final class Orchestrator {
   }
 
   /**
-   * By calling this function, the complete process of fetching the fetch items, fetching the
-   * reports and uploading the reports is triggered.
+   * Loads the initial items of a regular run: the fetch list of the provider, with a retry count of
+   * 0.
    *
-   * @param maxFailedAttempts the maximum number of failed attempts before giving up.
+   * @param maxFailedAttempts the maximum number of failed attempts before giving up
+   * @return a future with the initial items of a regular run
    */
-  void startWith(final Future<Integer> maxFailedAttempts) {
-    maxFailedAttempts
+  Future<List<QueueItem>> loadFetchList(final Future<Integer> maxFailedAttempts) {
+    return maxFailedAttempts
         .compose(fetcher::getFetchList)
-        .onSuccess(this::onFetchListSuccess)
-        .onFailure(this::onFetchListFailure);
+        .map(fetchItems -> QueueItem.createQueueItemList(fetchItems, 0));
   }
 
-  private void onFetchListSuccess(final List<FetchItem> fetchItems) {
-    LOGGER.info(logCtx.createMsg("Succeeded fetching {} items", fetchItems.size()));
-    if (fetchItems.isEmpty()) {
+  /**
+   * By calling this function, the complete process of fetching the reports for the initial items
+   * and uploading the reports is triggered, once the initial items are available.
+   *
+   * @param initialItems a future with the queue items to start with, each carrying its retry count.
+   *     An empty list ends the run, a failed future aborts the run.
+   */
+  void startWith(final Future<List<QueueItem>> initialItems) {
+    initialItems.onSuccess(this::onInitialItemsSuccess).onFailure(this::onInitialItemsFailure);
+  }
+
+  private void onInitialItemsSuccess(final List<QueueItem> queueItems) {
+    LOGGER.info(logCtx.createMsg("Succeeded loading {} items", queueItems.size()));
+    if (queueItems.isEmpty()) {
       controller.undeploy();
       return;
     }
 
-    final var newQueueItems = QueueItem.createQueueItemList(fetchItems, 0);
-    controller.enqueue(newQueueItems);
+    controller.enqueue(queueItems);
     controller.startQueueWith(this::dispatch);
   }
 
@@ -87,8 +96,8 @@ final class Orchestrator {
     return uploader.uploadReports(reports);
   }
 
-  private void onFetchListFailure(final Throwable throwable) {
-    LOGGER.error(logCtx.createMsg("Failed to fetch items"), throwable);
+  private void onInitialItemsFailure(final Throwable throwable) {
+    LOGGER.error(logCtx.createMsg("Failed to load items"), throwable);
     controller.abort(throwable);
   }
 }
