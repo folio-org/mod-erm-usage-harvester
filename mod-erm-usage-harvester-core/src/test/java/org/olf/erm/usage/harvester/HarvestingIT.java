@@ -23,6 +23,7 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.olf.erm.usage.harvester.TestUtil.ENTITLEMENTS_URL_PATTERN;
 import static org.olf.erm.usage.harvester.TestUtil.shutdownSchedulers;
+import static org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderRetryLater.FETCHES;
 
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.common.FileSource;
@@ -32,6 +33,7 @@ import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.http.Request;
 import com.github.tomakehurst.wiremock.http.ResponseDefinition;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
@@ -81,10 +83,12 @@ import org.junit.runner.RunWith;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
 import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderLifecycle;
+import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderRetryLater;
 import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingPgUtil;
 import org.quartz.JobKey;
 import org.quartz.SchedulerException;
 import org.quartz.impl.StdSchedulerFactory;
+import org.quartz.impl.matchers.GroupMatcher;
 
 @RunWith(VertxUnitRunner.class)
 public class HarvestingIT {
@@ -103,6 +107,13 @@ public class HarvestingIT {
   private static final String PROVIDER_PATH = ExtUsageDataProvidersClientImpl.PATH;
   private static final Pattern PROVIDER_PATH_WITH_ID_PATTERN =
       Pattern.compile(PROVIDER_PATH + "/(.{8}-.{4}-.{4}-.{4}-.{12}).*");
+
+  private static final String PROVIDER_A_ID = "dcb0eec3-f63c-440b-adcd-acca2ec44f39";
+
+  /** Retries wait a second, and a cancellation is noticed within a few seconds. */
+  private static final long RETRY_TIMEOUT = 30000;
+
+  private static final StringValuePattern FAILED_REPORT = matchingJsonPath("$.failedAttempts");
 
   private static final ListAppender LIST_APPENDER = new ListAppender("listAppender");
 
@@ -552,6 +563,89 @@ public class HarvestingIT {
     assertThat(countVertxInstances()).isEqualTo(vertxInstancesBefore);
   }
 
+  @Test
+  public void testRetryLaterSucceedsInRetryRun(TestContext context) {
+    WorkerVerticleITProviderRetryLater.reset(1, 2, 0);
+    useRetryLaterProvider();
+
+    startProviderA();
+    waitUntil(context, () -> FETCHES.get() >= 2 && isProviderAIdle(), RETRY_TIMEOUT);
+
+    assertThat(FETCHES).as("... the regular run and one retry run").hasValue(2);
+    baseRule.verify(1, postRequestedFor(urlEqualTo(REPORTS_PATH)));
+    baseRule.verify(0, postRequestedFor(urlEqualTo(REPORTS_PATH)).withRequestBody(FAILED_REPORT));
+  }
+
+  @Test
+  public void testRetryLaterGivesUpAfterRetryRuns(TestContext context) {
+    WorkerVerticleITProviderRetryLater.reset(Integer.MAX_VALUE, 2, 0);
+    useRetryLaterProvider();
+
+    startProviderA();
+    waitUntil(context, () -> FETCHES.get() >= 3 && isProviderAIdle(), RETRY_TIMEOUT);
+
+    assertThat(FETCHES).as("... the regular run and two retry runs").hasValue(3);
+    baseRule.verify(1, postRequestedFor(urlEqualTo(REPORTS_PATH)));
+    baseRule.verify(
+        1,
+        postRequestedFor(urlEqualTo(REPORTS_PATH))
+            .withRequestBody(matchingJsonPath("$.failedAttempts", equalTo("1"))));
+  }
+
+  @Test
+  public void testRegularRunCancelsRetryRun(TestContext context) {
+    WorkerVerticleITProviderRetryLater.reset(1, 2, 2);
+    useRetryLaterProvider();
+
+    startProviderA();
+    waitUntil(context, () -> FETCHES.get() >= 2, RETRY_TIMEOUT);
+    // the retry run hangs in its fetch, a regular run is requested meanwhile
+    startProviderA();
+    waitUntil(context, () -> FETCHES.get() >= 3 && isProviderAIdle(), RETRY_TIMEOUT);
+
+    assertThat(FETCHES).as("... the regular run fetched the month").hasValue(3);
+    baseRule.verify(1, postRequestedFor(urlEqualTo(REPORTS_PATH)));
+    baseRule.verify(0, postRequestedFor(urlEqualTo(REPORTS_PATH)).withRequestBody(FAILED_REPORT));
+    assertThat(
+            LIST_APPENDER.getEvents().stream()
+                .map(LogEvent::getMessage)
+                .map(Message::getFormattedMessage))
+        .as("... the retry run failed as cancelled")
+        .anyMatch(msg -> msg.contains("Cancelled: a regular harvest was requested"));
+  }
+
+  /** Harvests one month of provider A with {@link WorkerVerticleITProviderRetryLater}. */
+  private static void useRetryLaterProvider() {
+    HarvestingConfig harvestingConfig =
+        TENANT_UDP_MAP.get(TENANT_A).getFirst().getHarvestingConfig();
+    harvestingConfig.setHarvestingStart("2018-01");
+    harvestingConfig.setHarvestingEnd("2018-01");
+    harvestingConfig
+        .getSushiConfig()
+        .setServiceType(WorkerVerticleITProviderRetryLater.SERVICE_TYPE);
+  }
+
+  private static void startProviderA() {
+    given()
+        .headers(OKAPI_HEADERS)
+        .get(okapiUrl + HARVESTER_START_PATH + "/" + PROVIDER_A_ID)
+        .then()
+        .statusCode(200);
+  }
+
+  /** No run, retry job or deferred start of provider A exists, and no worker is deployed. */
+  private static boolean isProviderAIdle() {
+    try {
+      return StdSchedulerFactory.getDefaultScheduler()
+              .getJobKeys(GroupMatcher.jobGroupEquals(TENANT_A))
+              .stream()
+              .noneMatch(jobKey -> jobKey.getName().endsWith(PROVIDER_A_ID))
+          && VERTX.deploymentIDs().size() <= 1;
+    } catch (SchedulerException e) {
+      return false;
+    }
+  }
+
   /** Each Vertx instance runs exactly one blocked-thread-checker thread. */
   private static long countVertxInstances() {
     return Thread.getAllStackTraces().keySet().stream()
@@ -632,6 +726,10 @@ public class HarvestingIT {
   }
 
   private static void waitUntil(TestContext context, BooleanSupplier condition) {
+    waitUntil(context, condition, 10000);
+  }
+
+  private static void waitUntil(TestContext context, BooleanSupplier condition, long timeoutMs) {
     Async async = context.async();
     long timerId =
         VERTX.setPeriodic(
@@ -643,7 +741,7 @@ public class HarvestingIT {
               }
             });
     try {
-      async.await(10000);
+      async.await(timeoutMs);
     } finally {
       VERTX.cancelTimer(timerId);
     }

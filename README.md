@@ -131,6 +131,32 @@ This configuration will trigger harvesting every last day of month at 8am UTC st
 on `2019-01-31`
 followed by `2019-02-28`, `2019-03-31`, `2019-04-30`, ... .
 
+## Delayed retries
+
+An error handling strategy can answer a failed fetch with `RetryLater` (see
+[ErrorHandlingResult](mod-erm-usage-harvester-spi/src/main/java/org/olf/erm/usage/harvester/endpoints/ErrorHandlingResult.java)),
+e.g. when a provider asks to try again later. The default strategy doesn't do this yet.
+
+* The run doesn't wait for the retry. It parks the items and, when it has ended, hands them to a
+  Quartz job `retry::<providerId>` in the tenant's group. One job per provider collects all parked
+  items. It fires when the earliest items are due, taking all items due within 15 minutes of them,
+  so no item is retried before it is due.
+* When it fires, it starts a _retry run_ of the provider, which fetches only those items. Items
+  that aren't due yet are parked again. A retry run is recorded in the job history like any other
+  run of the provider. Retries that are used up aren't counted as failed attempts until the
+  strategy gives up.
+* A regular run (`/start`, `/start/{id}` or periodic harvesting) always takes precedence: it
+  deletes the provider's waiting retry job (its months are in the regular run's fetch list anyway),
+  and a retry run in progress cancels itself within a few seconds. Its job is recorded as failed
+  with "Cancelled: a regular harvest was requested", and the regular run follows. Waiting retries
+  and retry runs never block a harvest of the tenant.
+* Disabling a tenant deletes its retry jobs. Deleting the periodic configuration keeps them.
+
+Retry jobs are stored in the Quartz job store, i.e. in Hazelcast with the default configuration.
+They survive the restart of a single module instance as long as other members of the cluster are
+up, but are lost if the whole cluster is restarted. Lost retries aren't counted: the next regular
+run fetches their months again.
+
 ## ServiceEndpoint implementations
 
 The [ServiceEndpoint](mod-erm-usage-harvester-spi/src/main/java/org/olf/erm/usage/harvester/endpoints/ServiceEndpoint.java)

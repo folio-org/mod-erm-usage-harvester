@@ -6,3 +6,4 @@ org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProvider3
 org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderFailsInitialization
 org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderLifecycle
 org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderAbort
+org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderRetryLater
