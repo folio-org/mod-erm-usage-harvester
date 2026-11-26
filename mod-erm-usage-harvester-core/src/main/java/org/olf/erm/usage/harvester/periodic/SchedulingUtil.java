@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.periodic;
 
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_JOB_ID;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_PROVIDER_ID;
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_RETRY_ITEMS;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
 import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
@@ -12,8 +13,10 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
+import org.olf.erm.usage.harvester.worker.WorkerVerticle.ParkedItem;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.DateBuilder;
 import org.quartz.Job;
@@ -31,9 +34,10 @@ import org.slf4j.LoggerFactory;
 
 public class SchedulingUtil {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SchedulingUtil.class);
+
   public static final String TENANT_JOB_KEY = "tenant";
   public static final String PERIODIC_JOB_KEY = "periodic";
-  private static final Logger log = LoggerFactory.getLogger(SchedulingUtil.class);
 
   private static JobDetail createJobDetail(
       Class<? extends Job> jobClass, JobKey jobKey, String providerId) {
@@ -63,12 +67,32 @@ public class SchedulingUtil {
    */
   public static void scheduleProviderJob(Scheduler scheduler, String tenantId, String providerId)
       throws SchedulerException {
+    scheduleProviderJob(scheduler, tenantId, providerId, null);
+  }
+
+  /**
+   * Like {@link #scheduleProviderJob(Scheduler, String, String)}, but schedules a retry run: the
+   * job starts with the given items instead of the provider's fetch list.
+   *
+   * @param scheduler the Quartz scheduler
+   * @param tenantId the tenant ID, used as the job group
+   * @param providerId the ID of the usage data provider, used as the job name
+   * @param retryItems the items to retry, or {@code null} for a regular run
+   * @throws SchedulerException if a job for this provider is already scheduled or running, or the
+   *     job can't be stored
+   */
+  static void scheduleProviderJob(
+      Scheduler scheduler, String tenantId, String providerId, List<ParkedItem> retryItems)
+      throws SchedulerException {
     JobKey jobKey = new JobKey(providerId, tenantId);
     if (scheduler.checkExists(jobKey)) {
       throw new SchedulerException(
           "A job for provider with id '" + providerId + "' is already scheduled/running");
     } else {
       JobDetail jobDetail = createJobDetail(HarvestProviderJob.class, jobKey, providerId);
+      if (retryItems != null) {
+        jobDetail.getJobDataMap().put(DATAKEY_RETRY_ITEMS, RetryItemsCodec.encode(retryItems));
+      }
       scheduler.scheduleJob(jobDetail, TriggerBuilder.newTrigger().startNow().build());
     }
   }
@@ -114,7 +138,7 @@ public class SchedulingUtil {
             })
         .onFailure(
             cause ->
-                log.error(
+                LOGGER.error(
                     "Tenant: {}, failed scheduling job from PeriodicConfig: {}",
                     tenantId,
                     cause.getMessage()));
@@ -124,14 +148,14 @@ public class SchedulingUtil {
     try {
       createOrUpdateJob(StdSchedulerFactory.getDefaultScheduler(), config, tenantId);
     } catch (SchedulerException e) {
-      log.error("Tenant: {}, unable to get default scheduler: {}", tenantId, e.getMessage());
+      LOGGER.error("Tenant: {}, unable to get default scheduler: {}", tenantId, e.getMessage());
     }
   }
 
   public static void createOrUpdateJob(
       Scheduler scheduler, PeriodicConfig config, String tenantId) {
     if (config == null) {
-      log.info("Tenant: {}, No PeriodicConfig present", tenantId);
+      LOGGER.info("Tenant: {}, No PeriodicConfig present", tenantId);
       return;
     }
     JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, tenantId);
@@ -142,22 +166,22 @@ public class SchedulingUtil {
       try {
         if (scheduler.checkExists(jobKey)) {
           scheduler.rescheduleJob(new TriggerKey(PERIODIC_JOB_KEY, tenantId), trigger);
-          log.info(
+          LOGGER.info(
               "Tenant: {}, Updated job trigger, next trigger: {}",
               tenantId,
               trigger.getNextFireTime());
         } else {
           scheduler.scheduleJob(jobDetail, trigger);
-          log.info(
+          LOGGER.info(
               "Tenant: {}, Scheduled new job, next trigger: {}",
               tenantId,
               trigger.getNextFireTime());
         }
       } catch (SchedulerException e) {
-        log.error("Tenant: {}, Error scheduling job for tenant, {}", tenantId, e.getMessage());
+        LOGGER.error("Tenant: {}, Error scheduling job for tenant, {}", tenantId, e.getMessage());
       }
     } else {
-      log.error("Tenant: {}, Error creating job trigger", tenantId);
+      LOGGER.error("Tenant: {}, Error creating job trigger", tenantId);
     }
   }
 
@@ -165,7 +189,7 @@ public class SchedulingUtil {
     try {
       deleteJob(StdSchedulerFactory.getDefaultScheduler(), tenantId);
     } catch (SchedulerException e) {
-      log.error("Tenant: {}, unable to get default scheduler: {}", tenantId, e.getMessage());
+      LOGGER.error("Tenant: {}, unable to get default scheduler: {}", tenantId, e.getMessage());
     }
   }
 
@@ -174,10 +198,10 @@ public class SchedulingUtil {
     try {
       if (scheduler.checkExists(jobKey)) {
         scheduler.deleteJob(jobKey);
-        log.info("Tenant: {}, removed job from schedule", tenantId);
-      } else log.warn("Tenant: {}, no scheduled job found", tenantId);
+        LOGGER.info("Tenant: {}, removed job from schedule", tenantId);
+      } else LOGGER.warn("Tenant: {}, no scheduled job found", tenantId);
     } catch (SchedulerException e) {
-      log.error("Tenant: {}, error deleting job: {}", tenantId, e.getMessage());
+      LOGGER.error("Tenant: {}, error deleting job: {}", tenantId, e.getMessage());
     }
   }
 

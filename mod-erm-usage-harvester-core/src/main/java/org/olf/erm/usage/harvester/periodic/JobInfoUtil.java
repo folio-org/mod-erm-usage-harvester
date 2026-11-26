@@ -23,8 +23,6 @@ import org.quartz.JobKey;
 
 public class JobInfoUtil {
 
-  private JobInfoUtil() {}
-
   public static JobInfo createJobInfo(JobDetail jobDetail) {
     JobInfo jobInfo = new JobInfo();
     JobKey jobKey = jobDetail.getKey();
@@ -52,4 +50,6 @@ public class JobInfoUtil {
             .addCriterion(new Criteria().addField("'nextStart'").setOperation("!=").setVal("null"));
     return PostgresClient.getInstance(vertx, tenantId).delete(TABLE_NAME_JOBS, deleteCriterion);
   }
+
+  private JobInfoUtil() {}
 }

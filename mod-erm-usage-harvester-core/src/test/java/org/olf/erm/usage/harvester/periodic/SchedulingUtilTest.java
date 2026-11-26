@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval.WEEKLY;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_PROVIDER_ID;
+import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_RETRY_ITEMS;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TENANT;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.PERIODIC_JOB_KEY;
 import static org.olf.erm.usage.harvester.periodic.SchedulingUtil.TENANT_JOB_KEY;
@@ -16,12 +17,15 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.List;
 import org.folio.rest.jaxrs.model.PeriodicConfig;
 import org.folio.rest.jaxrs.model.PeriodicConfig.PeriodicInterval;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.olf.erm.usage.harvester.FetchItem;
+import org.olf.erm.usage.harvester.worker.WorkerVerticle.ParkedItem;
 import org.quartz.JobDataMap;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
@@ -230,12 +234,35 @@ public class SchedulingUtilTest {
                   defaultScheduler.getJobDetail(new JobKey(PROVIDER_ID, TENANT)).getJobDataMap();
               assertThat(jobDataMap.getString(DATAKEY_TENANT)).isEqualTo(TENANT);
               assertThat(jobDataMap.getString(DATAKEY_PROVIDER_ID)).isEqualTo(PROVIDER_ID);
+              assertThat(jobDataMap.containsKey(DATAKEY_RETRY_ITEMS))
+                  .as("... a regular run carries no retry items")
+                  .isFalse();
             })
         .doesNotThrowAnyException();
     assertThat(defaultScheduler.checkExists(new JobKey(PROVIDER_ID, TENANT))).isTrue();
     assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID))
         .hasMessageContaining("already scheduled/running")
         .hasMessageContaining(PROVIDER_ID);
+  }
+
+  @Test
+  public void testScheduleProviderJobWithRetryItems() throws SchedulerException {
+    List<ParkedItem> retryItems =
+        List.of(
+            new ParkedItem(
+                new FetchItem("TR", "2025-01-01", "2025-01-31"),
+                1,
+                Instant.parse("2025-02-01T10:30:00Z"),
+                "reason"));
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID, retryItems);
+
+    JobDataMap jobDataMap =
+        defaultScheduler.getJobDetail(new JobKey(PROVIDER_ID, TENANT)).getJobDataMap();
+    assertThat(RetryItemsCodec.decode(jobDataMap.getString(DATAKEY_RETRY_ITEMS)))
+        .as("... the items are stored encoded")
+        .isEqualTo(retryItems);
+    assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID, List.of()))
+        .hasMessageContaining("already scheduled/running");
   }
 
   @Test

@@ -38,6 +38,9 @@ public class JobInfoJobListener extends JobListenerSupport {
 
   @Override
   public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
+    if (isRetryTrigger(context)) {
+      return;
+    }
     JobDetail jobDetail = context.getJobDetail();
     String tenant = jobDetail.getKey().getGroup();
 
@@ -57,6 +60,9 @@ public class JobInfoJobListener extends JobListenerSupport {
 
   @Override
   public void jobToBeExecuted(JobExecutionContext context) {
+    if (isRetryTrigger(context)) {
+      return;
+    }
     JobDetail jobDetail = context.getJobDetail();
     String tenant = jobDetail.getKey().getGroup();
 
@@ -68,6 +74,15 @@ public class JobInfoJobListener extends JobListenerSupport {
       upsertJobInfo(newJobInfo.withStartedAt(context.getFireTime()).withNextStart(null), tenant);
     }
     upsertJobInfo(jobInfo.withStartedAt(null).withNextStart(context.getNextFireTime()), tenant);
+  }
+
+  /**
+   * A {@link HarvestRetryTriggerJob} only starts a retry run, which gets its own job info. Without
+   * this check, it would be recorded as a provider job with the provider ID {@code
+   * retry::<providerId>}.
+   */
+  private static boolean isRetryTrigger(JobExecutionContext context) {
+    return HarvestRetryTriggerJob.class.equals(context.getJobDetail().getJobClass());
   }
 
   private void upsertJobInfo(JobInfo jobInfo, String tenant) {
