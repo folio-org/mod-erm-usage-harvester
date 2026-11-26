@@ -32,7 +32,8 @@ public class HarvestRetryTriggerJob extends AbstractHarvestJob {
 
   /**
    * Starts the retry run and deletes the retry job, unless a run of the provider is in progress;
-   * then it does nothing and fires again later.
+   * then it does nothing and fires again later. If a regular run is pending, the items are dropped:
+   * that run covers their months.
    *
    * @param scheduler the Quartz scheduler
    * @throws SchedulerException if the job store can't be accessed
@@ -41,6 +42,15 @@ public class HarvestRetryTriggerJob extends AbstractHarvestJob {
     final var tenantId = getTenantId();
     final var providerId = getProviderId();
     final var retryJobKey = RetryScheduler.retryJobKey(tenantId, providerId);
+
+    if (scheduler.checkExists(HarvestDeferredStartJob.startJobKey(tenantId, providerId))) {
+      scheduler.deleteJob(retryJobKey);
+      LOGGER.info(
+          "Tenant: {}, Provider: {}, a regular run is pending, dropping the retry items",
+          tenantId,
+          providerId);
+      return;
+    }
 
     if (scheduler.checkExists(new JobKey(providerId, tenantId))) {
       LOGGER.debug(

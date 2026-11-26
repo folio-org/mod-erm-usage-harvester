@@ -42,7 +42,8 @@ public class SchedulingUtil {
   public static final String PERIODIC_JOB_KEY = "periodic";
 
   /**
-   * How often a job that waits for a provider checks whether its run has ended, e.g. the retry job.
+   * How often a job that waits for a provider checks whether its run has ended: the retry job, the
+   * deferred start, and a retry run checking for a requested regular run.
    */
   static final Duration CHECK_INTERVAL = Duration.ofSeconds(5);
 
@@ -66,19 +67,36 @@ public class SchedulingUtil {
    * with the same key is rejected. Runs of different providers execute in parallel, limited by the
    * Quartz thread pool.
    *
-   * <p>A regular run takes precedence over retries: the provider's waiting retry job is deleted
-   * first, even if the run can't be scheduled because another one is in progress. Its items are
-   * covered by the regular run's fetch list (or the one in progress) and aren't counted.
+   * <p>A regular run takes precedence over retries:
+   *
+   * <ol>
+   *   <li>if a regular run is already pending ({@code start::<providerId>}), it is rejected;
+   *   <li>the provider's waiting retry job is deleted, even if the run is rejected afterwards. Its
+   *       items are covered by the regular run's fetch list (or the one in progress) and aren't
+   *       counted;
+   *   <li>if a retry run is in progress, it is cancelled and the regular run follows when it has
+   *       ended (see {@link HarvestDeferredStartJob}). This counts as success;
+   *   <li>if a regular run is in progress, it is rejected;
+   *   <li>otherwise the regular run is scheduled.
+   * </ol>
    *
    * @param scheduler the Quartz scheduler
    * @param tenantId the tenant ID, used as the job group
    * @param providerId the ID of the usage data provider, used as the job name
-   * @throws SchedulerException if a job for this provider is already scheduled or running, or the
-   *     job can't be stored
+   * @throws SchedulerException if a regular run for this provider is already pending, scheduled or
+   *     running, or the job can't be stored
    */
   public static void scheduleProviderJob(Scheduler scheduler, String tenantId, String providerId)
       throws SchedulerException {
+    if (scheduler.checkExists(HarvestDeferredStartJob.startJobKey(tenantId, providerId))) {
+      throw new SchedulerException(
+          "A job for provider with id '" + providerId + "' is already scheduled/running");
+    }
     new RetryScheduler(scheduler, tenantId, providerId).deleteRetryJob();
+    if (RetryScheduler.isRetryRun(scheduler.getJobDetail(new JobKey(providerId, tenantId)))) {
+      HarvestDeferredStartJob.schedule(scheduler, tenantId, providerId);
+      return;
+    }
     scheduleProviderRun(scheduler, tenantId, providerId, null);
   }
 
@@ -127,9 +145,11 @@ public class SchedulingUtil {
    * #scheduleProviderJob} for each of them, so the provider runs execute in parallel, limited by
    * the Quartz thread pool.
    *
-   * <p>Refused while a tenant job or a regular provider run exists. Retries don't count: waiting
-   * retry jobs and running retry runs must not block a regular harvest. A single provider can still
-   * be started while a tenant harvest is running; the tenant job then skips that provider.
+   * <p>Refused while a tenant job, a regular provider run or a deferred regular start exists.
+   * Retries don't count: waiting retry jobs and running retry runs must not block a regular
+   * harvest; the tenant job's {@link #scheduleProviderJob} cancels a running retry run. A single
+   * provider can still be started while a tenant harvest is running; the tenant job then skips that
+   * provider.
    *
    * @param scheduler the Quartz scheduler
    * @param tenantId the tenant ID, used as the job group
@@ -232,8 +252,8 @@ public class SchedulingUtil {
   }
 
   /**
-   * Deletes the tenant's periodic job and its retry jobs, e.g. when the tenant is disabled. Runs in
-   * progress aren't stopped. Never throws, errors are logged.
+   * Deletes the tenant's periodic job, its retry jobs and deferred starts, e.g. when the tenant is
+   * disabled. Runs in progress aren't stopped. Never throws, errors are logged.
    */
   public static void deleteAllJobs(String tenantId) {
     try {
@@ -250,8 +270,12 @@ public class SchedulingUtil {
     deleteJob(scheduler, tenantId);
     try {
       RetryScheduler.deleteRetryJobs(scheduler, tenantId);
+      HarvestDeferredStartJob.deleteDeferredStarts(scheduler, tenantId);
     } catch (SchedulerException e) {
-      LOGGER.error("Tenant: {}, error deleting retry jobs: {}", tenantId, e.getMessage());
+      LOGGER.error(
+          "Tenant: {}, error deleting retry jobs and deferred starts: {}",
+          tenantId,
+          e.getMessage());
     }
   }
 

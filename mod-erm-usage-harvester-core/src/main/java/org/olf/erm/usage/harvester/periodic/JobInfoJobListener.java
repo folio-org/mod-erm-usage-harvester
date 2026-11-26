@@ -38,7 +38,7 @@ public class JobInfoJobListener extends JobListenerSupport {
 
   @Override
   public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
-    if (isRetryTrigger(context)) {
+    if (isTriggerOnly(context)) {
       return;
     }
     JobDetail jobDetail = context.getJobDetail();
@@ -60,7 +60,7 @@ public class JobInfoJobListener extends JobListenerSupport {
 
   @Override
   public void jobToBeExecuted(JobExecutionContext context) {
-    if (isRetryTrigger(context)) {
+    if (isTriggerOnly(context)) {
       return;
     }
     JobDetail jobDetail = context.getJobDetail();
@@ -77,12 +77,14 @@ public class JobInfoJobListener extends JobListenerSupport {
   }
 
   /**
-   * A {@link HarvestRetryTriggerJob} only starts a retry run, which gets its own job info. Without
-   * this check, it would be recorded as a provider job with the provider ID {@code
-   * retry::<providerId>}.
+   * A {@link HarvestRetryTriggerJob} or {@link HarvestDeferredStartJob} only starts a provider run,
+   * which gets its own job info. Without this check, it would be recorded as a provider job with
+   * the provider ID {@code retry::<providerId>} or {@code start::<providerId>}.
    */
-  private static boolean isRetryTrigger(JobExecutionContext context) {
-    return HarvestRetryTriggerJob.class.equals(context.getJobDetail().getJobClass());
+  private static boolean isTriggerOnly(JobExecutionContext context) {
+    final var jobClass = context.getJobDetail().getJobClass();
+    return HarvestRetryTriggerJob.class.equals(jobClass)
+        || HarvestDeferredStartJob.class.equals(jobClass);
   }
 
   private void upsertJobInfo(JobInfo jobInfo, String tenant) {

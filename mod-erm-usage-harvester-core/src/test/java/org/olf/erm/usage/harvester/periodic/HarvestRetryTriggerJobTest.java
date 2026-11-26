@@ -75,4 +75,17 @@ class HarvestRetryTriggerJobTest {
         .as("... the retry job fires again later")
         .isTrue();
   }
+
+  @Test
+  void testDropsItemsIfRegularRunIsDeferred() throws SchedulerException {
+    park();
+    HarvestDeferredStartJob.schedule(scheduler, TENANT, PROVIDER);
+
+    createJob().trigger(scheduler);
+
+    assertThat(scheduler.checkExists(PROVIDER_JOB_KEY))
+        .as("... the pending regular run covers the items")
+        .isFalse();
+    assertThat(scheduler.checkExists(RETRY_JOB_KEY)).isFalse();
+  }
 }

@@ -409,4 +409,55 @@ public class SchedulingUtilTest {
     assertThat(retryJobExists(PROVIDER_ID)).isFalse();
     assertThat(retryJobExists("other")).isFalse();
   }
+
+  private static boolean deferredStartExists(String providerId) throws SchedulerException {
+    return defaultScheduler.checkExists(HarvestDeferredStartJob.startJobKey(TENANT, providerId));
+  }
+
+  @Test
+  public void testScheduleProviderJobCancelsRetryRun() throws SchedulerException {
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID, parkedItems());
+
+    assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID))
+        .as("... the regular run is accepted")
+        .doesNotThrowAnyException();
+    assertThat(deferredStartExists(PROVIDER_ID)).as("... and deferred").isTrue();
+    assertThat(
+            defaultScheduler
+                .getJobDetail(new JobKey(PROVIDER_ID, TENANT))
+                .getJobDataMap()
+                .containsKey(DATAKEY_RETRY_ITEMS))
+        .as("... the retry run is left to cancel itself")
+        .isTrue();
+  }
+
+  @Test
+  public void testScheduleProviderJobFailsIfRegularRunIsDeferred() throws SchedulerException {
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID, parkedItems());
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID);
+
+    assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID))
+        .hasMessageContaining("already scheduled/running");
+  }
+
+  @Test
+  public void testScheduleTenantJobFailsIfRegularRunIsDeferred() throws SchedulerException {
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID, parkedItems());
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID);
+    defaultScheduler.deleteJob(new JobKey(PROVIDER_ID, TENANT));
+
+    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT))
+        .as("... a deferred start stands for a regular run")
+        .hasMessageContaining("already in progress");
+  }
+
+  @Test
+  public void testDeleteAllJobsDeletesDeferredStarts() throws SchedulerException {
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID, parkedItems());
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID);
+
+    SchedulingUtil.deleteAllJobs(defaultScheduler, TENANT);
+
+    assertThat(deferredStartExists(PROVIDER_ID)).isFalse();
+  }
 }
