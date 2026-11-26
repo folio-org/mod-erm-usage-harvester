@@ -38,7 +38,6 @@ class WorkerVerticleTest {
   private static final String FETCH_LIST_FAILURE = "fetch list failed";
   private static final String ERROR_HANDLING_FAILURE = "error handling failed";
   private static final int MAX_FAILED_ATTEMPTS = 7;
-  private static final long STOP_TIMEOUT_SECONDS = 5;
 
   private Vertx vertx;
   private UsageDataProvider usageDataProvider;
@@ -64,8 +63,9 @@ class WorkerVerticleTest {
     vertx.close().await();
   }
 
+  @SuppressWarnings("squid:S3415") // Order of 'assertThat(...)' arguments
   @Test
-  void testSuccessfulStartClosesEndpointWhenRunIsOver() throws Exception {
+  void testSuccessfulStartClosesEndpointWhenRunIsOver() {
     final var usageDataProvidersClient = new UsageDataProvidersClientStub(false);
     final var counterReportsClient =
         new CounterReportsClientStub(Future.succeededFuture(List.of()));
@@ -97,7 +97,7 @@ class WorkerVerticleTest {
   }
 
   @Test
-  void testEndpointClosedWhenFetchListFails() throws Exception {
+  void testEndpointClosedWhenFetchListFails() {
     final var workerVerticle =
         new WorkerVerticle(
             new CounterReportsClientStub(
@@ -116,7 +116,7 @@ class WorkerVerticleTest {
   }
 
   @Test
-  void testRunAbortedIfErrorHandlingCannotBeLoaded() throws Exception {
+  void testRunAbortedIfErrorHandlingCannotBeLoaded() {
     final var counterReportsClient =
         new CounterReportsClientStub(Future.succeededFuture(List.of()));
     final var workerVerticle =
@@ -138,7 +138,7 @@ class WorkerVerticleTest {
   }
 
   @Test
-  void testMaxFailedAttemptsDefaultIfOptionIsNotSet() throws Exception {
+  void testMaxFailedAttemptsDefaultIfOptionIsNotSet() {
     final var counterReportsClient =
         new CounterReportsClientStub(Future.succeededFuture(List.of()));
     final var workerVerticle =
@@ -158,7 +158,7 @@ class WorkerVerticleTest {
   }
 
   @Test
-  void testFetchesCutOffByAbortAreNotUploaded() throws Exception {
+  void testFetchesCutOffByAbortAreNotUploaded() {
     usageDataProvider
         .getHarvestingConfig()
         .getSushiConfig()
