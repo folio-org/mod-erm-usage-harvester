@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-import org.olf.erm.usage.harvester.retry.ParkedItem;
+import org.olf.erm.usage.harvester.worker.WorkerVerticle.ParkedItem;
 
 /**
  * A {@link WorkerController} for tests. It doesn't run anything, it only records the calls it

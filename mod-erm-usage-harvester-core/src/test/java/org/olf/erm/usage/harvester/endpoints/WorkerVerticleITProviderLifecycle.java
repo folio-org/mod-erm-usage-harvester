@@ -7,11 +7,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.folio.rest.jaxrs.model.CounterReport;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.olf.erm.usage.harvester.FetchItem;
 
 /**
  * Records the lifecycle of the endpoints it creates: how many were created, in which deployment
  * (the deployment ID of the Vert.x context {@code create()} ran on), with which Vert.x instance,
- * and how many were closed.
+ * how many were closed, and which items were fetched.
  */
 public class WorkerVerticleITProviderLifecycle implements ServiceEndpointProvider {
 
@@ -20,12 +21,14 @@ public class WorkerVerticleITProviderLifecycle implements ServiceEndpointProvide
   public static final List<String> CREATED_IN_DEPLOYMENTS = new CopyOnWriteArrayList<>();
   public static final List<Vertx> CREATED_WITH_VERTX = new CopyOnWriteArrayList<>();
   public static final AtomicInteger CLOSED = new AtomicInteger();
+  public static final List<FetchItem> FETCHED = new CopyOnWriteArrayList<>();
 
   public static void reset() {
     CREATED.set(0);
     CREATED_IN_DEPLOYMENTS.clear();
     CREATED_WITH_VERTX.clear();
     CLOSED.set(0);
+    FETCHED.clear();
   }
 
   @Override
@@ -58,6 +61,7 @@ public class WorkerVerticleITProviderLifecycle implements ServiceEndpointProvide
       @Override
       public Future<List<CounterReport>> fetchReport(
           String report, String beginDate, String endDate) {
+        FETCHED.add(new FetchItem(report, beginDate, endDate));
         return Future.succeededFuture(List.of());
       }
 

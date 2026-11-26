@@ -9,8 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Drives a harvest run: determines which reports still need to be harvested, fetches them from the
- * provider and uploads them to storage. Queueing and ending the run are left to the {@link
+ * Drives a harvest run: queues the initial items the {@link Fetcher} determines, fetches the
+ * reports and uploads them to storage. Queueing and ending the run are left to the {@link
  * WorkerController}.
  */
 final class Orchestrator {
@@ -43,27 +43,14 @@ final class Orchestrator {
   }
 
   /**
-   * Loads the initial items of a regular run: the fetch list of the provider, with a retry count of
-   * 0.
-   *
-   * @param maxFailedAttempts the maximum number of failed attempts before giving up
-   * @return a future with the initial items of a regular run
+   * By calling this function, the complete process of loading the initial items, fetching the
+   * reports and uploading the reports is triggered.
    */
-  Future<List<QueueItem>> loadFetchList(final Future<Integer> maxFailedAttempts) {
-    return maxFailedAttempts
-        .compose(fetcher::getFetchList)
-        .map(fetchItems -> QueueItem.createQueueItemList(fetchItems, 0));
-  }
-
-  /**
-   * By calling this function, the complete process of fetching the reports for the initial items
-   * and uploading the reports is triggered, once the initial items are available.
-   *
-   * @param initialItems a future with the queue items to start with, each carrying its retry count.
-   *     An empty list ends the run, a failed future aborts the run.
-   */
-  void startWith(final Future<List<QueueItem>> initialItems) {
-    initialItems.onSuccess(this::onInitialItemsSuccess).onFailure(this::onInitialItemsFailure);
+  void startHarvesting() {
+    fetcher
+        .loadInitialItems()
+        .onSuccess(this::onInitialItemsSuccess)
+        .onFailure(this::onInitialItemsFailure);
   }
 
   private void onInitialItemsSuccess(final List<QueueItem> queueItems) {
@@ -93,6 +80,7 @@ final class Orchestrator {
               queueItem.item()));
       return Future.succeededFuture();
     }
+
     return uploader.uploadReports(reports);
   }
 

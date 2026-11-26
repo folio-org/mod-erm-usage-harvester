@@ -22,6 +22,8 @@ import org.olf.erm.usage.harvester.endpoints.ServiceEndpoint;
 /** Test class for {@link Orchestrator} */
 class OrchestratorTest {
 
+  private static final int MAX_FAILED_ATTEMPTS = 1;
+
   /**
    * We only use one month time spans here, to avoid {@link Fetcher#collapse(List)} being called.
    */
@@ -55,8 +57,19 @@ class OrchestratorTest {
   }
 
   private Fetcher configureFetcher(final ExtCounterReportsClient counterReportsClient) {
+    return configureFetcher(counterReportsClient, List.of());
+  }
+
+  private Fetcher configureFetcher(
+      final ExtCounterReportsClient counterReportsClient, final List<QueueItem> initialItems) {
     return new Fetcher(
-        counterReportsClient, usageDataProvider, null, logCtx, (t, qi) -> Collections.emptyList());
+        counterReportsClient,
+        usageDataProvider,
+        null,
+        logCtx,
+        (t, qi) -> Collections.emptyList(),
+        MAX_FAILED_ATTEMPTS,
+        initialItems);
   }
 
   @Test
@@ -66,8 +79,7 @@ class OrchestratorTest {
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
-    final var initialItems = orchestrator.loadFetchList(Future.succeededFuture(1));
-    orchestrator.startWith(initialItems);
+    orchestrator.startHarvesting();
 
     assertThat(controller.queueItems)
         .as("... we got the correct number of items in the queue")
@@ -88,8 +100,7 @@ class OrchestratorTest {
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
-    final var initialItems = orchestrator.loadFetchList(Future.succeededFuture(1));
-    orchestrator.startWith(initialItems);
+    orchestrator.startHarvesting();
 
     assertThat(controller.queueItems)
         .as("... we got the correct number of items in the queue")
@@ -106,8 +117,7 @@ class OrchestratorTest {
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
 
-    final var initialItems = orchestrator.loadFetchList(Future.succeededFuture(1));
-    orchestrator.startWith(initialItems);
+    orchestrator.startHarvesting();
 
     assertThat(controller.queueItems)
         .as("... we got the correct number of items in the queue")
@@ -117,30 +127,14 @@ class OrchestratorTest {
   }
 
   @Test
-  void testStartWithFailedMaxFailedAttempts() {
-    final var counterReportsClient = new TestCounterReportsClient(FETCH_LIST);
-    final var fetcher = configureFetcher(counterReportsClient);
-    final var uploader = new Uploader(counterReportsClient, controller, logCtx);
-    final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
-
-    final var initialItems =
-        orchestrator.loadFetchList(Future.failedFuture("max failed attempts not available"));
-    orchestrator.startWith(initialItems);
-
-    assertThat(controller.queueItems).as("... nothing was added to the queue").isEmpty();
-    assertThat(controller.startQueueWithWasCalled).as("... the queue was not started").isFalse();
-    assertThat(controller.abortThrowable).as("... the whole thing was aborted").isNotNull();
-  }
-
-  @Test
   void testStartWithInitialItemsKeepsRetryCount() {
     final var counterReportsClient = new TestCounterReportsClient(FETCH_LIST);
-    final var fetcher = configureFetcher(counterReportsClient);
+    final var retryItems = List.of(new QueueItem(FETCH_LIST.getFirst(), 2));
+    final var fetcher = configureFetcher(counterReportsClient, retryItems);
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
-    final var retryItems = List.of(new QueueItem(FETCH_LIST.getFirst(), 2));
 
-    orchestrator.startWith(Future.succeededFuture(retryItems));
+    orchestrator.startHarvesting();
 
     assertThat(controller.queueItems)
         .as("... the initial items are queued with their retry count")
@@ -153,20 +147,6 @@ class OrchestratorTest {
   }
 
   @Test
-  void testStartWithFailedInitialItems() {
-    final var counterReportsClient = new TestCounterReportsClient(FETCH_LIST);
-    final var fetcher = configureFetcher(counterReportsClient);
-    final var uploader = new Uploader(counterReportsClient, controller, logCtx);
-    final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
-
-    orchestrator.startWith(Future.failedFuture("initial items not available"));
-
-    assertThat(controller.queueItems).as("... nothing was added to the queue").isEmpty();
-    assertThat(controller.startQueueWithWasCalled).as("... the queue was not started").isFalse();
-    assertThat(controller.abortThrowable).as("... the whole thing was aborted").isNotNull();
-  }
-
-  @Test
   void testReportsOfFetchCompletingAfterAbortAreNotUploaded() {
     final var counterReportsClient = new TestCounterReportsClient(FETCH_LIST);
     final var fetcher =
@@ -175,11 +155,12 @@ class OrchestratorTest {
             usageDataProvider,
             new SingleReportServiceEndpoint(),
             logCtx,
-            (t, qi) -> Collections.emptyList());
+            (t, qi) -> Collections.emptyList(),
+            MAX_FAILED_ATTEMPTS,
+            List.of());
     final var uploader = new Uploader(counterReportsClient, controller, logCtx);
     final var orchestrator = new Orchestrator(fetcher, uploader, controller, logCtx);
-    final var initialItems = orchestrator.loadFetchList(Future.succeededFuture(1));
-    orchestrator.startWith(initialItems);
+    orchestrator.startHarvesting();
 
     controller.abort("aborted while the fetch was running");
     final var dispatched = controller.queueCallback.apply(controller.queueItems.getFirst());

@@ -4,14 +4,13 @@ import static io.vertx.core.ThreadingModel.WORKER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.olf.erm.usage.harvester.worker.WorkerVerticle.ErrorHandlingLoader;
 
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
+import java.time.Instant;
 import java.time.YearMonth;
 import java.util.Date;
 import java.util.List;
@@ -31,6 +30,9 @@ import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClient;
 import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderAbort;
 import org.olf.erm.usage.harvester.endpoints.WorkerVerticleITProviderLifecycle;
 import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingDefaults;
+import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingLoader;
+import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingSettings;
+import org.olf.erm.usage.harvester.worker.WorkerVerticle.ParkedItem;
 
 /** Test class for {@link WorkerVerticle} */
 class WorkerVerticleTest {
@@ -77,7 +79,7 @@ class WorkerVerticleTest {
             "tenant",
             usageDataProvider,
             1,
-            loadErrorHandlingAsync(
+            loadErrorHandling(
                 Future.succeededFuture(
                     new ErrorHandling().withMaxFailedAttempts(MAX_FAILED_ATTEMPTS))));
 
@@ -111,7 +113,7 @@ class WorkerVerticleTest {
             "tenant",
             usageDataProvider,
             1,
-            loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
+            loadErrorHandling(Future.succeededFuture(new ErrorHandling())));
 
     deploy(workerVerticle).await();
     assertThatThrownBy(workerVerticle.getFinished()::await).hasMessage(FETCH_LIST_FAILURE);
@@ -121,7 +123,7 @@ class WorkerVerticleTest {
   }
 
   @Test
-  void testRunAbortedIfErrorHandlingCannotBeLoaded() {
+  void testDeploymentFailsIfErrorHandlingCannotBeLoaded() {
     final var counterReportsClient =
         new CounterReportsClientStub(Future.succeededFuture(List.of()));
     final var workerVerticle =
@@ -131,15 +133,15 @@ class WorkerVerticleTest {
             "tenant",
             usageDataProvider,
             1,
-            loadErrorHandlingAsync(
+            loadErrorHandling(
                 Future.failedFuture(new IllegalStateException(ERROR_HANDLING_FAILURE))));
 
-    deploy(workerVerticle).await();
+    assertThatThrownBy(deploy(workerVerticle)::await).hasMessage(ERROR_HANDLING_FAILURE);
 
-    assertThatThrownBy(workerVerticle.getFinished()::await).hasMessage(ERROR_HANDLING_FAILURE);
-
+    assertThat(vertx.deploymentIDs()).isEmpty();
     assertThat(counterReportsClient.fetchListRequests.get()).isZero();
     assertThat(WorkerVerticleITProviderLifecycle.CLOSED.get()).isEqualTo(1);
+    assertThat(workerVerticle.getFinished().failed()).as("... the run never started").isTrue();
   }
 
   @Test
@@ -153,7 +155,7 @@ class WorkerVerticleTest {
             "tenant",
             usageDataProvider,
             1,
-            loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
+            loadErrorHandling(Future.succeededFuture(new ErrorHandling())));
 
     deploy(workerVerticle).await();
     workerVerticle.getFinished().await();
@@ -182,7 +184,7 @@ class WorkerVerticleTest {
             "tenant",
             usageDataProvider,
             2,
-            loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
+            loadErrorHandling(Future.succeededFuture(new ErrorHandling())));
 
     final String deploymentId = deploy(workerVerticle).await();
     assertThatThrownBy(workerVerticle.getFinished()::await)
@@ -219,7 +221,7 @@ class WorkerVerticleTest {
             "tenant",
             usageDataProvider,
             1,
-            loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
+            loadErrorHandling(Future.succeededFuture(new ErrorHandling())));
 
     final String deploymentId = deploy(workerVerticle).await();
     WorkerVerticleITProviderAbort.pendingFetchStarted().await();
@@ -233,6 +235,66 @@ class WorkerVerticleTest {
         .doesNotContain(deploymentId);
     assertThat(WorkerVerticleITProviderAbort.CLOSED.get()).isEqualTo(1);
     assertThat(counterReportsClient.uploads.get()).as("... nothing was uploaded").isZero();
+  }
+
+  @Test
+  void testRetryRunStartsWithRetryItemsInsteadOfFetchList() throws Exception {
+    final var retryItems =
+        List.of(
+            new ParkedItem(new FetchItem("TR", "2025-01-01", "2025-01-31"), 1, Instant.now(), "r"),
+            new ParkedItem(new FetchItem("DR", "2025-02-01", "2025-02-28"), 2, Instant.now(), "r"));
+    final var usageDataProvidersClient = new UsageDataProvidersClientStub(false);
+    final var counterReportsClient =
+        new CounterReportsClientStub(
+            Future.succeededFuture(List.of(new FetchItem("PR", "2024-01-01", "2024-01-31"))));
+    final var errorHandlingLoads = new AtomicInteger();
+    final var workerVerticle =
+        new WorkerVerticle(
+            counterReportsClient,
+            usageDataProvidersClient,
+            "tenant",
+            usageDataProvider,
+            1,
+            context -> {
+              errorHandlingLoads.incrementAndGet();
+              return Future.succeededFuture(ErrorHandlingSettings.of(new ErrorHandling()));
+            },
+            retryItems);
+
+    final String deploymentId = deploy(workerVerticle).await();
+    workerVerticle.getFinished().await();
+
+    assertThat(WorkerVerticleITProviderLifecycle.FETCHED)
+        .as("... exactly the retry items were fetched")
+        .containsExactlyInAnyOrderElementsOf(retryItems.stream().map(ParkedItem::item).toList());
+    assertThat(counterReportsClient.fetchListRequests.get())
+        .as("... the fetch list was not loaded")
+        .isZero();
+    assertThat(errorHandlingLoads.get())
+        .as("... the error handling settings are loaded before the run starts")
+        .isEqualTo(1);
+    assertThat(usageDataProvidersClient.harvestingDateUpdates.get())
+        .as("... a retry run is a harvest, too")
+        .isEqualTo(1);
+    assertThat(vertx.deploymentIDs()).doesNotContain(deploymentId);
+    assertThat(WorkerVerticleITProviderLifecycle.CLOSED.get()).isEqualTo(1);
+    assertThat(workerVerticle.getParked()).as("... nothing was parked again").isEmpty();
+  }
+
+  @Test
+  void testRetryItemsMustNotBeNull() {
+    assertThatThrownBy(() -> createRetryVerticle(null)).isInstanceOf(NullPointerException.class);
+  }
+
+  private WorkerVerticle createRetryVerticle(final List<ParkedItem> retryItems) {
+    return new WorkerVerticle(
+        new CounterReportsClientStub(Future.succeededFuture(List.of())),
+        new UsageDataProvidersClientStub(false),
+        "tenant",
+        usageDataProvider,
+        1,
+        loadErrorHandling(Future.succeededFuture(new ErrorHandling())),
+        retryItems);
   }
 
   @Test
@@ -269,7 +331,7 @@ class WorkerVerticleTest {
         "tenant",
         usageDataProvider,
         1,
-        loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
+        loadErrorHandling(Future.succeededFuture(new ErrorHandling())));
   }
 
   @Test
@@ -281,7 +343,7 @@ class WorkerVerticleTest {
             "tenant",
             usageDataProvider,
             1,
-            loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
+            loadErrorHandling(Future.succeededFuture(new ErrorHandling())));
 
     assertThatThrownBy(deploy(workerVerticle)::await).hasMessage(START_FAILURE);
     assertThat(WorkerVerticleITProviderLifecycle.CREATED.get()).isEqualTo(1);
@@ -317,7 +379,7 @@ class WorkerVerticleTest {
             "tenant",
             usageDataProvider,
             1,
-            loadErrorHandlingAsync(Future.succeededFuture(new ErrorHandling())));
+            loadErrorHandling(Future.succeededFuture(new ErrorHandling())));
 
     assertThatThrownBy(deploy(workerVerticle)::await).hasMessageContaining(expectedMessage);
     assertThat(vertx.deploymentIDs()).isEmpty();
@@ -327,26 +389,12 @@ class WorkerVerticleTest {
   }
 
   /**
-   * Returns a loader that completes with {@code result} on a later turn of the context, like the
-   * database lookup in production. With an already completed future, the whole run would be over
-   * inside {@link WorkerVerticle#start()}, before the deployment is registered, and the verticle
-   * could not undeploy itself.
+   * Returns a loader that returns {@code result} as it is. An already completed future is fine: the
+   * run only starts once the deployment is registered, so even a run that ends right away can
+   * undeploy the verticle.
    */
-  private static ErrorHandlingLoader loadErrorHandlingAsync(final Future<ErrorHandling> result) {
-    return context -> {
-      final Promise<ErrorHandling> promise = Promise.promise();
-      context.runOnContext(
-          v ->
-              result.onComplete(
-                  ar -> {
-                    if (ar.succeeded()) {
-                      promise.complete(ar.result());
-                    } else {
-                      promise.fail(ar.cause());
-                    }
-                  }));
-      return promise.future();
-    };
+  private static ErrorHandlingLoader loadErrorHandling(final Future<ErrorHandling> result) {
+    return context -> result.map(ErrorHandlingSettings::of);
   }
 
   private Future<String> deploy(final WorkerVerticle workerVerticle) {

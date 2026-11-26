@@ -17,9 +17,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Fetches reports from a usage data provider: determines which reports still need to be fetched,
- * combining months into fewer requests where possible, and fetches them via the provider's service
- * endpoint. Failed fetches are passed to a {@link FetcherErrorHandler}.
+ * Fetches reports from a usage data provider: determines which reports still need to be fetched (in
+ * a retry run its retry items, otherwise the provider's fetch list, combining months into fewer
+ * requests where possible), and fetches them via the provider's service endpoint. Failed fetches
+ * are passed to a {@link FetcherErrorHandler}.
  */
 final class Fetcher {
 
@@ -37,35 +38,60 @@ final class Fetcher {
 
   private final FetcherErrorHandler errorHandler;
 
+  private final int maxFailedAttempts;
+
+  private final List<QueueItem> initialItems;
+
   /**
    * @param counterReportsClient the counter reports client to get the fetch list from
    * @param usageDataProvider the usage data provider to fetch reports for
    * @param serviceEndpoint the service endpoint to use for fetching reports
    * @param logCtx the logger context
    * @param errorHandler the fetcher error handler taking care of error handling
+   * @param maxFailedAttempts months whose failed report has reached this number of failed attempts
+   *     are left out of the fetch list
+   * @param initialItems the items a retry run starts with, each carrying its retry count; empty for
+   *     a regular run, which starts with the provider's fetch list
    */
   Fetcher(
       final ExtCounterReportsClient counterReportsClient,
       final UsageDataProvider usageDataProvider,
       final ServiceEndpoint serviceEndpoint,
       final LoggerContext logCtx,
-      final FetcherErrorHandler errorHandler) {
+      final FetcherErrorHandler errorHandler,
+      final int maxFailedAttempts,
+      final List<QueueItem> initialItems) {
     this.logCtx = logCtx;
     this.counterReportsClient = counterReportsClient;
     this.usageDataProvider = usageDataProvider;
     this.serviceEndpoint = serviceEndpoint;
     this.errorHandler = errorHandler;
+    this.maxFailedAttempts = maxFailedAttempts;
+    this.initialItems = List.copyOf(initialItems);
+  }
+
+  /**
+   * Determines the items the run starts with: the retry items of a retry run, or the provider's
+   * fetch list with a retry count of 0.
+   *
+   * @return a future list of the initial queue items
+   */
+  Future<List<QueueItem>> loadInitialItems() {
+    if (!initialItems.isEmpty()) {
+      LOGGER.info(logCtx.createMsg("Retry run with {} items", initialItems.size()));
+      return Future.succeededFuture(initialItems);
+    }
+
+    return getFetchList().map(fetchItems -> QueueItem.createQueueItemList(fetchItems, 0));
   }
 
   /**
    * Retrieves the list of items to fetch from the {@link ExtCounterReportsClient}, passing in the
-   * {@link UsageDataProvider} and maximum number of failed attempts as a dependency.
+   * {@link UsageDataProvider} and the maximum number of failed attempts.
    *
-   * @param maxFailedAttempts the maximum number of failed attempts allowed before giving up on
-   *     fetching a report
    * @return a future list of items to fetch
    */
-  Future<List<FetchItem>> getFetchList(final int maxFailedAttempts) {
+  Future<List<FetchItem>> getFetchList() {
     return counterReportsClient
         .getFetchList(usageDataProvider, maxFailedAttempts)
         .map(

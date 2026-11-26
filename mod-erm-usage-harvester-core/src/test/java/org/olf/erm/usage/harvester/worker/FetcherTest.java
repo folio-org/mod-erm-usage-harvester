@@ -73,6 +73,13 @@ class FetcherTest {
 
   private static Fetcher configureFetcher(
       final ExtCounterReportsClient counterReportsClient, final ServiceEndpoint serviceEndpoint) {
+    return configureFetcher(counterReportsClient, serviceEndpoint, List.of());
+  }
+
+  private static Fetcher configureFetcher(
+      final ExtCounterReportsClient counterReportsClient,
+      final ServiceEndpoint serviceEndpoint,
+      final List<QueueItem> initialItems) {
     return new Fetcher(
         counterReportsClient,
         USAGE_DATA_PROVIDER,
@@ -81,7 +88,34 @@ class FetcherTest {
         (t, qi) -> {
           HANDLER_CALLS.add(t);
           return Collections.emptyList();
-        });
+        },
+        5,
+        initialItems);
+  }
+
+  @Test
+  void testLoadInitialItemsOfRegularRun() {
+    final var fetcher = configureFetcher(new TestCounterReportsClient(FETCH_LIST), null);
+
+    final var receivedFuture = fetcher.loadInitialItems();
+    assertThat(receivedFuture.succeeded()).as("... the future succeeded").isTrue();
+    assertThat(receivedFuture.result())
+        .as("... the fetch list, with a retry count of 0")
+        .containsExactlyInAnyOrderElementsOf(QueueItem.createQueueItemList(FETCH_LIST, 0));
+  }
+
+  @Test
+  void testLoadInitialItemsOfRetryRun() {
+    final var retryItems =
+        List.of(QueueItem.of(FETCH_LIST.getFirst(), 1), QueueItem.of(FETCH_LIST.get(1), 3));
+    // a fetch list request would fail
+    final var fetcher = configureFetcher(new TestCounterReportsClient(null), null, retryItems);
+
+    final var receivedFuture = fetcher.loadInitialItems();
+    assertThat(receivedFuture.succeeded()).as("... the fetch list was not requested").isTrue();
+    assertThat(receivedFuture.result())
+        .as("... the retry items, with their retry counts")
+        .containsExactlyElementsOf(retryItems);
   }
 
   @Test
@@ -89,7 +123,7 @@ class FetcherTest {
     final var counterReportsClient = new TestCounterReportsClient(FETCH_LIST);
     final var fetcher = configureFetcher(counterReportsClient, null);
 
-    final var receivedFuture = fetcher.getFetchList(5);
+    final var receivedFuture = fetcher.getFetchList();
     assertThat(receivedFuture.succeeded()).as("... the future succeeded").isTrue();
     assertThat(receivedFuture.result())
         .as("... it contains the expected result")
@@ -101,7 +135,7 @@ class FetcherTest {
     final var counterReportsClient = new TestCounterReportsClient(null);
     final var fetcher = configureFetcher(counterReportsClient, null);
 
-    final var receivedFuture = fetcher.getFetchList(5);
+    final var receivedFuture = fetcher.getFetchList();
     assertThat(receivedFuture.failed()).as("... the future failed").isTrue();
   }
 

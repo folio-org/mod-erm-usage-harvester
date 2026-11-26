@@ -24,6 +24,10 @@ final class Uploader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Uploader.class);
 
+  /**
+   * This is different from "maxFailedAttempts" since it's a limit concerning the upload of reports
+   * to an internal database, rather than fetching data from an external data provider.
+   */
   private static final int MAX_FAILED_UPLOAD_COUNT = 5;
 
   private final LoggerContext logCtx;

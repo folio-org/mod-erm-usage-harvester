@@ -12,7 +12,7 @@ import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.olf.erm.usage.harvester.WebClientProvider;
 import org.olf.erm.usage.harvester.client.ExtCounterReportsClientImpl;
 import org.olf.erm.usage.harvester.client.ExtUsageDataProvidersClientImpl;
-import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingPgUtil;
+import org.olf.erm.usage.harvester.errorhandling.ErrorHandlingLoader;
 import org.olf.erm.usage.harvester.worker.WorkerVerticle;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -20,8 +20,24 @@ import org.quartz.SchedulerException;
 
 public class HarvestProviderJob extends AbstractHarvestJob {
 
+  /**
+   * The maximum number of report requests a single provider run sends to the provider in parallel
+   * at the start.
+   *
+   * <p>"Concurrency" here means requests in flight at the same time, not threads. They all run
+   * asynchronously on the {@link WorkerVerticle}'s context.
+   *
+   * <p>Not to be confused with {@code org.quartz.threadPool.threadCount}, which limits how many
+   * provider runs execute at once per module instance.
+   */
   private static final int INITIAL_CONCURRENCY = 4;
 
+  /**
+   * Runs one harvest for one provider and blocks the Quartz thread until it has finished.
+   *
+   * <p>Blocking is intended: while the job runs, its {@code JobKey(providerId, tenantId)} exists,
+   * so no second run of the same provider can start.
+   */
   @Override
   public void execute(final JobExecutionContext context) throws JobExecutionException {
     final String providerId;
@@ -76,7 +92,7 @@ public class HarvestProviderJob extends AbstractHarvestJob {
             tenantId,
             usageDataProvider,
             INITIAL_CONCURRENCY,
-            ctx -> ErrorHandlingPgUtil.get(ctx, tenantId));
+            ErrorHandlingLoader.forTenant(tenantId));
     final Future<String> deployedWorkerVerticle =
         vertx.deployVerticle(workerVerticle, new DeploymentOptions().setThreadingModel(WORKER));
 

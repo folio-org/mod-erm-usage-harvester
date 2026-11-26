@@ -21,7 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.olf.erm.usage.harvester.FetchItem;
-import org.olf.erm.usage.harvester.retry.ParkedItem;
+import org.olf.erm.usage.harvester.worker.WorkerVerticle.ParkedItem;
 
 /** Tests for {@link WorkerController}. */
 @ExtendWith(VertxExtension.class)
@@ -203,5 +203,18 @@ class WorkerControllerTest {
     assertThat(controller.sealParked())
         .as("... parked items are kept")
         .containsExactlyElementsOf(PARKED_ITEMS);
+  }
+
+  @Test
+  void testQueueItemsFromParked() {
+    final var parked =
+        List.of(
+            new ParkedItem(FETCH_ITEMS.getFirst(), 1, DUE_AT, REASON),
+            new ParkedItem(FETCH_ITEMS.get(1), 3, DUE_AT.plusSeconds(60), REASON));
+
+    assertThat(QueueItem.fromParked(parked))
+        .as("... each item keeps its retry count, in the same order")
+        .containsExactly(
+            QueueItem.of(FETCH_ITEMS.getFirst(), 1), QueueItem.of(FETCH_ITEMS.get(1), 3));
   }
 }

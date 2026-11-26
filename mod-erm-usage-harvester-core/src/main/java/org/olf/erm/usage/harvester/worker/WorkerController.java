@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.olf.erm.usage.harvester.FetchItem;
-import org.olf.erm.usage.harvester.retry.ParkedItem;
+import org.olf.erm.usage.harvester.worker.WorkerVerticle.ParkedItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -303,6 +303,17 @@ interface WorkerController {
     static List<QueueItem> createQueueItemList(
         final List<FetchItem> itemList, final int retryCount) {
       return itemList.stream().map(item -> new QueueItem(item, retryCount)).toList();
+    }
+
+    /**
+     * Turns parked items into queue items, keeping each item's retry count. Due time and reason are
+     * not needed in the queue.
+     *
+     * @param parked the parked items
+     * @return the list of queue items, in the same order
+     */
+    static List<QueueItem> fromParked(final List<ParkedItem> parked) {
+      return parked.stream().map(p -> new QueueItem(p.item(), p.retryCount())).toList();
     }
 
     /**
