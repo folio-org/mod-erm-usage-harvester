@@ -308,4 +308,105 @@ public class SchedulingUtilTest {
         .hasMessageContaining(TENANT);
     assertThat(defaultScheduler.checkExists(new JobKey(TENANT_JOB_KEY, TENANT))).isFalse();
   }
+
+  private static List<ParkedItem> parkedItems() {
+    return List.of(
+        new ParkedItem(
+            new FetchItem("TR", "2025-01-01", "2025-01-31"),
+            1,
+            Instant.now().plus(1, ChronoUnit.DAYS),
+            "reason"));
+  }
+
+  private static void park(String providerId) {
+    new RetryScheduler(defaultScheduler, TENANT, providerId).park(parkedItems());
+  }
+
+  private static boolean retryJobExists(String providerId) throws SchedulerException {
+    return defaultScheduler.checkExists(RetryScheduler.retryJobKey(TENANT, providerId));
+  }
+
+  @Test
+  public void testScheduleProviderJobDeletesRetryJob() throws SchedulerException {
+    park(PROVIDER_ID);
+
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID);
+
+    assertThat(retryJobExists(PROVIDER_ID))
+        .as("... a regular start drops pending retries")
+        .isFalse();
+    assertThat(defaultScheduler.checkExists(new JobKey(PROVIDER_ID, TENANT))).isTrue();
+  }
+
+  @Test
+  public void testScheduleProviderJobDeletesRetryJobEvenIfRunInProgress()
+      throws SchedulerException {
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID);
+    park(PROVIDER_ID);
+
+    assertThatCode(() -> scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID))
+        .hasMessageContaining("already scheduled/running");
+    assertThat(retryJobExists(PROVIDER_ID))
+        .as("... the regular run in progress covers the pending retries")
+        .isFalse();
+  }
+
+  @Test
+  public void testScheduleProviderJobWithRetryItemsKeepsRetryJob() throws SchedulerException {
+    park(PROVIDER_ID);
+
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID, parkedItems());
+
+    assertThat(retryJobExists(PROVIDER_ID))
+        .as("... a retry run doesn't drop the items parked meanwhile")
+        .isTrue();
+  }
+
+  @Test
+  public void testScheduleTenantJobIgnoresRetryJobs() throws SchedulerException {
+    park(PROVIDER_ID);
+
+    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT)).doesNotThrowAnyException();
+    assertThat(defaultScheduler.checkExists(new JobKey(TENANT_JOB_KEY, TENANT))).isTrue();
+  }
+
+  @Test
+  public void testScheduleTenantJobIgnoresRetryRun() throws SchedulerException {
+    scheduleProviderJob(defaultScheduler, TENANT, PROVIDER_ID, parkedItems());
+
+    assertThatCode(() -> scheduleTenantJob(defaultScheduler, TENANT)).doesNotThrowAnyException();
+    assertThat(defaultScheduler.checkExists(new JobKey(TENANT_JOB_KEY, TENANT))).isTrue();
+  }
+
+  @Test
+  public void testDeleteJobKeepsRetryJobs() throws SchedulerException {
+    createOrUpdateJob(
+        new PeriodicConfig()
+            .withPeriodicInterval(WEEKLY)
+            .withStartAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS))),
+        TENANT);
+    park(PROVIDER_ID);
+
+    SchedulingUtil.deleteJob(defaultScheduler, TENANT);
+
+    assertThat(defaultScheduler.checkExists(jobKey)).isFalse();
+    assertThat(retryJobExists(PROVIDER_ID)).isTrue();
+  }
+
+  @Test
+  public void testDeleteAllJobs() throws SchedulerException {
+    createOrUpdateJob(
+        new PeriodicConfig()
+            .withPeriodicInterval(WEEKLY)
+            .withStartAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS))),
+        TENANT);
+    park(PROVIDER_ID);
+    park("other");
+
+    SchedulingUtil.deleteAllJobs(defaultScheduler, TENANT);
+
+    assertThat(defaultScheduler.checkExists(jobKey)).isFalse();
+    assertThat(retryJobExists(PROVIDER_ID)).isFalse();
+    assertThat(retryJobExists("other")).isFalse();
+  }
 }

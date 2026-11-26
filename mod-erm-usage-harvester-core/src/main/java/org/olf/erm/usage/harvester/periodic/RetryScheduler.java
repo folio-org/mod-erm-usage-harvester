@@ -19,19 +19,21 @@ import java.util.stream.Collectors;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.worker.WorkerVerticle.ParkedItem;
 import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.SimpleScheduleBuilder;
 import org.quartz.TriggerBuilder;
+import org.quartz.impl.matchers.GroupMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Keeps parked items as a one-time Quartz job per provider, the retry job {@code
- * retry::<providerId>}. When it fires, a {@link HarvestRetryTriggerJob} starts a retry run with
- * these items. The retry job only triggers and never harvests itself, so it holds no Quartz thread
- * while it waits.
+ * Keeps parked items as a Quartz job per provider, the retry job {@code retry::<providerId>}. When
+ * it fires, a {@link HarvestRetryTriggerJob} starts a retry run with these items (or waits for the
+ * run in progress) and deletes the retry job. The retry job only triggers and never harvests
+ * itself, so it holds no Quartz thread while it waits.
  *
  * <p>One instance per provider. It is cheap to create and holds nothing but the scheduler and the
  * provider's IDs; the retry job itself lives in Quartz.
@@ -53,6 +55,37 @@ final class RetryScheduler {
    */
   static JobKey retryJobKey(final String tenantId, final String providerId) {
     return new JobKey(RETRY_KEY_PREFIX + providerId, tenantId);
+  }
+
+  /**
+   * @return {@code true} if the key is the key of a retry job
+   */
+  static boolean isRetryJobKey(final JobKey jobKey) {
+    return jobKey.getName().startsWith(RETRY_KEY_PREFIX);
+  }
+
+  /**
+   * @return {@code true} if the job is a provider job of a retry run, i.e. it carries retry items
+   */
+  static boolean isRetryRun(final JobDetail jobDetail) {
+    return jobDetail != null && jobDetail.getJobDataMap().containsKey(DATAKEY_RETRY_ITEMS);
+  }
+
+  /**
+   * Deletes all retry jobs of the tenant, e.g. when the tenant is disabled.
+   *
+   * @throws SchedulerException if the jobs can't be read or deleted
+   */
+  static void deleteRetryJobs(final Scheduler scheduler, final String tenantId)
+      throws SchedulerException {
+    final List<JobKey> retryJobKeys =
+        scheduler.getJobKeys(GroupMatcher.jobGroupEquals(tenantId)).stream()
+            .filter(RetryScheduler::isRetryJobKey)
+            .toList();
+    if (!retryJobKeys.isEmpty()) {
+      scheduler.deleteJobs(retryJobKeys);
+      LOGGER.info("Tenant: {}, deleted {} retry job(s)", tenantId, retryJobKeys.size());
+    }
   }
 
   private final Scheduler scheduler;
@@ -111,6 +144,38 @@ final class RetryScheduler {
   }
 
   /**
+   * Deletes the provider's retry job, if there is one, because a regular run was requested. Its
+   * items are dropped: the regular run's fetch list covers them, and they aren't counted.
+   *
+   * @throws SchedulerException if the job can't be read or deleted
+   */
+  void deleteRetryJob() throws SchedulerException {
+    final var retryJob = scheduler.getJobDetail(jobKey);
+    if (retryJob == null) {
+      return;
+    }
+
+    scheduler.deleteJob(jobKey);
+    LOGGER.info(
+        "Tenant: {}, Provider: {}, regular run requested, dropped {} pending retry item(s)",
+        tenantId,
+        providerId,
+        countItems(retryJob));
+  }
+
+  /**
+   * @return the number of items of the retry job, or "?" if they can't be decoded
+   */
+  private static String countItems(final JobDetail retryJob) {
+    try {
+      return String.valueOf(
+          RetryItemsCodec.decode(retryJob.getJobDataMap().getString(DATAKEY_RETRY_ITEMS)).size());
+    } catch (IllegalArgumentException e) {
+      return "?";
+    }
+  }
+
+  /**
    * Merges the items into the retry job and (re)schedules its trigger; {@code items} isn't empty.
    */
   private void scheduleRetryJob(final List<ParkedItem> items) throws SchedulerException {
@@ -138,7 +203,11 @@ final class RetryScheduler {
             .forJob(jobKey)
             .startAt(Date.from(fireAt))
             .withSchedule(
-                SimpleScheduleBuilder.simpleSchedule().withMisfireHandlingInstructionFireNow())
+                // repeats while a run of the provider is in progress, see HarvestRetryTriggerJob
+                SimpleScheduleBuilder.simpleSchedule()
+                    .withIntervalInMilliseconds(SchedulingUtil.CHECK_INTERVAL.toMillis())
+                    .repeatForever()
+                    .withMisfireHandlingInstructionFireNow())
             .build();
     scheduler.scheduleJob(jobDetail, Set.of(trigger), true);
 

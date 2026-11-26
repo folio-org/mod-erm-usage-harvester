@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.olf.erm.usage.harvester.worker.WorkerVerticle.ParkedItem;
+import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.TriggerKey;
@@ -169,6 +170,57 @@ class RetrySchedulerTest {
     assertThatCode(() -> retryScheduler.park(items))
         .as("... the failure is only logged")
         .doesNotThrowAnyException();
+  }
+
+  @Test
+  void testDeleteRetryJob() throws SchedulerException {
+    retryScheduler.park(List.of(parked(JAN, 1, NOW)));
+
+    retryScheduler.deleteRetryJob();
+
+    assertThat(scheduler.checkExists(retryJobKey(TENANT, PROVIDER))).isFalse();
+  }
+
+  @Test
+  void testDeleteRetryJobWithoutRetryJob() {
+    assertThatCode(() -> retryScheduler.deleteRetryJob()).doesNotThrowAnyException();
+  }
+
+  @Test
+  void testDeleteRetryJobs() throws SchedulerException {
+    retryScheduler.park(List.of(parked(JAN, 1, NOW)));
+    new RetryScheduler(scheduler, TENANT, "other").park(List.of(parked(JAN, 1, NOW)));
+    new RetryScheduler(scheduler, "otherTenant", PROVIDER).park(List.of(parked(JAN, 1, NOW)));
+    SchedulingUtil.scheduleProviderJob(scheduler, TENANT, "running", List.of());
+
+    RetryScheduler.deleteRetryJobs(scheduler, TENANT);
+
+    assertThat(scheduler.checkExists(retryJobKey(TENANT, PROVIDER))).isFalse();
+    assertThat(scheduler.checkExists(retryJobKey(TENANT, "other"))).isFalse();
+    assertThat(scheduler.checkExists(retryJobKey("otherTenant", PROVIDER)))
+        .as("... another tenant's retry job is kept")
+        .isTrue();
+    assertThat(scheduler.checkExists(new JobKey("running", TENANT)))
+        .as("... provider jobs are kept")
+        .isTrue();
+  }
+
+  @Test
+  void testIsRetryJobKey() {
+    assertThat(RetryScheduler.isRetryJobKey(retryJobKey(TENANT, PROVIDER))).isTrue();
+    assertThat(RetryScheduler.isRetryJobKey(new JobKey(PROVIDER, TENANT))).isFalse();
+  }
+
+  @Test
+  void testIsRetryRun() throws SchedulerException {
+    SchedulingUtil.scheduleProviderJob(scheduler, TENANT, "retry", List.of(parked(JAN, 1, NOW)));
+    SchedulingUtil.scheduleProviderJob(scheduler, TENANT, "regular");
+
+    assertThat(RetryScheduler.isRetryRun(scheduler.getJobDetail(new JobKey("retry", TENANT))))
+        .isTrue();
+    assertThat(RetryScheduler.isRetryRun(scheduler.getJobDetail(new JobKey("regular", TENANT))))
+        .isFalse();
+    assertThat(RetryScheduler.isRetryRun(null)).isFalse();
   }
 
   private List<ParkedItem> retryItems() throws SchedulerException {

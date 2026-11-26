@@ -28,8 +28,10 @@ public class TenantAPIImpl extends TenantAPI {
       wrappedHandler =
           ar -> {
             if (ar.succeeded() && ar.result().getStatus() / 100 == 2) {
-              log.info("Tenant: {}, removing scheduled job on disable or purge", tenantId);
-              SchedulingUtil.deleteJob(tenantId);
+              log.info(
+                  "Tenant: {}, removing scheduled jobs and pending retries on disable or purge",
+                  tenantId);
+              SchedulingUtil.deleteAllJobs(tenantId);
             }
             handler.handle(ar);
           };

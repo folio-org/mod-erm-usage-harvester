@@ -16,7 +16,11 @@ class HarvestRetryTriggerJobTest {
   private static final String TENANT = "tenant";
   private static final String PROVIDER = "provider";
   private static final String RETRY_ITEMS = "{\"version\":1,\"items\":[]}";
+  private static final String RETRY_ITEMS_ONE =
+      "{\"version\":1,\"items\":[{\"reportType\":\"TR\",\"begin\":\"2025-01-01\","
+          + "\"end\":\"2025-01-31\",\"retryCount\":1,\"dueAt\":\"2025-02-01T10:30:00Z\"}]}";
   private static final JobKey PROVIDER_JOB_KEY = new JobKey(PROVIDER, TENANT);
+  private static final JobKey RETRY_JOB_KEY = RetryScheduler.retryJobKey(TENANT, PROVIDER);
 
   private Scheduler scheduler;
 
@@ -38,8 +42,14 @@ class HarvestRetryTriggerJobTest {
     return job;
   }
 
+  private void park() {
+    new RetryScheduler(scheduler, TENANT, PROVIDER).park(RetryItemsCodec.decode(RETRY_ITEMS_ONE));
+  }
+
   @Test
   void testSchedulesRetryRun() throws SchedulerException {
+    park();
+
     createJob().trigger(scheduler);
 
     final var jobDetail = scheduler.getJobDetail(PROVIDER_JOB_KEY);
@@ -48,16 +58,21 @@ class HarvestRetryTriggerJobTest {
     assertThat(jobDetail.getJobDataMap().getString(DATAKEY_RETRY_ITEMS))
         .as("... it carries the retry items")
         .isEqualTo(RETRY_ITEMS);
+    assertThat(scheduler.checkExists(RETRY_JOB_KEY)).as("... the retry job is done").isFalse();
   }
 
   @Test
-  void testDropsItemsIfProviderRunIsInProgress() throws SchedulerException {
+  void testWaitsWhileProviderRunIsInProgress() throws SchedulerException {
     SchedulingUtil.scheduleProviderJob(scheduler, TENANT, PROVIDER);
+    park();
 
     createJob().trigger(scheduler);
 
     assertThat(scheduler.getJobDetail(PROVIDER_JOB_KEY).getJobDataMap())
         .as("... the run in progress is left as it is")
         .doesNotContainKey(DATAKEY_RETRY_ITEMS);
+    assertThat(scheduler.checkExists(RETRY_JOB_KEY))
+        .as("... the retry job fires again later")
+        .isTrue();
   }
 }

@@ -1,5 +1,6 @@
 package org.olf.erm.usage.harvester.periodic;
 
+import static java.util.Objects.requireNonNull;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_JOB_ID;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_PROVIDER_ID;
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_RETRY_ITEMS;
@@ -9,6 +10,7 @@ import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -39,6 +41,11 @@ public class SchedulingUtil {
   public static final String TENANT_JOB_KEY = "tenant";
   public static final String PERIODIC_JOB_KEY = "periodic";
 
+  /**
+   * How often a job that waits for a provider checks whether its run has ended, e.g. the retry job.
+   */
+  static final Duration CHECK_INTERVAL = Duration.ofSeconds(5);
+
   private static JobDetail createJobDetail(
       Class<? extends Job> jobClass, JobKey jobKey, String providerId) {
     return JobBuilder.newJob(jobClass)
@@ -59,6 +66,10 @@ public class SchedulingUtil {
    * with the same key is rejected. Runs of different providers execute in parallel, limited by the
    * Quartz thread pool.
    *
+   * <p>A regular run takes precedence over retries: the provider's waiting retry job is deleted
+   * first, even if the run can't be scheduled because another one is in progress. Its items are
+   * covered by the regular run's fetch list (or the one in progress) and aren't counted.
+   *
    * @param scheduler the Quartz scheduler
    * @param tenantId the tenant ID, used as the job group
    * @param providerId the ID of the usage data provider, used as the job name
@@ -67,21 +78,32 @@ public class SchedulingUtil {
    */
   public static void scheduleProviderJob(Scheduler scheduler, String tenantId, String providerId)
       throws SchedulerException {
-    scheduleProviderJob(scheduler, tenantId, providerId, null);
+    new RetryScheduler(scheduler, tenantId, providerId).deleteRetryJob();
+    scheduleProviderRun(scheduler, tenantId, providerId, null);
   }
 
   /**
    * Like {@link #scheduleProviderJob(Scheduler, String, String)}, but schedules a retry run: the
-   * job starts with the given items instead of the provider's fetch list.
+   * job starts with the given items instead of the provider's fetch list. Doesn't touch the
+   * provider's retry job.
    *
    * @param scheduler the Quartz scheduler
    * @param tenantId the tenant ID, used as the job group
    * @param providerId the ID of the usage data provider, used as the job name
-   * @param retryItems the items to retry, or {@code null} for a regular run
+   * @param retryItems the items to retry
    * @throws SchedulerException if a job for this provider is already scheduled or running, or the
    *     job can't be stored
    */
   static void scheduleProviderJob(
+      Scheduler scheduler, String tenantId, String providerId, List<ParkedItem> retryItems)
+      throws SchedulerException {
+    scheduleProviderRun(scheduler, tenantId, providerId, requireNonNull(retryItems));
+  }
+
+  /**
+   * @param retryItems the items to retry, or {@code null} for a regular run
+   */
+  private static void scheduleProviderRun(
       Scheduler scheduler, String tenantId, String providerId, List<ParkedItem> retryItems)
       throws SchedulerException {
     JobKey jobKey = new JobKey(providerId, tenantId);
@@ -105,9 +127,9 @@ public class SchedulingUtil {
    * #scheduleProviderJob} for each of them, so the provider runs execute in parallel, limited by
    * the Quartz thread pool.
    *
-   * <p>Refused while the tenant has any job other than its periodic job, i.e. a tenant job or any
-   * provider run. A single provider can still be started while a tenant harvest is running; the
-   * tenant job then skips that provider.
+   * <p>Refused while a tenant job or a regular provider run exists. Retries don't count: waiting
+   * retry jobs and running retry runs must not block a regular harvest. A single provider can still
+   * be started while a tenant harvest is running; the tenant job then skips that provider.
    *
    * @param scheduler the Quartz scheduler
    * @param tenantId the tenant ID, used as the job group
@@ -116,10 +138,7 @@ public class SchedulingUtil {
    */
   public static void scheduleTenantJob(Scheduler scheduler, String tenantId)
       throws SchedulerException {
-    boolean jobForTenantExists =
-        scheduler.getJobKeys(jobGroupEquals(tenantId)).stream()
-            .anyMatch(jk -> !PERIODIC_JOB_KEY.equals(jk.getName()));
-    if (jobForTenantExists) {
+    if (isHarvestInProgress(scheduler, tenantId)) {
       throw new SchedulerException(
           "Harvesting for tenant '" + tenantId + "' is already in progress");
     } else {
@@ -127,6 +146,21 @@ public class SchedulingUtil {
       JobDetail jobDetail = createJobDetail(HarvestTenantJob.class, jobKey, null);
       scheduler.scheduleJob(jobDetail, TriggerBuilder.newTrigger().startNow().build());
     }
+  }
+
+  /**
+   * @return {@code true} if the tenant has a job other than its periodic job and its retries
+   */
+  private static boolean isHarvestInProgress(Scheduler scheduler, String tenantId)
+      throws SchedulerException {
+    for (JobKey jobKey : scheduler.getJobKeys(jobGroupEquals(tenantId))) {
+      if (!PERIODIC_JOB_KEY.equals(jobKey.getName())
+          && !RetryScheduler.isRetryJobKey(jobKey)
+          && !RetryScheduler.isRetryRun(scheduler.getJobDetail(jobKey))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public static Future<Void> createOrUpdateJobFromDbConfig(Context vertxContext, String tenantId) {
@@ -185,6 +219,10 @@ public class SchedulingUtil {
     }
   }
 
+  /**
+   * Deletes the tenant's periodic job, e.g. when its periodic config is deleted. Pending retries
+   * are kept and still run. Never throws, errors are logged.
+   */
   public static void deleteJob(String tenantId) {
     try {
       deleteJob(StdSchedulerFactory.getDefaultScheduler(), tenantId);
@@ -193,6 +231,33 @@ public class SchedulingUtil {
     }
   }
 
+  /**
+   * Deletes the tenant's periodic job and its retry jobs, e.g. when the tenant is disabled. Runs in
+   * progress aren't stopped. Never throws, errors are logged.
+   */
+  public static void deleteAllJobs(String tenantId) {
+    try {
+      deleteAllJobs(StdSchedulerFactory.getDefaultScheduler(), tenantId);
+    } catch (SchedulerException e) {
+      LOGGER.error("Tenant: {}, unable to get default scheduler: {}", tenantId, e.getMessage());
+    }
+  }
+
+  /**
+   * @see #deleteAllJobs(String)
+   */
+  public static void deleteAllJobs(Scheduler scheduler, String tenantId) {
+    deleteJob(scheduler, tenantId);
+    try {
+      RetryScheduler.deleteRetryJobs(scheduler, tenantId);
+    } catch (SchedulerException e) {
+      LOGGER.error("Tenant: {}, error deleting retry jobs: {}", tenantId, e.getMessage());
+    }
+  }
+
+  /**
+   * @see #deleteJob(String)
+   */
   public static void deleteJob(Scheduler scheduler, String tenantId) {
     JobKey jobKey = new JobKey(PERIODIC_JOB_KEY, tenantId);
     try {
