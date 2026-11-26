@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.olf.erm.usage.harvester.TestUtil.shutdownSchedulers;
 
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
@@ -9,12 +10,27 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
+import org.quartz.SchedulerException;
 
 @ExtendWith(VertxExtension.class)
 class InitImplIT {
+
+  @BeforeAll
+  static void setUp() throws SchedulerException {
+    // start from a fresh default scheduler, whatever earlier ITs left behind
+    shutdownSchedulers();
+  }
+
+  @AfterEach
+  void tearDown() throws SchedulerException {
+    // removes the listeners PostDeployImpl bound to this test's (closed) Vert.x
+    shutdownSchedulers();
+  }
 
   @Test
   void testDeploymentFailsWithoutOkapiUrl(Vertx vertx, VertxTestContext context) {

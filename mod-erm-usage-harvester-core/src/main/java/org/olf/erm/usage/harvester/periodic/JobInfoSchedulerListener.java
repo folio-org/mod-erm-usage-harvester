@@ -3,6 +3,7 @@ package org.olf.erm.usage.harvester.periodic;
 import static org.folio.rest.jaxrs.model.JobInfo.Type.PERIODIC;
 
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import org.folio.rest.jaxrs.model.JobInfo;
@@ -19,6 +20,12 @@ import org.slf4j.LoggerFactory;
 public class JobInfoSchedulerListener extends SchedulerListenerSupport {
 
   private static final Logger log = LoggerFactory.getLogger(JobInfoSchedulerListener.class);
+
+  private final Vertx vertx;
+
+  public JobInfoSchedulerListener(Vertx vertx) {
+    this.vertx = vertx;
+  }
 
   @Override
   public void jobAdded(JobDetail jobDetail) {
@@ -48,7 +55,7 @@ public class JobInfoSchedulerListener extends SchedulerListenerSupport {
     // if we are scheduling a new periodic, then an existing one needs to be removed from db
     Future<RowSet<Row>> deleteFuture = Future.succeededFuture();
     if (PERIODIC.value().equals(name)) {
-      deleteFuture = JobInfoUtil.deletePeriodicJobInfo(tenantId);
+      deleteFuture = JobInfoUtil.deletePeriodicJobInfo(vertx, tenantId);
     }
 
     deleteFuture
@@ -56,6 +63,7 @@ public class JobInfoSchedulerListener extends SchedulerListenerSupport {
             rs -> {
               JobInfo jobInfo = JobInfoUtil.createJobInfo(jobDetail);
               return JobInfoUtil.upsertJobInfo(
+                      vertx,
                       jobInfo
                           .withStartedAt(trigger.getPreviousFireTime())
                           .withNextStart(trigger.getNextFireTime()),
@@ -75,7 +83,7 @@ public class JobInfoSchedulerListener extends SchedulerListenerSupport {
   @Override
   public void jobUnscheduled(TriggerKey triggerKey) {
     if (PERIODIC.value().equals(triggerKey.getName())) {
-      JobInfoUtil.deletePeriodicJobInfo(triggerKey.getGroup())
+      JobInfoUtil.deletePeriodicJobInfo(vertx, triggerKey.getGroup())
           .onFailure(t -> log.warn("Error deleting JobInfo", t));
     }
   }

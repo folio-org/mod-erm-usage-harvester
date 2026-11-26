@@ -38,9 +38,9 @@ public class PostDeployImpl implements PostDeployVerticle {
 
     try {
       Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-      scheduler.getListenerManager().addJobListener(new JobInfoJobListener());
+      scheduler.getListenerManager().addJobListener(new JobInfoJobListener(vertx));
       scheduler.getListenerManager().addJobListener(new HarvestProviderJobListener());
-      scheduler.getListenerManager().addSchedulerListener(new JobInfoSchedulerListener());
+      scheduler.getListenerManager().addSchedulerListener(new JobInfoSchedulerListener(vertx));
       scheduler.getContext().put("vertxContext", context);
       scheduler.start();
     } catch (SchedulerException e) {

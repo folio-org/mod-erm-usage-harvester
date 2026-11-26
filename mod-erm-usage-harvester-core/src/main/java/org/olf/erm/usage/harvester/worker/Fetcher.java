@@ -17,9 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A helper that encapsulates the necessary dependencies and methods for fetching reports from a
- * usage data provider. It provides methods to retrieve a list of items to fetch and to fetch
- * individual reports, handling failures and logging as needed.
+ * Fetches reports from a usage data provider: determines which reports still need to be fetched,
+ * combining months into fewer requests where possible, and fetches them via the provider's service
+ * endpoint. Failed fetches are passed to a {@link FetcherErrorHandler}.
  */
 final class Fetcher {
 

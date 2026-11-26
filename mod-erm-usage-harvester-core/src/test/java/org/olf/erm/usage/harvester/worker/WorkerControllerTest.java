@@ -103,6 +103,23 @@ class WorkerControllerTest {
   }
 
   @Test
+  void testNoQueueItemIsStartedAfterAbort() {
+    final List<QueueItem> processed = Collections.synchronizedList(new ArrayList<>());
+
+    controller.abort("Something went wrong");
+    // e.g. items the error handler re-enqueues after the abort cleared the queue
+    controller.enqueue(QUEUE_ITEMS);
+    controller.startQueueWith(
+        qi -> {
+          processed.add(qi);
+          return Future.succeededFuture();
+        });
+
+    assertThat(controller.isAborted()).isTrue();
+    assertThat(processed).as("... no queue item was started").isEmpty();
+  }
+
+  @Test
   void testAbortWithMessage() {
     final var success = new AtomicBoolean(true);
     final var message = new AtomicReference<String>("");
@@ -129,7 +146,8 @@ class WorkerControllerTest {
     controller.enqueue(QUEUE_ITEMS);
     assertThat(controller.getQueue()).as("Check queue size").hasSameSizeAs(QUEUE_ITEMS);
 
-    controller.undeploy();
+    assertThat(controller.undeploy().succeeded()).as("Check undeploy succeeded").isTrue();
     assertThat(controller.getQueue()).as("Check queue size").isEmpty();
+    assertThat(controller.getFinished().future().succeeded()).as("Check run completed").isTrue();
   }
 }

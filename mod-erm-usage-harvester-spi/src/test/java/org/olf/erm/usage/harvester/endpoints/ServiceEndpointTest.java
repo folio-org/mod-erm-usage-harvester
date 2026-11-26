@@ -2,6 +2,7 @@ package org.olf.erm.usage.harvester.endpoints;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.vertx.core.Vertx;
 import io.vertx.core.net.ProxyOptions;
 import io.vertx.core.net.ProxyType;
 import java.io.IOException;
@@ -16,16 +17,30 @@ import java.util.Optional;
 import org.folio.rest.jaxrs.model.HarvestingConfig;
 import org.folio.rest.jaxrs.model.SushiConfig;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery;
 
+@SuppressWarnings("resource")
 class ServiceEndpointTest {
 
   private final ProxySelector originalProxySelector = ProxySelector.getDefault();
   private final ServiceEndpoint serviceEndpoint = new TestProviderImpl();
 
   private static final UsageDataProvider provider = providerWithServiceType("TestProviderType");
+  private static Vertx vertx;
+
+  @BeforeAll
+  static void beforeAll() {
+    vertx = Vertx.vertx();
+  }
+
+  @AfterAll
+  static void afterAll() {
+    vertx.close().await();
+  }
 
   @AfterEach
   void tearDown() {
@@ -48,25 +63,26 @@ class ServiceEndpointTest {
 
   @Test
   void testCreateNoServiceType() {
-    assertThat(ServiceEndpoint.create(providerWithServiceType(""))).isNull();
-    assertThat(ServiceEndpoint.create(providerWithServiceType(null))).isNull();
+    assertThat(ServiceEndpoint.create(vertx, providerWithServiceType(""))).isNull();
+    assertThat(ServiceEndpoint.create(vertx, providerWithServiceType(null))).isNull();
   }
 
   @Test
   void testCreateNoImplFound() {
-    ServiceEndpoint sep = ServiceEndpoint.create(providerWithServiceType("TestProviderType2"));
+    ServiceEndpoint sep =
+        ServiceEndpoint.create(vertx, providerWithServiceType("TestProviderType2"));
     assertThat(sep).isNull();
   }
 
   @Test
   void testCreateOk() {
-    ServiceEndpoint sep = ServiceEndpoint.create(provider);
+    ServiceEndpoint sep = ServiceEndpoint.create(vertx, provider);
     assertThat(sep).isInstanceOf(TestProviderImpl.class);
   }
 
   @Test
   void testCreateNoHarvesterConfig() {
-    ServiceEndpoint sep = ServiceEndpoint.create(new UsageDataProvider());
+    ServiceEndpoint sep = ServiceEndpoint.create(vertx, new UsageDataProvider());
     assertThat(sep).isNull();
   }
 
@@ -74,7 +90,7 @@ class ServiceEndpointTest {
   void testCreateNoSushiConfig() {
     ServiceEndpoint sep =
         ServiceEndpoint.create(
-            new UsageDataProvider().withHarvestingConfig(new HarvestingConfig()));
+            vertx, new UsageDataProvider().withHarvestingConfig(new HarvestingConfig()));
     assertThat(sep).isNull();
   }
 

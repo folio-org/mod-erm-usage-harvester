@@ -8,6 +8,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,11 +18,14 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.WebClient;
 import java.time.Instant;
 import java.util.Date;
+import org.folio.rest.jaxrs.model.HarvestingConfig;
+import org.folio.rest.jaxrs.model.HarvestingConfig.HarvestingStatus;
 import org.folio.rest.jaxrs.model.UsageDataProvider;
 import org.junit.Before;
 import org.junit.Rule;
@@ -133,5 +137,50 @@ public class ExtUsageDataProvidersClientImplTest {
     wireMockRule.stop();
 
     udpClient.getActiveProviders().onComplete(context.asyncAssertFailure());
+  }
+
+  @Test
+  public void getActiveProviderByIdReturnsActiveProvider(TestContext context) {
+    stubProviderWithStatus(HarvestingStatus.ACTIVE);
+
+    udpClient
+        .getActiveProviderById(UDP_ID)
+        .onComplete(context.asyncAssertSuccess(udp -> assertThat(udp.getId()).isEqualTo(UDP_ID)));
+  }
+
+  @Test
+  public void getActiveProviderByIdFailsIfHarvestingIsNotActive(TestContext context) {
+    stubProviderWithStatus(HarvestingStatus.INACTIVE);
+
+    udpClient
+        .getActiveProviderById(UDP_ID)
+        .onComplete(
+            context.asyncAssertFailure(
+                t ->
+                    assertThat(t)
+                        .hasMessageContaining(UDP_ID)
+                        .hasMessageContaining("HarvestingStatus not ACTIVE")));
+  }
+
+  @Test
+  public void getActiveProviderByIdFailsIfProviderIsNotFound(TestContext context) {
+    stubFor(get(urlPathEqualTo(UDP_PATH_WITH_ID)).willReturn(aResponse().withStatus(404)));
+
+    udpClient
+        .getActiveProviderById(UDP_ID)
+        .onComplete(
+            context.asyncAssertFailure(
+                t -> assertThat(t).hasMessageContaining(UDP_ID).hasMessageContaining("404")));
+  }
+
+  private void stubProviderWithStatus(final HarvestingStatus harvestingStatus) {
+    final var udp =
+        new UsageDataProvider()
+            .withId(UDP_ID)
+            .withLabel("Provider")
+            .withHarvestingConfig(new HarvestingConfig().withHarvestingStatus(harvestingStatus));
+    stubFor(
+        get(urlPathEqualTo(UDP_PATH_WITH_ID))
+            .willReturn(aResponse().withStatus(200).withBody(Json.encode(udp))));
   }
 }

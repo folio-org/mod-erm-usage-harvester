@@ -1,6 +1,7 @@
 package org.olf.erm.usage.harvester.endpoints;
 
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.folio.rest.jaxrs.model.CounterReport;
@@ -41,19 +42,28 @@ public class Test1Provider implements ServiceEndpointProvider {
   }
 
   @Override
-  public ServiceEndpoint create(UsageDataProvider provider) {
-    return (report, beginDate, endDate) -> {
-      List<CounterReport> resultList =
-          DateUtil.getYearMonths(beginDate, endDate).stream()
-              .map(
-                  ym ->
-                      new CounterReport()
-                          .withProviderId(provider.getId())
-                          .withReportName(report)
-                          .withYearMonth(ym.toString())
-                          .withReport(new Report()))
-              .collect(Collectors.toList());
-      return Future.succeededFuture(resultList);
+  public ServiceEndpoint create(Vertx vertx, UsageDataProvider provider) {
+    return new ServiceEndpoint() {
+      @Override
+      public Future<List<CounterReport>> fetchReport(
+          String report, String beginDate, String endDate) {
+        List<CounterReport> resultList =
+            DateUtil.getYearMonths(beginDate, endDate).stream()
+                .map(
+                    ym ->
+                        new CounterReport()
+                            .withProviderId(provider.getId())
+                            .withReportName(report)
+                            .withYearMonth(ym.toString())
+                            .withReport(new Report()))
+                .collect(Collectors.toList());
+        return Future.succeededFuture(resultList);
+      }
+
+      @Override
+      public void close() {
+        // nothing to release
+      }
     };
   }
 }

@@ -7,6 +7,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.BARE_ERROR_STATUS;
 import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.BARE_SUCCESS_STATUS;
 import static org.olf.erm.usage.harvester.endpoints.CounterApiException.CounterExceptionDelivery.REPORT_HEADER;
@@ -21,6 +22,7 @@ import com.google.common.io.Resources;
 import io.vertx.core.http.HttpClosedException;
 import io.vertx.core.json.Json;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
@@ -51,6 +53,7 @@ import org.openapitools.counter50.model.SUSHIErrorModel;
 import org.openapitools.counter50.model.SUSHIReportHeader;
 
 @RunWith(VertxUnitRunner.class)
+@SuppressWarnings("resource")
 public class CS50ImplTest {
 
   private static final String BEGIN_DATE = "2019-01-01";
@@ -69,6 +72,7 @@ public class CS50ImplTest {
   @Rule public WireMockRule wmRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
   @Rule public WireMockRule proxyRule = new WireMockRule(new WireMockConfiguration().dynamicPort());
   @Rule public Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
+  @Rule public RunTestOnContext runTestOnContext = new RunTestOnContext();
 
   static {
     emptyReport = new COUNTERTitleReport();
@@ -145,6 +149,25 @@ public class CS50ImplTest {
   }
 
   @Test
+  public void testConstructorWithoutVertxThrows() {
+    assertThatThrownBy(() -> new CS50Impl(null, provider)).isInstanceOf(NullPointerException.class);
+  }
+
+  @Test
+  public void testCloseClosesWebClient() {
+    wmRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
+
+    CS50Impl endpoint = new CS50Impl(runTestOnContext.vertx(), provider);
+    endpoint.close();
+    endpoint.close(); // closing twice must not throw
+
+    assertThatThrownBy(() -> endpoint.fetchReport(REPORT, BEGIN_DATE, END_DATE))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Client is closed");
+    wmRule.verify(0, getRequestedFor(urlPathEqualTo(REPORT_PATH)));
+  }
+
+  @Test
   public void testProxy(TestContext context) {
     ProxySelector.setDefault(
         new ProxySelector() {
@@ -160,7 +183,7 @@ public class CS50ImplTest {
 
     proxyRule.stubFor(get(urlPathEqualTo(REPORT_PATH)).willReturn(aResponse().withStatus(404)));
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -173,7 +196,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportNoHeader(TestContext context) throws IOException {
     createStubWithResource(200, "SampleReportMissingHeader.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -197,7 +220,7 @@ public class CS50ImplTest {
     tr.getReportHeader().setExceptions(List.of(error));
     createStubWithBody(200, Json.encode(tr));
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -219,7 +242,7 @@ public class CS50ImplTest {
     tr.getReportHeader().setExceptions(List.of(error));
     createStubWithBody(200, Json.encode(tr));
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -242,7 +265,7 @@ public class CS50ImplTest {
     tr.getReportHeader().setExceptions(List.of(error));
     createStubWithBody(200, Json.encode(tr));
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -266,7 +289,7 @@ public class CS50ImplTest {
     tr.getReportHeader().setExceptions(List.of(noMessage, tooManyRequests));
     createStubWithBody(200, Json.encode(tr));
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -281,7 +304,7 @@ public class CS50ImplTest {
       TestContext context) {
     createStubWithBody(200, "{\"Code\":3030,\"Data\":{\"Begin_Date\":\"2025-01\"}}");
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -296,7 +319,7 @@ public class CS50ImplTest {
       TestContext context) {
     createStubWithBody(200, "{\"Code\":1020,\"Data\":{\"Retry_After\":60}}");
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -309,7 +332,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportTooManyRequestsByHttpStatusCode(TestContext context) {
     createStubWithBody(429, null);
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -324,7 +347,7 @@ public class CS50ImplTest {
     String body = "{\"Code\":1020,\"Message\":\"Client has made too many requests\"}";
     createStubWithBody(200, body);
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -340,7 +363,7 @@ public class CS50ImplTest {
     String body = "[{\"Code\":3030},{\"Code\":1020}]";
     createStubWithBody(400, body);
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -355,7 +378,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportNoReportItems(TestContext context) throws IOException {
     createStubWithResource(200, "SampleReportMissingItems.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertSuccess(
@@ -371,7 +394,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportEmptyReportItems(TestContext context) throws IOException {
     createStubWithResource(200, "SampleReportEmptyItems.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertSuccess(
@@ -387,7 +410,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportWithException(TestContext context) throws IOException {
     createStubWithResource(200, "SampleReportExceptionError.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -401,7 +424,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportOkWithStatus200(TestContext context) throws IOException {
     String expectedReportStr = createStubWithResource(200, "SampleReport.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertSuccess(
@@ -420,7 +443,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportOkWithStatus202(TestContext context) throws IOException {
     String expectedReportStr = createStubWithResource(202, "SampleReport.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertSuccess(
@@ -439,7 +462,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportOkWithStatus400(TestContext context) throws IOException {
     String expectedReportStr = createStubWithResource(400, "SampleReport.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -455,7 +478,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportWithInvalidMetricType(TestContext context) throws IOException {
     createStubWithResource(200, "SampleReportInvalidMetricType.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -468,7 +491,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportErrorWithStatus400(TestContext context) throws IOException {
     String errStr = createStubWithResource(400, "error.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -482,7 +505,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportErrorArrayWithStatus200(TestContext context) throws IOException {
     String errStr = createStubWithResource(200, "errorarray.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -496,7 +519,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportErrorArrayWithStatus202(TestContext context) throws IOException {
     String errStr = createStubWithResource(202, "errorarray.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -510,7 +533,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportErrorArrayWithStatus400(TestContext context) throws IOException {
     String errStr = createStubWithResource(400, "errorarray.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -525,7 +548,7 @@ public class CS50ImplTest {
   public void testFetchReportErrorAvailableReportsArrayWithStatus200(TestContext context)
       throws IOException {
     String errStr = createStubWithResource(200, "erroravailablereports.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -538,7 +561,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReport404(TestContext context) {
     createStubWithBody(404, null);
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -552,7 +575,7 @@ public class CS50ImplTest {
   public void testFetchReportNoService(TestContext context) {
     wmRule.stop();
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(t -> assertThat(t).isInstanceOf(ConnectException.class)));
@@ -564,7 +587,7 @@ public class CS50ImplTest {
         get(urlPathEqualTo(REPORT_PATH))
             .willReturn(aResponse().withFault(Fault.RANDOM_DATA_THEN_CLOSE)));
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -576,7 +599,7 @@ public class CS50ImplTest {
 
   @Test
   public void testFetchReportUnsupportedReport(TestContext context) {
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport("XY_99", BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -589,7 +612,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportErrorWithStatus202(TestContext context) throws IOException {
     String errStr = createStubWithResource(202, "error.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -603,7 +626,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportErrorWithStatus200(TestContext context) throws IOException {
     String errStr = createStubWithResource(200, "error.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -617,7 +640,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportNullWithStatus200(TestContext context) throws IOException {
     createStubWithResource(200, "SampleReportNull.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -632,7 +655,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchMultipleMonthsWithEmptyMonths(TestContext context) throws IOException {
     createStubWithResource("dr", 200, "reports/dr_with_empty_months.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport("dr", BEGIN_DATE, END_DATE)
         .onComplete(context.asyncAssertSuccess(list -> assertThat(list).hasSize(3)));
   }
@@ -640,7 +663,7 @@ public class CS50ImplTest {
   @Test
   public void testAuthKeyRequestorId(TestContext context) {
     createStubWithBody(404, null);
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -656,7 +679,7 @@ public class CS50ImplTest {
     createStubWithBody(404, null);
     provider.getSushiCredentials().setApiKey(API_KEY);
     provider.getSushiCredentials().setRequestorId(null);
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -671,7 +694,7 @@ public class CS50ImplTest {
   public void testAuthKeyBoth(TestContext context) {
     createStubWithBody(404, null);
     provider.getSushiCredentials().setApiKey(API_KEY);
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -686,7 +709,7 @@ public class CS50ImplTest {
   public void testAuthKeyNone(TestContext context) {
     createStubWithBody(404, null);
     provider.getSushiCredentials().setRequestorId(null);
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -700,7 +723,7 @@ public class CS50ImplTest {
   @Test
   public void testFetchReportWithAdditionalAttributes(TestContext context) throws IOException {
     createStubWithResource(200, "SampleReportWithAdditionalAttributes.json");
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertFailure(
@@ -728,7 +751,7 @@ public class CS50ImplTest {
         get(urlPathEqualTo(REPORT_PATH + "/"))
             .willReturn(aResponse().withStatus(200).withBody(expectedBody)));
 
-    new CS50Impl(provider)
+    new CS50Impl(runTestOnContext.vertx(), provider)
         .fetchReport(REPORT, BEGIN_DATE, END_DATE)
         .onComplete(
             context.asyncAssertSuccess(

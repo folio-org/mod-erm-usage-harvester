@@ -4,7 +4,6 @@ import static io.vertx.core.Future.failedFuture;
 import static java.util.Objects.requireNonNull;
 import static org.olf.erm.usage.harvester.endpoints.ServiceEndpoint.createReportHeaderException;
 
-import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
@@ -23,14 +22,14 @@ import org.openapitools.counter50.model.COUNTERPlatformReport;
 import org.openapitools.counter50.model.COUNTERTitleReport;
 import org.openapitools.counter50.model.SUSHIReportHeader;
 
-public class CS50Impl implements ServiceEndpoint {
+class CS50Impl implements ServiceEndpoint {
 
+  private final Vertx vertx;
   private final UsageDataProvider provider;
   private final ExtendedCounter50Client client;
 
-  private final Vertx vertx;
-
-  public CS50Impl(UsageDataProvider provider) {
+  CS50Impl(Vertx vertx, UsageDataProvider provider) {
+    this.vertx = requireNonNull(vertx);
     requireNonNull(provider.getSushiCredentials());
     requireNonNull(provider.getHarvestingConfig());
     requireNonNull(provider.getHarvestingConfig().getSushiConfig());
@@ -46,9 +45,6 @@ public class CS50Impl implements ServiceEndpoint {
 
     WebClientOptions webClientOptions = new WebClientOptions();
     getProxyOptions(baseUrl).ifPresent(webClientOptions::setProxyOptions);
-
-    Context context = Vertx.currentContext();
-    vertx = context == null ? Vertx.vertx() : context.owner();
 
     webClientOptions.setIdleTimeout(60);
     client = new ExtendedCounter50Client(vertx, webClientOptions, baseUrl, auth);
@@ -132,6 +128,11 @@ public class CS50Impl implements ServiceEndpoint {
     return reportFuture
         .map(this::failIfInvalidReport)
         .flatMap(r -> createCounterReportList(r, reportName, provider));
+  }
+
+  @Override
+  public void close() {
+    client.close();
   }
 
   static class CS50Exception extends RuntimeException {

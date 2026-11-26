@@ -11,4 +11,9 @@ public class TestProviderImpl implements ServiceEndpoint {
   public Future<List<CounterReport>> fetchReport(String report, String beginDate, String endDate) {
     return Future.succeededFuture(Collections.emptyList());
   }
+
+  @Override
+  public void close() {
+    // nothing to release
+  }
 }

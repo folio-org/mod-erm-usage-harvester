@@ -4,11 +4,16 @@ import static org.olf.erm.usage.harvester.worker.WorkerController.QueueItem;
 
 import io.vertx.core.Future;
 import java.util.List;
+import org.folio.rest.jaxrs.model.CounterReport;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Orchestrates fetching and uploading items */
+/**
+ * Drives a harvest run: determines which reports still need to be harvested, fetches them from the
+ * provider and uploads them to storage. Queueing and ending the run are left to the {@link
+ * WorkerController}.
+ */
 final class Orchestrator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Orchestrator.class);
@@ -64,7 +69,22 @@ final class Orchestrator {
   }
 
   private Future<Void> dispatch(final QueueItem queueItem) {
-    return fetcher.fetchReport(queueItem).compose(uploader::uploadReports);
+    return fetcher
+        .fetchReport(queueItem)
+        .compose(reports -> uploadUnlessAborted(reports, queueItem));
+  }
+
+  private Future<Void> uploadUnlessAborted(
+      final List<CounterReport> reports, final QueueItem queueItem) {
+    if (controller.isAborted()) {
+      LOGGER.info(
+          logCtx.createMsg(
+              "Discarding {} report(s) of {}, the run was aborted",
+              reports.size(),
+              queueItem.item()));
+      return Future.succeededFuture();
+    }
+    return uploader.uploadReports(reports);
   }
 
   private void onFetchListFailure(final Throwable throwable) {

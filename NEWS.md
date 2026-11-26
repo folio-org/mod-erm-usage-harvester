@@ -18,6 +18,7 @@
 * [MODEUSHARV-190](https://folio-org.atlassian.net/browse/MODEUSHARV-190) *BREAKING* Add new `apiExceptions` field to failed counter reports preserving counter error codes received from data providers
 * [MODEUSHARV-88](https://folio-org.atlassian.net/browse/MODEUSHARV-88) Update `lastTriggeredAt` of the periodic harvesting config also when the periodic job fails to start harvesting
 * [MODEUSHARV-175](https://folio-org.atlassian.net/browse/MODEUSHARV-175) `WebClientProvider` no longer promises automatic eviction of cached clients and documents that they live for the JVM lifetime
+* [MODEUSHARV-199](https://folio-org.atlassian.net/browse/MODEUSHARV-199) Fix thread and memory leak: harvest runs no longer create extra Vert.x instances and endpoints release their HTTP clients when a run ends (*BREAKING* SPI change: `ServiceEndpointProvider.create` takes the `Vertx` instance to use, `ServiceEndpoint.close()` must be implemented); fetches cut off by an aborted run are no longer stored as failed reports
 
 # 5.2.0
 * [MODEUSHARV-126](https://folio-org.atlassian.net/browse/MODEUSHARV-126) Migrate settings from `mod-configuration` to `mod-settings`

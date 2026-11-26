@@ -8,6 +8,7 @@ import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_JO
 import static org.olf.erm.usage.harvester.periodic.AbstractHarvestJob.DATAKEY_TIMESTAMP;
 import static org.olf.erm.usage.harvester.periodic.JobInfoUtil.createJobInfo;
 
+import io.vertx.core.Vertx;
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
@@ -23,6 +24,12 @@ import org.slf4j.LoggerFactory;
 public class JobInfoJobListener extends JobListenerSupport {
 
   private static final Logger log = LoggerFactory.getLogger(JobInfoJobListener.class);
+
+  private final Vertx vertx;
+
+  public JobInfoJobListener(Vertx vertx) {
+    this.vertx = vertx;
+  }
 
   @Override
   public String getName() {
@@ -65,7 +72,7 @@ public class JobInfoJobListener extends JobListenerSupport {
 
   private void upsertJobInfo(JobInfo jobInfo, String tenant) {
     try {
-      JobInfoUtil.upsertJobInfo(jobInfo, tenant)
+      JobInfoUtil.upsertJobInfo(vertx, jobInfo, tenant)
           .onFailure(t -> log.warn("Error saving JobInfo", t))
           .toCompletionStage()
           .toCompletableFuture()

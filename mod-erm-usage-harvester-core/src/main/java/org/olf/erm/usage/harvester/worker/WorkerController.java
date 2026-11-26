@@ -6,13 +6,17 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.olf.erm.usage.harvester.FetchItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Manages the queue, manages the concurrency and manages deploying and undeploying "Verticles" */
+/**
+ * Manages a harvest run of a {@link WorkerVerticle}: its queue, its concurrency and how it ends
+ * (completing, aborting, undeploying the Verticle).
+ */
 interface WorkerController {
 
   /**
@@ -33,21 +37,33 @@ interface WorkerController {
   void startQueueWith(Function<QueueItem, Future<Void>> callback);
 
   /**
-   * Abort a task because of the exception thrown
+   * Aborts the run: it fails with {@code cause}, no new fetches are started and results of fetches
+   * still running are discarded.
    *
    * @param cause the exception thrown
    */
   void abort(Throwable cause);
 
   /**
-   * Abort a task, the message contains the reason
+   * Aborts the run like {@link #abort(Throwable)}, the message contains the reason
    *
-   * @param message The message explaining why the task was dropped
+   * @param message The message explaining why the run was aborted
    */
   void abort(String message);
 
-  /** Undeploy all the "Verticles" */
-  void undeploy();
+  /**
+   * @return true once the run was aborted; results of fetches completing afterwards are discarded
+   */
+  boolean isAborted();
+
+  /**
+   * Ends the run: clears the queue and undeploys the {@link WorkerVerticle} this controller belongs
+   * to. Once undeploying has finished, the run is completed unless it was aborted.
+   *
+   * @return a future that completes once undeploying has finished; it never fails, an undeploy
+   *     failure is only logged
+   */
+  Future<Void> undeploy();
 
   final class DefaultWorkerController implements WorkerController {
 
@@ -66,6 +82,8 @@ interface WorkerController {
     private final LinkedBlockingQueue<QueueItem> queue;
 
     private final Promise<Void> finished;
+
+    private final AtomicBoolean aborted;
 
     /**
      * @param vertx the entry point to the Vert.x core
@@ -86,6 +104,7 @@ interface WorkerController {
       this.currentTasks = new AtomicInteger(0);
       this.queue = new LinkedBlockingQueue<>();
       this.finished = Promise.promise();
+      this.aborted = new AtomicBoolean(false);
     }
 
     /** {@inheritDoc} */
@@ -121,6 +140,10 @@ interface WorkerController {
     }
 
     private void startNextWith(final Function<QueueItem, Future<Void>> callback) {
+      if (aborted.get()) {
+        return;
+      }
+
       if (currentTasks.get() < maxConcurrency) {
         final var queueItem = queue.poll();
         if (queueItem != null) {
@@ -139,34 +162,50 @@ interface WorkerController {
     /** {@inheritDoc} */
     @Override
     public void abort(Throwable cause) {
-      finished.fail(cause);
-      undeploy();
+      aborted.set(true);
+      undeploy().onComplete(ar -> finished.tryFail(cause));
     }
 
     /** {@inheritDoc} */
     @Override
     public void abort(String message) {
-      finished.tryFail(message);
-      undeploy();
+      aborted.set(true);
+      undeploy().onComplete(ar -> finished.tryFail(message));
     }
 
     /** {@inheritDoc} */
     @Override
-    public void undeploy() {
-      finished.tryComplete();
-      queue.clear();
+    public boolean isAborted() {
+      return aborted.get();
+    }
 
+    /** {@inheritDoc} */
+    @Override
+    public Future<Void> undeploy() {
+      queue.clear();
+      final var undeployed = undeployVerticleIfDeployed();
+
+      // Wait for 'undeploy(...)' to complete before completing 'finished'
+      return undeployed.onComplete(
+          ar -> {
+            if (!isAborted()) {
+              finished.tryComplete();
+            }
+          });
+    }
+
+    private Future<Void> undeployVerticleIfDeployed() {
       if (!vertx.deploymentIDs().contains(context.deploymentID())) {
-        return;
+        return Future.succeededFuture();
       }
 
-      vertx
+      return vertx
           .undeploy(context.deploymentID())
           .onSuccess(v -> LOGGER.info(logCtx.createMsg("Undeployed WorkerVerticle")))
           .onFailure(
               t ->
-                  LOGGER.error(
-                      logCtx.createMsg("Error during undeploying: {}", t.getMessage()), t));
+                  LOGGER.error(logCtx.createMsg("Error during undeploying: {}", t.getMessage()), t))
+          .recover(t -> Future.succeededFuture());
     }
 
     /**
